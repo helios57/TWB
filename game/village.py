@@ -638,6 +638,9 @@ class Village:
             village_id=self.village_id,
             params={"screen": 'new_quests', "tab": "main-tab", "quest": 0},
         )
+        if result is None:
+            self.logger.warning("Failed to fetch quest reward data from API")
+            return False
         # The data is escaped for JS, so unescape it before sending it to the extractor.
         rewards = Extractor.get_quest_rewards(decode(result["response"]["dialog"], 'unicode-escape'))
         for reward in rewards:
