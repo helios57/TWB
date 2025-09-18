@@ -1,4 +1,5 @@
 import dataclasses
+import logging
 import re
 from typing import Dict, Optional, Tuple
 
@@ -6,6 +7,9 @@ from bs4 import BeautifulSoup
 from requests import Response
 
 from core.request import WebWrapper
+
+
+logger = logging.getLogger("OverviewPage")
 
 
 class Point:
@@ -237,9 +241,17 @@ class OverviewPage:
                     idx_offset = 1 if len(cells[0].contents) == 0 else 0  # Compatibility with premium account
                     village_id = cells[idx_offset].contents[1].attrs["data-id"]
 
-                    name, coordinates, continent = self._extract_name_cords_continent(
-                        cells[idx_offset].text.strip()
+                    village_cell_text = cells[idx_offset].text.strip()
+                    village_info = self._extract_name_cords_continent(
+                        village_cell_text
                     )
+                    if not village_info:
+                        logger.warning(
+                            "Skipping village row with unexpected name format: %s",
+                            village_cell_text,
+                        )
+                        continue
+                    name, coordinates, continent = village_info
                     points = cells[1 + idx_offset].text.strip()
                     resources = cells[2 + idx_offset].text.strip()
                     storage_capacity = cells[3 + idx_offset].text.strip()
@@ -261,7 +273,7 @@ class OverviewPage:
         self.world_settings.quests = "Quests.setQuestData" in text
 
     @staticmethod
-    def _extract_name_cords_continent(cell_value: str) -> Tuple[str, Point, str]:
+    def _extract_name_cords_continent(cell_value: str) -> Optional[Tuple[str, Point, str]]:
         """Extract name, coordinates and continent from cell value."""
         match = re.match(r"(.+)\s\((\d+)\|(\d+)\)\s(.+)", cell_value)
         if match:
@@ -269,5 +281,4 @@ class OverviewPage:
             coordinates = Point(int(match.group(2)), int(match.group(3)))
             continent = match.group(4)
             return name, coordinates, continent
-        else:
-            print("Invalid village string format. Skipping village...")
+        return None
