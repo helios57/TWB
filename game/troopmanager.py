@@ -613,7 +613,14 @@ class TroopManager:
             params={"screen": building, "mode": "train"},
             data={"units[%s]" % unit_type: str(amount)},
         )
-        if "game_data" in result:
+        if result is None:
+            self.logger.warning(
+                "Recruitment of %d %s failed because the server returned no response",
+                amount,
+                unit_type,
+            )
+            return False
+        if isinstance(result, dict) and "game_data" in result:
             self.resman.update(result["game_data"])
             self.wait_for[self.village_id][building] = int(time.time()) + (
                     amount * int(resources["build_time"])

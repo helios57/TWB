@@ -151,6 +151,18 @@ class WebWrapper:
         response = self.get_url(url)
         return response
 
+    def _parse_api_response(self, response, context):
+        """Return parsed JSON data for API requests when possible."""
+        if response is None:
+            self.logger.warning("No response received for %s", context)
+            return None
+        if response.status_code != 200:
+            return None
+        try:
+            return response.json()
+        except ValueError:
+            return response
+
     def get_api_data(self, village_id, action, params={}):
 
         custom = dict(self.headers)
@@ -166,11 +178,10 @@ class WebWrapper:
         payload = f"game.php?{urlencode(req)}"
         url = urljoin(self.endpoint, payload)
         res = self.get_url(url, headers=custom)
-        if res.status_code == 200:
-            try:
-                return res.json()
-            except:
-                return res
+        return self._parse_api_response(
+            res,
+            f"get_api_data(action={action}, village={village_id})",
+        )
 
     def post_api_data(self, village_id, action, params={}, data={}):
         """
@@ -191,11 +202,10 @@ class WebWrapper:
         if 'h' not in data:
             data['h'] = self.last_h
         res = self.post_url(url, data=data, headers=custom)
-        if res.status_code == 200:
-            try:
-                return res.json()
-            except:
-                return res
+        return self._parse_api_response(
+            res,
+            f"post_api_data(action={action}, village={village_id})",
+        )
 
     def get_api_action(self, village_id, action, params={}, data={}):
         """
@@ -216,9 +226,7 @@ class WebWrapper:
         if 'h' not in data:
             data['h'] = self.last_h
         res = self.post_url(url, data=data, headers=custom)
-        if res.status_code == 200:
-            try:
-                return res.json()
-            except:
-                return res
-        return None
+        return self._parse_api_response(
+            res,
+            f"get_api_action(action={action}, village={village_id})",
+        )
