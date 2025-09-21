@@ -1,3 +1,6 @@
+### Unreleased
+- Added configurable Farm-Beutelimit-Schutz – der Farm-Manager stoppt Farm- und Scout-Läufe automatisch, sobald das Weltlimit erreicht ist (inkl. Margin/Overrides).
+
 ### New in 1.6
 - Bugfixes
 - Found the bug where villages were not detected automatically
