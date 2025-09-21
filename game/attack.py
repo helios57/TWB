@@ -268,8 +268,15 @@ class AttackManager:
             )
             return False
         troops = {"spy": self.scout_farm_amount}
-        if self.attack(vid, troops=troops, check_bag_limit=self.farm_bag_block_scouts):
-            self.attacked(vid, scout=True, safe=False)
+        result = self.attack(
+            vid,
+            troops=troops,
+            check_bag_limit=self.farm_bag_block_scouts,
+        )
+        if not result or result in ("farm_bag_full", "forced_peace"):
+            return False
+        self.attacked(vid, scout=True, safe=False)
+        return True
 
     def can_attack(self, vid, clear=False):
         """
