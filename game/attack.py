@@ -80,6 +80,12 @@ class AttackManager:
         if not self.troopmanager.can_attack or self.troopmanager.troops == {}:
             # Disable farming is disabled in config or no troops available
             return False
+        if self.farm_bag_limit_enabled and self._farm_bag_limit_reached:
+            self._refresh_farm_bag_state()
+            if not self._farm_bag_limit_reached:
+                self.logger.debug(
+                    "Farm bag limit cleared after refreshing place screen"
+                )
         self.get_targets()
         ignored = []
         # Limits the amount of villages that are farmed from the current village
@@ -472,6 +478,25 @@ class AttackManager:
                 "TWB_FARM_BAG_LIMIT",
                 f"Farm bag limit reached: {current}/{maximum}",
             )
+
+    def _refresh_farm_bag_state(self):
+        if not self.wrapper or not self.village_id:
+            return
+        url = f"game.php?village={self.village_id}&screen=place"
+        response = self.wrapper.get_url(url)
+        if not response:
+            return
+        bag_state = Extractor.get_farm_bag_state(response)
+        if not bag_state:
+            return
+        self.last_farm_bag_state = bag_state
+        margin = max(0.0, min(1.0, self.farm_bag_limit_margin or 0.0))
+        threshold = bag_state["max"] * (1 - margin)
+        if bag_state["current"] < threshold:
+            self._farm_bag_limit_reached = False
+        else:
+            self._farm_bag_limit_reached = True
+        self._push_farm_bag_state()
 
 
 class AttackCache:
