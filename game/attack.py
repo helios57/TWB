@@ -3,12 +3,13 @@ Attack manager
 Sounds dangerous but it just sends farms
 """
 
-from core.extractors import Extractor
+import json
 import logging
 import time
 from datetime import datetime
 from datetime import timedelta
 
+from core.extractors import Extractor
 from core.filemanager import FileManager
 
 
@@ -36,6 +37,13 @@ class AttackManager:
     scout_farm_amount = 5
 
     forced_peace_time = None
+
+    farm_bag_limit_enabled = False
+    farm_bag_block_scouts = True
+    farm_bag_limit_margin = 0.0
+    last_farm_bag_state = None
+    _farm_bag_limit_reached = False
+    _farm_bag_last_log = 0
 
     # blocks villages which cannot be attacked at the moment (too low points, beginners protection etc..)
     _unknown_ignored = []
@@ -72,6 +80,12 @@ class AttackManager:
         if not self.troopmanager.can_attack or self.troopmanager.troops == {}:
             # Disable farming is disabled in config or no troops available
             return False
+        if self.farm_bag_limit_enabled and self._farm_bag_limit_reached:
+            self._refresh_farm_bag_state()
+            if not self._farm_bag_limit_reached:
+                self.logger.debug(
+                    "Farm bag limit cleared after refreshing place screen"
+                )
         self.get_targets()
         ignored = []
         # Limits the amount of villages that are farmed from the current village
@@ -99,12 +113,17 @@ class AttackManager:
         Send a farming run
         """
         target, _ = target
+        if self.farm_bag_limit_enabled and self._farm_bag_limit_reached:
+            self.logger.debug("Skipping farm target because farm bag limit was reached earlier")
+            return 0
         missing = self.enough_in_village(template)
         if not missing:
             cached = self.can_attack(vid=target["id"], clear=False)
             if cached:
                 attack_result = self.attack(target["id"], troops=template)
                 if attack_result == "forced_peace":
+                    return 0
+                if attack_result == "farm_bag_full":
                     return 0
                 self.logger.info(
                     "Attacking %s -> %s (%s)" ,self.village_id, target["id"], str(template)
@@ -236,14 +255,28 @@ class AttackManager:
         """
         Attempt to send scouts to a farm
         """
+        if (
+                self.farm_bag_limit_enabled
+                and self._farm_bag_limit_reached
+                and self.farm_bag_block_scouts
+        ):
+            self.logger.debug("Skipping scout because farm bag limit reached")
+            return False
         if "spy" not in self.troopmanager.troops or int(self.troopmanager.troops["spy"]) < self.scout_farm_amount:
             self.logger.debug(
                 "Cannot scout %s at the moment because insufficient unit: spy", vid
             )
             return False
         troops = {"spy": self.scout_farm_amount}
-        if self.attack(vid, troops=troops):
-            self.attacked(vid, scout=True, safe=False)
+        result = self.attack(
+            vid,
+            troops=troops,
+            check_bag_limit=self.farm_bag_block_scouts,
+        )
+        if not result or result in ("farm_bag_full", "forced_peace"):
+            return False
+        self.attacked(vid, scout=True, safe=False)
+        return True
 
     def can_attack(self, vid, clear=False):
         """
@@ -337,12 +370,27 @@ class AttackManager:
                 return False
         return True
 
-    def attack(self, vid, troops=None):
+    def attack(self, vid, troops=None, check_bag_limit=True):
         """
         Send a TW attack
         """
         url = f"game.php?village={self.village_id}&screen=place&target={vid}"
         pre_attack = self.wrapper.get_url(url)
+        if not pre_attack:
+            return False
+        bag_state = Extractor.get_farm_bag_state(pre_attack)
+        if bag_state:
+            self.last_farm_bag_state = bag_state
+            if self.farm_bag_limit_enabled and check_bag_limit:
+                margin = max(0.0, min(1.0, self.farm_bag_limit_margin or 0.0))
+                threshold = bag_state["max"] * (1 - margin)
+                if bag_state["current"] >= threshold:
+                    self._farm_bag_limit_reached = True
+                    self._log_farm_bag_block(bag_state)
+                    self._push_farm_bag_state()
+                    return "farm_bag_full"
+            if bag_state["current"] < bag_state["max"]:
+                self._farm_bag_limit_reached = False
         pre_data = {}
         for u in Extractor.attack_form(pre_attack):
             k, v = u
@@ -393,7 +441,69 @@ class AttackManager:
             data=confirm_data,
         )
 
+        self._push_farm_bag_state()
         return result
+
+    def _push_farm_bag_state(self):
+        if not self.last_farm_bag_state:
+            return
+        current = self.last_farm_bag_state.get("current")
+        maximum = self.last_farm_bag_state.get("max")
+        if current is None or maximum is None:
+            return
+        pct = (current / maximum) if maximum else 0
+        payload = {
+            "current": current,
+            "max": maximum,
+            "pct": pct,
+        }
+        if self.wrapper and hasattr(self.wrapper, "reporter"):
+            self.wrapper.reporter.add_data(
+                self.village_id,
+                data_type="village.farm_bag",
+                data=json.dumps(payload),
+            )
+
+    def _log_farm_bag_block(self, state):
+        now_ts = time.time()
+        if now_ts - self._farm_bag_last_log < 300:
+            return
+        self._farm_bag_last_log = now_ts
+        current = state.get("current", 0)
+        maximum = state.get("max", 0)
+        pct = (current / maximum * 100) if maximum else 0
+        self.logger.info(
+            "Farm bag limit reached for village %s: %d/%d (%.2f%%)",
+            self.village_id,
+            current,
+            maximum,
+            pct,
+        )
+        if self.wrapper and hasattr(self.wrapper, "reporter"):
+            self.wrapper.reporter.report(
+                self.village_id,
+                "TWB_FARM_BAG_LIMIT",
+                f"Farm bag limit reached: {current}/{maximum}",
+            )
+
+    def _refresh_farm_bag_state(self):
+        if not self.wrapper or not self.village_id:
+            return
+        url = f"game.php?village={self.village_id}&screen=place"
+        response = self.wrapper.get_url(url)
+        if not response:
+            return
+        bag_state = Extractor.get_farm_bag_state(response)
+        if not bag_state:
+            return
+        self.last_farm_bag_state = bag_state
+        margin = max(0.0, min(1.0, self.farm_bag_limit_margin or 0.0))
+        threshold = bag_state["max"] * (1 - margin)
+        if bag_state["current"] < threshold:
+            self._farm_bag_limit_reached = False
+        else:
+            self._farm_bag_limit_reached = True
+        self._push_farm_bag_state()
 
 
 class AttackCache:

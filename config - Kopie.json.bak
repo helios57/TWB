@@ -5,8 +5,8 @@
     "author": "stefan2200"
   },
   "server": {
-    "server": "nlc1",
-    "endpoint": "https://nlc1.tribalwars.nl/game.php",
+    "server": "de244",
+    "endpoint": "https://de244.die-staemme.de/game.php",
     "server_on_twstats": false
   },
   "reporting": {
@@ -19,37 +19,36 @@
     "token": ""
   },
   "bot": {
-    "active_hours": "6-23",
-    "delay_factor": 1.0,
-    "active_delay": 200,
+    "active_hours": "7-22",
+    "delay_factor": 1.6,
+    "active_delay": 375,
     "inactive_still_active": true,
-    "inactive_delay": 2000,
+    "inactive_delay": 3300,
     "add_new_villages": true,
     "village_name_template": "Village {num}",
     "village_name_number_length": 3,
     "auto_set_village_names": false,
-    "user_agent": null,
-    "check_update": true,
-    "farm_bag_limit_margin": 0.02
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36",
+    "check_update": true
   },
   "building": {
     "manage_buildings": true,
-    "default": "purple_predator",
+    "default": "purple_predator_into_def",
     "max_lookahead": 2,
     "max_queued_items": 2
   },
   "units": {
     "recruit": true,
     "upgrade": true,
-    "default": "basic",
+    "default": "basic_into_def",
     "batch_size": 25,
     "manage_defence": false,
     "remove_manual_queued": false,
     "randomize_unit_queue": true
   },
   "village_template": {
-    "building": "purple_predator",
-    "units": "basic",
+    "building": "purple_predator_into_def",
+    "units": "basic_into_def",
     "managed": true,
     "scout_first": false,
     "additional_farms": [],
@@ -64,23 +63,22 @@
     "support_others": false,
     "support_others_factor": 0.25,
     "support_others_max_villages": 2,
-    "request_support_on_attack": false,
-    "farm_bag_limit_override": null
+    "request_support_on_attack": false
   },
   "farms": {
     "farm": true,
     "min_points": 0,
-    "max_points": 50,
+    "max_points": 150,
     "find_player_owned": false,
     "search_radius": 100,
-    "default_away_time": 3600,
-    "full_loot_away_time": 1800,
-    "low_loot_away_time": 7200,
+    "default_away_time": 4200,
+    "full_loot_away_time": 2400,
+    "low_loot_away_time": 9000,
     "max_farms": 25,
     "attack_higher_points": false,
     "force_scout_if_available": true,
     "forced_peace_times": [],
-    "farm_scout_amount": 5
+    "farm_scout_amount": 3
   },
   "market": {
     "auto_trade": true,
@@ -91,15 +89,33 @@
     "trade_max_per_hour": 1
   },
   "world": {
-    "knight_enabled": null,
-    "flags_enabled": null,
-    "quests_enabled": null,
+    "knight_enabled": true,
+    "flags_enabled": false,
+    "quests_enabled": true,
     "trade_for_premium": false,
-    "archers_enabled": true,
+    "archers_enabled": false,
     "building_destruction_enabled": true,
-    "boosters_enabled": null,
-    "farm_bag_limit_enabled": false,
-    "farm_bag_block_scouts": true
+    "boosters_enabled": true
   },
-  "villages": {}
+  "villages": {
+    "14818": {
+      "building": "purple_predator",
+      "units": "basic_into_def",
+      "managed": true,
+      "scout_first": false,
+      "additional_farms": [],
+      "prioritize_building": true,
+      "prioritize_snob": false,
+      "trade_for_premium": false,
+      "gather_enabled": false,
+      "gather_selection": 1,
+      "advanced_gather": true,
+      "snobs": 0,
+      "evacuate_fragile_units_on_attack": false,
+      "support_others": false,
+      "support_others_factor": 0.25,
+      "support_others_max_villages": 2,
+      "request_support_on_attack": false
+    }
+  }
 }

@@ -446,6 +446,26 @@ class Village:
         self.attack.scout_farm_amount = self.get_config(
             section="farms", parameter="farm_scout_amount", default=5
         )
+        farm_limit_enabled = self.get_config(
+            section="world", parameter="farm_bag_limit_enabled", default=False
+        )
+        override = self.get_village_config(
+            self.village_id, parameter="farm_bag_limit_override", default=None
+        )
+        if override is not None:
+            farm_limit_enabled = override
+        self.attack.farm_bag_limit_enabled = bool(farm_limit_enabled)
+        self.attack.farm_bag_block_scouts = self.get_config(
+            section="world", parameter="farm_bag_block_scouts", default=True
+        )
+        margin = self.get_config(
+            section="bot", parameter="farm_bag_limit_margin", default=0.02
+        )
+        try:
+            margin = float(margin)
+        except (TypeError, ValueError):
+            margin = 0.02
+        self.attack.farm_bag_limit_margin = max(0.0, min(0.2, margin))
         if self.current_unit_entry:
             self.attack.template = self.current_unit_entry["farm"]
 
@@ -681,4 +701,18 @@ class Village:
             "under_attack": self.def_man.under_attack,
             "last_run": int(time.time()),
         }
+        if self.attack and self.attack.last_farm_bag_state:
+            current = self.attack.last_farm_bag_state.get("current")
+            maximum = self.attack.last_farm_bag_state.get("max")
+            if current is not None and maximum is not None:
+                pct = (current / maximum) if maximum else 0
+                village_entry["farm_bag"] = {
+                    "current": current,
+                    "max": maximum,
+                    "pct": pct,
+                }
+            else:
+                village_entry["farm_bag"] = None
+        else:
+            village_entry["farm_bag"] = None
         FileManager.save_json_file(village_entry, f"cache/managed/{self.village_id}.json")

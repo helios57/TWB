@@ -200,6 +200,52 @@ class Extractor:
         return data
 
     @staticmethod
+    def get_farm_bag_state(res):
+        """Extracts current and maximum farm bag values from the place screen."""
+        if isinstance(res, str):
+            html = res
+        else:
+            html = res.text
+
+        text = re.sub(r'<span class="grey">\.</span>', '.', html, flags=re.IGNORECASE)
+        text = re.sub(r'<[^>]+>', ' ', text)
+
+        matches = []
+        # First try language specific anchor
+        lang_match = re.findall(
+            r'Erbeutete\s+Rohstoffe[^\d]*(\d[\d\.\,]*)\s*/\s*(\d[\d\.\,]*)',
+            text,
+            re.IGNORECASE,
+        )
+        matches.extend(lang_match)
+
+        if not matches:
+            # fallback to generic pattern capturing ratio around slash
+            fallback = re.findall(
+                r'(\d[\d\.\,]*)\s*/\s*(\d[\d\.\,]*)',
+                text,
+            )
+            matches.extend(fallback)
+
+        def _to_int(value):
+            return int(value.replace('.', '').replace(',', '').strip())
+
+        parsed = []
+        for current, maximum in matches:
+            try:
+                parsed.append((_to_int(current), _to_int(maximum)))
+            except ValueError:
+                continue
+
+        if not parsed:
+            return None
+
+        current, maximum = max(parsed, key=lambda item: item[0])
+        if maximum <= 0:
+            return None
+        return {"current": current, "max": maximum}
+
+    @staticmethod
     def attack_form(res):
         """
         Detects input fiels in the attack form

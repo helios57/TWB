@@ -22,6 +22,7 @@ TWB bietet eine breite Palette an Funktionen, die eine umfassende Automatisierun
 *   **Farm-Manager:**
     *   Sucht und farmt automatisch Barbarendörfer in der Umgebung.
     *   **Intelligente Optimierung:** Analysiert Berichte, um die Effizienz zu bewerten. Passt die Farmziele und Angriffspausen dynamisch an (z.B. längere Pausen für Dörfer mit wenig Beute oder hohen Verlusten).
+    *   **Beutelimit-Schutz:** Überwacht das weltweite Farm-Beutelimit auf der Place-Seite und verhindert weitere Farm- oder Scout-Befehle, wenn das Limit (inkl. Sicherheitsmarge) erreicht ist.
 *   **Marktplatz-Manager:** Gleicht Ressourcen zwischen den Dörfern automatisch aus, um Engpässe zu vermeiden und den Bau zu beschleunigen.
 *   **Forschungs-Manager:** Führt automatisch Forschungen in der Schmiede durch, sobald die Voraussetzungen erfüllt sind.
 *   **Automatische Adelung:** Prägt Münzen und adelt vollautomatisch neue Dörfer.
@@ -104,6 +105,7 @@ Allgemeine Einstellungen zum Verhalten des Bots.
 *   `"inactive_still_active"`: Wenn `true`, führt der Bot auch im inaktiven Modus weiterhin Aktionen aus, nur eben langsamer. Wenn `false`, stoppt der Bot komplett und deine Sitzung läuft wahrscheinlich ab.
 *   `"add_new_villages"`: Wenn `true`, werden neu eroberte Dörfer automatisch zur Konfiguration hinzugefügt, wobei die Einstellungen aus `village_template` übernommen werden.
 *   `"user_agent"`: Dein Browser-User-Agent. **Sehr wichtig, um das Entdeckungsrisiko zu senken.**
+*   `"farm_bag_limit_margin"`: Prozentualer Sicherheitsabstand (zwischen 0.0 und 0.2) zum Welt-Beutelimit, ab dem keine weiteren Farm- oder Scout-Befehle mehr ausgelöst werden.
 
 ---
 
@@ -137,6 +139,7 @@ Dies ist eine Vorlage für alle neu hinzugefügten Dörfer. Jedes Dorf in der `"
 *   `"prioritize_building"`: Wenn `true`, wird die Rekrutierung pausiert, bis die Bauschleife voll ist.
 *   `"prioritize_snob"`: Wenn `true`, reserviert der Bot Ressourcen für die Münzprägung und den Bau von Adelsgeschlechtern.
 *   `"snobs"`: Die maximale Anzahl an AGs, die in diesem Dorf gebaut werden sollen.
+*   `"farm_bag_limit_override"`: Setze `true` oder `false`, um das globale Farm-Beutelimit für dieses Dorf explizit zu aktivieren bzw. zu deaktivieren. `null` übernimmt die globale Einstellung.
 *   `"additional_farms"`: Eine Liste von Dorf-IDs (als Strings), die zusätzlich zu den automatisch gefundenen Barbarendörfern gefarmt werden sollen. **Vorsicht:** Der Bot prüft nicht, wem diese Dörfer gehören!
 *   `"gather_enabled"`: Wenn `true`, schickt der Bot Truppen zum Sammeln, wenn sie nicht für Angriffe oder Farmen gebraucht werden.
 
@@ -168,6 +171,8 @@ Einstellungen für den Marktplatz.
 Diese Optionen werden vom Bot normalerweise automatisch erkannt und gesetzt.
 
 *   `"knight_enabled"`, `"flags_enabled"`, `"quests_enabled"`, etc.: `true` oder `false`, je nachdem, welche Features die Spielwelt hat.
+*   `"farm_bag_limit_enabled"`: Aktiviert den Farm-Beutelimit-Schutz für alle Dörfer (sofern kein Dorf-Override gesetzt ist).
+*   `"farm_bag_block_scouts"`: Falls `true`, werden auch Scout-Läufe gestoppt, sobald das Limit erreicht ist.
 
 ---
 
