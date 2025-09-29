@@ -1,9 +1,8 @@
-"""
-File used for data extraction
-"""
+"""Utility helpers for parsing Tribal Wars HTML responses."""
 
 import json
 import re
+from typing import List
 
 
 class Extractor:
@@ -178,14 +177,23 @@ class Extractor:
         return builder
 
     @staticmethod
-    def village_ids_from_overview(res):
+    def village_ids_from_overview(res) -> List[str]:
         """
         Fetches villages from the overview page
         """
-        if type(res) != str:
+        if not isinstance(res, str):
             res = res.text
-        villages = re.findall(r'<span class="quickedit-vn" data-id="(\w+)"', res)
-        return list(set(villages))
+
+        # Match any <span> that has class "quickedit-vn" and a data-id attribute
+        # regardless of attribute order, spacing, or additional classes.
+        pattern = re.compile(
+            r'<span\b(?=[^>]*class\s*=\s*"[^"]*quickedit-vn[^"]*")'
+            r'(?=[^>]*data-id\s*=\s*"(\w+)")[^>]*>',
+            re.IGNORECASE,
+        )
+
+        matches = pattern.findall(res)
+        return list(dict.fromkeys(matches))
 
     @staticmethod
     def units_in_total(res):
