@@ -184,12 +184,10 @@ class Extractor:
         if not isinstance(res, str):
             res = res.text
 
-        # Match any <span> that has class "quickedit-vn" and a data-id attribute
-        # regardless of attribute order, spacing, or additional classes.
+        # Matches any tag that has a class containing "quickedit-vn" and an attribute "data-id".
+        # This is more robust against tag changes (e.g. from <span> to <div>).
         pattern = re.compile(
-            r'<span\b(?=[^>]*class\s*=\s*"[^"]*quickedit-vn[^"]*")'
-            r'(?=[^>]*data-id\s*=\s*"(\w+)")[^>]*>',
-            re.IGNORECASE,
+            r'<[a-zA-Z0-9]+\s+[^>]*?class="[^"]*?quickedit-vn[^"]*?"[^>]*?data-id="(\d+)"'
         )
 
         matches = pattern.findall(res)
