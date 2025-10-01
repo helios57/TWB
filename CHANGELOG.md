@@ -1,4 +1,20 @@
 ### Unreleased
+- **Kritischer Dorf-Erkennungs-Bug behoben**: Dörfer werden jetzt zuverlässig erkannt, auch wenn der Server unterschiedliche Seitentypen zurückgibt
+  - Mehrstufiges Fallback-System für Dorf-ID-Extraktion hinzugefügt
+  - Primär: `quickedit-vn` Elemente von der `overview_villages` Seite parsen
+  - Fallback 1: Dorf-IDs aus `TribalWars.updateGameData()` JSON extrahieren
+    - **Multi-Dorf-Unterstützung**: Iteriert jetzt über `game_data["villages"]` Mapping um ALLE eigenen Dörfer zu extrahieren
+    - Single-Dorf-Fallback: Verwendet `game_data["village"]["id"]` wenn kein villages-Mapping verfügbar ist
+    - Behebt Problem bei dem Multi-Dorf-Accounts nur das aktuell ausgewählte Dorf erkannt haben (identifiziert durch Codex Code-Review)
+  - Fallback 2: Dorf-IDs aus Config-Datei als letzter Ausweg
+  - Regex verbessert um verschiedene HTML-Attribut-Reihenfolgen zu unterstützen (class/data-id und data-id/class)
+    - Unterstützt sowohl einfache als auch doppelte Anführungszeichen
+    - Groß-/Kleinschreibung unabhängig für mehr Robustheit
+    - Erhält Reihenfolge während Duplikate entfernt werden
+  - Response-Validierung hinzugefügt um zu erkennen wenn Server falschen Seitentyp zurückgibt
+  - Error-Logging mit detaillierter Diagnose für Troubleshooting erweitert
+  - Problem behoben bei dem 1-Dorf-Accounts ignoriert wurden wegen Server-Redirect
+  - **Ergebnis**: Bot funktioniert jetzt korrekt mit Single- und Multi-Dorf-Accounts unabhängig davon welche Seite der Server zurückgibt
 - Added configurable Farm-Beutelimit-Schutz – der Farm-Manager stoppt Farm- und Scout-Läufe automatisch, sobald das Weltlimit erreicht ist (inkl. Margin/Overrides).
 
 ### New in 1.6
