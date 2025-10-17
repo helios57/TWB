@@ -321,8 +321,8 @@ class Village:
             end_dt = datetime.strptime(time_pairs["end"], "%d.%m.%y %H:%M:%S")
             now = datetime.now()
             if start_dt.date() == datetime.today().date():
-                forced_peace_today = True
-                forced_peace_today_start = start_dt
+                self.forced_peace_today = True
+                self.forced_peace_today_start = start_dt
             if start_dt < now < end_dt:
                 self.logger.debug("Currently in a forced peace time! No attacks will be send.")
                 self.forced_peace = True
