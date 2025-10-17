@@ -54,9 +54,11 @@ class Farm:
         Raises:
             ValueError: If the population string format is invalid.
         """
-        if not re.match(r"\d+/\d+", population):
+        normalized_population = re.sub(r"[.\s]", "", population)
+
+        if not re.match(r"\d+/\d+", normalized_population):
             raise ValueError("Invalid population string format")
-        current, maximum = map(int, population.split("/"))
+        current, maximum = map(int, normalized_population.split("/"))
         self.current = current
         self.maximum = maximum
 
@@ -106,7 +108,8 @@ class Storage:
         except ValueError:
             raise ValueError("Invalid resources string format")
         try:
-            self.capacity = int(capacity)
+            normalized_capacity = re.sub(r"[.\s]", "", capacity)
+            self.capacity = int(normalized_capacity)
         except ValueError:
             raise ValueError("Invalid capacity string format")
 

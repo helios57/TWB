@@ -58,5 +58,30 @@ class OverviewPageParsingTests(unittest.TestCase):
         self.assertEqual(village.points, 1234)
 
 
+    def test_parse_production_table_handles_thousands_in_farm_and_capacity(self):
+        html = """
+        <html>
+            <body>
+                <table id=\"production_table\">
+                    <tr>
+                        <td><span class=\"quickedit\"></span><span data-id=\"789\">Village Name (400|400) K44</span></td>
+                        <td>2.468</td>
+                        <td>7.000 8.000 9.000</td>
+                        <td>10.000</td>
+                        <td>1.234/2.000</td>
+                    </tr>
+                </table>
+            </body>
+        </html>
+        """
+
+        page = OverviewPage(FakeWrapper(html))
+
+        village = page.villages_data["789"]
+        self.assertEqual(village.farm.current, 1234)
+        self.assertEqual(village.farm.maximum, 2000)
+        self.assertEqual(village.storage.capacity, 10000)
+
+
 if __name__ == "__main__":
     unittest.main()
