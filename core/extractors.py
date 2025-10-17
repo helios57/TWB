@@ -349,8 +349,22 @@ class Extractor:
         if type(res) != str:
             res = res.text
         get_daily = re.search(r'DailyBonus.init\((\s+\{.*\}),', res)
-        res = json.loads(get_daily.group(1))
-        reward_count_unlocked = str(res["reward_count_unlocked"])
-        if reward_count_unlocked and res["chests"][reward_count_unlocked]["is_collected"]:
-            return reward_count_unlocked
+        if not get_daily:
+            return None
+
+        try:
+            data = json.loads(get_daily.group(1), strict=False)
+        except json.JSONDecodeError:
+            return None
+
+        reward_count_unlocked = data.get("reward_count_unlocked")
+        if reward_count_unlocked is None:
+            return None
+
+        reward_key = str(reward_count_unlocked)
+        chests = data.get("chests", {})
+        if isinstance(chests, dict):
+            chest = chests.get(reward_key)
+            if isinstance(chest, dict) and chest.get("is_collected"):
+                return reward_key
         return None

@@ -34,6 +34,25 @@ class ExtractorVillageTests(unittest.TestCase):
 
         self.assertEqual(village_ids, ["22222", "33333", "44444", "55555"])
 
+    def test_village_ids_falls_back_to_game_state(self):
+        html = (
+            "<script>TribalWars.updateGameData({\"village\":{\"id\":11111},"
+            "\"villages\":{\"11111\":{},\"22222\":{}}});</script>"
+        )
+
+        village_ids = Extractor.village_ids_from_overview(html)
+
+        self.assertEqual(village_ids, ["11111", "22222"])
+
+
+class ExtractorDailyRewardTests(unittest.TestCase):
+    def test_get_daily_reward_returns_none_when_block_missing(self):
+        html = "<html><body><div>No daily bonus here</div></body></html>"
+
+        reward = Extractor.get_daily_reward(html)
+
+        self.assertIsNone(reward)
+
 
 if __name__ == "__main__":
     unittest.main()
