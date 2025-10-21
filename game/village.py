@@ -320,7 +320,7 @@ class Village:
             start_dt = datetime.strptime(time_pairs["start"], "%d.%m.%y %H:%M:%S")
             end_dt = datetime.strptime(time_pairs["end"], "%d.%m.%y %H:%M:%S")
             now = datetime.now()
-            if start_dt.date() == datetime.today().date():
+            if start_dt.date() == now.date():
                 self.forced_peace_today = True
                 self.forced_peace_today_start = start_dt
             if start_dt < now < end_dt:

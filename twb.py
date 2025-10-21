@@ -69,12 +69,15 @@ class TWB:
     Core class that manages activating times, sleeps, general web wrapper
     Also verifies, merges and updates the config file automatically
     """
-    res = None
-    villages = []
-    wrapper = None
-    should_run = True
-    runs = 0
-    found_villages = []
+
+    def __init__(self):
+        """Initialize TWB instance with instance-level attributes"""
+        self.res = None
+        self.villages = []
+        self.wrapper = None
+        self.should_run = True
+        self.runs = 0
+        self.found_villages = []
 
     @staticmethod
     def internet_online():
