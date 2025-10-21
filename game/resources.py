@@ -55,7 +55,8 @@ class PremiumExchange:
         p0 = self.calculate_marginal_price(t, n)
         p1 = self.calculate_marginal_price(t + units, n)  # important: +units when selling to market
         avg = 0.5 * (p0 + p1)
-        return (1.0 + tax) * avg * units
+        multiplier = max(0.0, 1.0 - tax)  # Gebühr abziehen; nie negativ
+        return multiplier * avg * units
 
     # --- FIX: real search (exponential bound + binary search) for largest r s.t. cost(r) <= 1.0
     def calculate_rate_for_one_point(self, item: str) -> int:
@@ -103,7 +104,8 @@ class PremiumExchange:
         for i in range(1, merchants + 1):
             cap_units = size * i
             j = min(max_points_by_amount, cap_units // units_per_point)  # points
-            ratio = (cap_units - j * units_per_point) / float(size)      # 0..1, leftover per wagon
+            leftover = cap_units - j * units_per_point
+            ratio = leftover / float(max(cap_units, 1))  # 0..1, leftover relativ zur Gesamtkapazität
             cand = (ratio, -i, i, j)
             if best is None or cand < best:
                 best = cand
