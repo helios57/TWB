@@ -80,6 +80,21 @@ The trader will auto remove any items that are listed more than "max_trade_durat
 If your world does not allow uneven trading you should disable the "trade_multiplier" option. By default it is enabled at factor 0.9 so it will trade 900 stone for 1000 wood if 1000 is the requested resource by the builder.
 I would suggest you keep the factor multiplier below 1.0 because otherwise you are paying more than you should ;)
 
+## Balancer
+Controls the inter-village resource coordinator that runs after each game loop.
+
+* **enabled** – switch the balancer on/off globally. Start with `true` only in combination with `dry_run` while testing.
+* **mode** – strategy for distributing resources. `requests_only` fulfils current build/snob/recruitment needs, `requests_first` (reserved for future logic) behaves the same today, `balance_even` smooths remaining surpluses after requests were handled.
+* **needs_more_pct** – percentage of warehouse capacity a destination is allowed to fill when satisfying needs (e.g. `0.85` keeps 15 % headroom).
+* **built_out_pct** – minimum percentage of warehouse stock a source must retain; prevents draining donor villages below a safety buffer.
+* **max_shipments_per_run** – hard limit for the number of transports created during one balancer run.
+* **min_chunk** – smallest shipment size (per resource) in raw units. Set to your merchant carry (normally 1000). Values `<= 0` disable chunking and will log a warning.
+* **transfer_cooldown_min** – minutes to wait before repeating the same source→target shipment route. Use `0` to disable cooldown entirely (ledger keeps the latest 200 entries).
+* **block_when_under_attack** – skip all villages that are currently flagged as under attack.
+* **dry_run** – when `true` the balancer only logs the planned transfers. Disable (`false`) to actually send resources once you are happy with the plan.
+
+You can override `enabled` per village via `villages.<id>.balancer_enabled` if you want to include/exclude specific towns.
+
 ## World options
 I think only the "quests_enabled" is currently working and it should automatically finish quests once all the requirements are met. When this is the case it should restart the current run for the village because there might be a resource award paired with the quest.
 

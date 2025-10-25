@@ -438,6 +438,7 @@ class TWB:
                 self.runs += 1
 
                 VillageManager.farm_manager(verbose=True)
+                VillageManager.resource_balancer(self.wrapper, config)
                 print(
                     "Dead for %.2f minutes (next run at: %s)"
                     % (sleep / 60, dt_next.time())

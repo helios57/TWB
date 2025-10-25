@@ -52,11 +52,11 @@ class Village:
 
     def get_config(self, section, parameter, default=None):
         if section not in self.config:
-            self.logger.warning("Configuration section %s does not exist!" % section)
+            self.logger.warning("Configuration section %s does not exist!", section)
             return default
         if parameter not in self.config[section]:
             self.logger.warning(
-                "Configuration parameter %s:%s does not exist!" % (section, parameter)
+                "Configuration parameter %s:%s does not exist!", section, parameter
             )
             return default
         return self.config[section][parameter]
@@ -224,7 +224,7 @@ class Village:
         )
         if not unit_config:
             self.logger.warning(
-                "Village %d does not have 'units' config override!", self.village_id
+                "Village %s does not have 'units' config override!", self.village_id
             )
             unit_config = self.get_config(
                 section="units", parameter="default", default="basic"
@@ -257,7 +257,7 @@ class Village:
             return
         if not self.build_config:
             self.logger.warning(
-                "Village %d does not have 'building' config override!", self.village_id
+                "Village %s does not have 'building' config override!", self.village_id
             )
             self.build_config = self.get_config(
                 section="building", parameter="default", default="purple_predator"
@@ -695,7 +695,7 @@ class Village:
             "resources": self.resman.actual,
             "required_resources": self.resman.requested,
             "available_troops": self.units.troops,
-            "buidling_levels": self.builder.levels,
+            "building_levels": self.builder.levels,
             "building_queue": self.builder.queue,
             "troops": self.units.total_troops,
             "under_attack": self.def_man.under_attack,

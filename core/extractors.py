@@ -1,8 +1,31 @@
 """Utility helpers for parsing Tribal Wars HTML responses."""
 
 import json
+import logging
 import re
-from typing import List
+from typing import Any, Dict, List, Literal, Optional
+
+
+logger = logging.getLogger("Extractor")
+
+
+_ROW_PATTERN = re.compile(
+    r"<tr[^>]*?(?:data-village-id|data-id)\s*=\s*['\"](\d+)['\"][^>]*>(.+?)</tr>",
+    re.IGNORECASE | re.DOTALL,
+)
+
+_TD_SORT_PATTERN = re.compile(
+    r"<td[^>]*data-sort\s*=\s*['\"](\d+)['\"][^>]*>(.*?)</td>",
+    re.IGNORECASE | re.DOTALL,
+)
+
+_TD_GENERIC_PATTERN = re.compile(r"<td[^>]*>(.*?)</td>", re.IGNORECASE | re.DOTALL)
+
+_COORDS_PATTERN = re.compile(r"\((\d+)\|(\d+)\)")
+
+
+def _strip_html(value: str) -> str:
+    return re.sub(r"<[^>]+>", "", value).strip()
 
 
 class Extractor:
@@ -251,6 +274,166 @@ class Extractor:
         return village_ids
 
     @staticmethod
+    def overview_production_data(res) -> List[Dict[str, Any]]:
+        """Parse the production overview page and return per-village data.
+
+        Returns a list of dictionaries with keys:
+        ``id``, ``name``, ``x``, ``y``, ``points``, ``wood``, ``stone``, ``iron``, ``storage``.
+        Missing values are returned as zero.
+        """
+
+        if not isinstance(res, str):
+            res = res.text
+
+        def _to_int(value: Optional[str]) -> int:
+            if not value:
+                return 0
+            cleaned = re.sub(r"[^0-9]", "", value)
+            return int(cleaned) if cleaned else 0
+
+        def _extract_coords(text: str) -> Optional[Dict[str, int]]:
+            match = _COORDS_PATTERN.search(text)
+            if not match:
+                return None
+            return {"x": int(match.group(1)), "y": int(match.group(2))}
+
+        def _extract_sort(row: str, keywords) -> Optional[int]:
+            if isinstance(keywords, str):
+                patterns = [re.compile(re.escape(keywords), re.IGNORECASE | re.DOTALL)]
+            else:
+                patterns = [
+                    re.compile(re.escape(keyword), re.IGNORECASE | re.DOTALL)
+                    for keyword in keywords
+                ]
+            for sort_value, cell_html in _TD_SORT_PATTERN.findall(row):
+                if any(pattern.search(cell_html) for pattern in patterns):
+                    return int(sort_value)
+            return None
+
+        data = []
+        for village_id, row_html in _ROW_PATTERN.findall(res):
+            # Extract display name
+            name_match = re.search(
+                r"class=\"quickedit-label\"[^>]*>(.*?)</",
+                row_html,
+                re.IGNORECASE | re.DOTALL,
+            )
+            name_raw = name_match.group(1) if name_match else row_html
+            name = _strip_html(name_raw)
+
+            coords = _extract_coords(row_html) or _extract_coords(name)
+            points = _extract_sort(row_html, "icon header points")
+            wood = _extract_sort(row_html, "icon header wood")
+            stone = _extract_sort(row_html, ["icon header stone", "icon header clay"])
+            iron = _extract_sort(row_html, "icon header iron")
+            storage = _extract_sort(row_html, ["icon header storage", "icon header warehouse"])
+
+            fallback_used = False
+            if wood is None or stone is None or iron is None or storage is None:
+                # Fallback: derive from numeric columns order after name/points
+                cells = _TD_GENERIC_PATTERN.findall(row_html)
+                numeric_values = []
+                for cell in cells:
+                    text = _strip_html(cell)
+                    value = _to_int(text)
+                    if value:
+                        numeric_values.append(value)
+                # Typical order: points, wood, stone, iron, storage, ...
+                if wood is None and len(numeric_values) >= 2:
+                    wood = numeric_values[1]
+                    fallback_used = True
+                if stone is None and len(numeric_values) >= 3:
+                    stone = numeric_values[2]
+                    fallback_used = True
+                if iron is None and len(numeric_values) >= 4:
+                    iron = numeric_values[3]
+                    fallback_used = True
+                if storage is None and len(numeric_values) >= 5:
+                    storage = numeric_values[4]
+                    fallback_used = True
+                if points is None and numeric_values:
+                    points = numeric_values[0]
+                    fallback_used = True
+
+            if fallback_used:
+                logger.debug("overview_production_data fallback parsing used for village %s", village_id)
+
+            entry = {
+                "id": village_id,
+                "name": name,
+                "x": coords["x"] if coords else 0,
+                "y": coords["y"] if coords else 0,
+                "points": points or 0,
+                "wood": wood or 0,
+                "stone": stone or 0,
+                "iron": iron or 0,
+                "storage": storage or 0,
+            }
+            data.append(entry)
+
+        return data
+
+    @staticmethod
+    def overview_trader_data(res, overview_type: Literal['own', 'inc'] = 'own') -> Dict[str, Dict[str, int]]:
+        """Parse trader overview data.
+
+        Args:
+            res: HTML response text or object with ``text`` attribute.
+            overview_type: ``'own'`` for merchant availability or ``'inc'`` for incoming resources.
+
+        Returns:
+            Mapping of village_id to a dictionary containing parsed values.
+        """
+
+        if overview_type not in ('own', 'inc'):
+            raise ValueError("overview_type must be 'own' or 'inc'")
+
+        if not isinstance(res, str):
+            res = res.text
+
+        data: Dict[str, Dict[str, int]] = {}
+
+        def _extract_icon_value(row_html: str, resources) -> int:
+            if isinstance(resources, str):
+                patterns = [re.compile(rf"icon\s+header\s+{re.escape(resources)}", re.IGNORECASE)]
+            else:
+                patterns = [
+                    re.compile(rf"icon\s+header\s+{re.escape(resource)}", re.IGNORECASE)
+                    for resource in resources
+                ]
+            for cell_html in _TD_GENERIC_PATTERN.findall(row_html):
+                if any(pattern.search(cell_html) for pattern in patterns):
+                    text = re.sub(r"<[^>]+>", "", cell_html)
+                    cleaned = re.sub(r"[^0-9]", "", text)
+                    return int(cleaned) if cleaned else 0
+            return 0
+
+        for village_id, row_html in _ROW_PATTERN.findall(res):
+            if overview_type == 'own':
+                # merchants availability typically shown as a/b in the row
+                merchants_match = re.search(
+                    r"(\d+)\s*/\s*(\d+)",
+                    row_html,
+                )
+                if merchants_match:
+                    merchants_avail = int(merchants_match.group(1))
+                    merchants_total = int(merchants_match.group(2))
+                else:
+                    merchants_avail = merchants_total = 0
+                data[village_id] = {
+                    "merchants_avail": merchants_avail,
+                    "merchants_total": merchants_total,
+                }
+            else:
+                data[village_id] = {
+                    "incoming_wood": _extract_icon_value(row_html, 'wood'),
+                    "incoming_stone": _extract_icon_value(row_html, ['stone', 'clay']),
+                    "incoming_iron": _extract_icon_value(row_html, 'iron'),
+                }
+
+        return data
+
+    @staticmethod
     def units_in_total(res):
         """
         Gets total amount of units in a village
@@ -274,7 +457,8 @@ class Extractor:
         text = re.sub(r'<[^>]+>', ' ', text)
 
         matches = []
-        # First try language specific anchor
+        # First try language specific anchor (German-only wording on DE servers)
+        # This keeps backwards compatibility with existing cache data; see README for locale caveats.
         lang_match = re.findall(
             r'Erbeutete\s+Rohstoffe[^\d]*(\d[\d\.\,]*)\s*/\s*(\d[\d\.\,]*)',
             text,
