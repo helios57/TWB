@@ -165,6 +165,21 @@ Einstellungen für den Marktplatz.
 *   `"max_trade_duration"`: Maximale Laufzeit für Angebote in Stunden.
 *   `"trade_multiplier"`: Wenn `true`, versucht der Bot, ungleiche Tauschgeschäfte zu einem besseren Kurs zu erstellen (z.B. 900 Lehm für 1000 Holz anbieten).
 
+### `balancer`
+Steuert den Ressourcenkoordinator zwischen deinen eigenen Dörfern.
+
+*   `"enabled"`: Aktiviert den Koordinator. In Kombination mit `"dry_run": true` kannst du die Planung gefahrlos testen.
+*   `"mode"`: Strategie (`"requests_only"`, `"requests_first"`, `"balance_even"`). Aktuell arbeiten `requests_only` und `requests_first` identisch.
+*   `"needs_more_pct"`: Anteil der Lagerkapazität, bis zu dem ein Ziel aufgefüllt werden darf (z.B. `0.85` = 85 %).
+*   `"built_out_pct"`: Mindestpuffer, den Spender behalten müssen (als Anteil ihres Lagers).
+*   `"max_shipments_per_run"`: Deckelung der Bestellungen pro Balancer-Lauf.
+*   `"min_chunk"`: Kleinste Versandgröße pro Ressource (in Rohstoffen). Normalerweise 1000 – entspricht einem Händler.
+*   `"transfer_cooldown_min"`: Sperrzeit in Minuten für wiederholte Lieferungen auf derselben Route. `0` deaktiviert die Sperre (Ledger hält dann die letzten 200 Einträge).
+*   `"block_when_under_attack"`: Schließt angegriffene Dörfer aus.
+*   `"dry_run"`: Bei `true` werden nur Log-Einträge erzeugt, keine Händler losgeschickt.
+
+Per-Dorf-Override: In `villages.<id>.balancer_enabled` kannst du einzelne Dörfer ein- oder ausschließen.
+
 ---
 
 ### `world`
