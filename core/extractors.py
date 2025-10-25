@@ -2,7 +2,7 @@
 
 import json
 import re
-from typing import List
+from typing import Any, Dict, List, Literal, Optional
 
 
 class Extractor:
@@ -249,6 +249,161 @@ class Extractor:
             village_ids = Extractor.village_ids_from_game_data(res)
 
         return village_ids
+
+    @staticmethod
+    def overview_production_data(res) -> List[Dict[str, Any]]:
+        """Parse the production overview page and return per-village data.
+
+        Returns a list of dictionaries with keys:
+        ``id``, ``name``, ``x``, ``y``, ``points``, ``wood``, ``stone``, ``iron``, ``storage``.
+        Missing values are returned as zero.
+        """
+
+        if not isinstance(res, str):
+            res = res.text
+
+        def _strip_html(value: str) -> str:
+            return re.sub(r"<[^>]+>", "", value).strip()
+
+        def _to_int(value: Optional[str]) -> int:
+            if not value:
+                return 0
+            cleaned = re.sub(r"[^0-9]", "", value)
+            return int(cleaned) if cleaned else 0
+
+        def _extract_coords(text: str) -> Optional[Dict[str, int]]:
+            match = re.search(r"\((\d+)\|(\d+)\)", text)
+            if not match:
+                return None
+            return {"x": int(match.group(1)), "y": int(match.group(2))}
+
+        # rows are data-id or data-village-id
+        row_pattern = re.compile(
+            r"<tr[^>]*?(?:data-village-id|data-id)=\"(\d+)\"[^>]*>(.+?)</tr>",
+            re.IGNORECASE | re.DOTALL,
+        )
+
+        def _extract_sort(row: str, keyword: str) -> Optional[int]:
+            td_pattern = re.compile(r"<td[^>]*data-sort=\"(\d+)\"[^>]*>(.*?)</td>", re.IGNORECASE | re.DOTALL)
+            keyword_pattern = re.compile(keyword, re.IGNORECASE | re.DOTALL)
+            for sort_value, cell_html in td_pattern.findall(row):
+                if keyword_pattern.search(cell_html):
+                    return int(sort_value)
+            return None
+
+        data = []
+        for village_id, row_html in row_pattern.findall(res):
+            # Extract display name
+            name_match = re.search(
+                r"class=\"quickedit-label\"[^>]*>(.*?)</",
+                row_html,
+                re.IGNORECASE | re.DOTALL,
+            )
+            name_raw = name_match.group(1) if name_match else row_html
+            name = _strip_html(name_raw)
+
+            coords = _extract_coords(row_html) or _extract_coords(name)
+            points = _extract_sort(row_html, r"icon\s+header\s+points")
+            wood = _extract_sort(row_html, r"icon\s+header\s+wood")
+            stone = _extract_sort(row_html, r"icon\s+header\s+(stone|clay)")
+            iron = _extract_sort(row_html, r"icon\s+header\s+iron")
+            storage = _extract_sort(row_html, r"icon\s+header\s+(storage|warehouse)")
+
+            if wood is None or stone is None or iron is None or storage is None:
+                # Fallback: derive from numeric columns order after name/points
+                cells = re.findall(r"<td[^>]*>(.*?)</td>", row_html, re.IGNORECASE | re.DOTALL)
+                numeric_values = []
+                for cell in cells:
+                    text = _strip_html(cell)
+                    value = _to_int(text)
+                    if value:
+                        numeric_values.append(value)
+                # Typical order: points, wood, stone, iron, storage, ...
+                if wood is None and len(numeric_values) >= 2:
+                    wood = numeric_values[1]
+                if stone is None and len(numeric_values) >= 3:
+                    stone = numeric_values[2]
+                if iron is None and len(numeric_values) >= 4:
+                    iron = numeric_values[3]
+                if storage is None and len(numeric_values) >= 5:
+                    storage = numeric_values[4]
+                if points is None and numeric_values:
+                    points = numeric_values[0]
+
+            entry = {
+                "id": village_id,
+                "name": name,
+                "x": coords["x"] if coords else 0,
+                "y": coords["y"] if coords else 0,
+                "points": points or 0,
+                "wood": wood or 0,
+                "stone": stone or 0,
+                "iron": iron or 0,
+                "storage": storage or 0,
+            }
+            data.append(entry)
+
+        return data
+
+    @staticmethod
+    def overview_trader_data(res, overview_type: Literal['own', 'inc'] = 'own') -> Dict[str, Dict[str, int]]:
+        """Parse trader overview data.
+
+        Args:
+            res: HTML response text or object with ``text`` attribute.
+            overview_type: ``'own'`` for merchant availability or ``'inc'`` for incoming resources.
+
+        Returns:
+            Mapping of village_id to a dictionary containing parsed values.
+        """
+
+        if overview_type not in ('own', 'inc'):
+            raise ValueError("overview_type must be 'own' or 'inc'")
+
+        if not isinstance(res, str):
+            res = res.text
+
+        data: Dict[str, Dict[str, int]] = {}
+
+        row_pattern = re.compile(
+            r"<tr[^>]*?(?:data-village-id|data-id)=\"(\d+)\"[^>]*>(.+?)</tr>",
+            re.IGNORECASE | re.DOTALL,
+        )
+
+        def _extract_icon_value(row_html: str, resource: str) -> int:
+            td_pattern = re.compile(r"<td[^>]*>(.*?)</td>", re.IGNORECASE | re.DOTALL)
+            keyword_pattern = re.compile(rf"icon\s+header\s+(?:{resource})", re.IGNORECASE)
+            for cell_html in td_pattern.findall(row_html):
+                if keyword_pattern.search(cell_html):
+                    text = re.sub(r"<[^>]+>", "", cell_html)
+                    cleaned = re.sub(r"[^0-9]", "", text)
+                    return int(cleaned) if cleaned else 0
+            return 0
+
+        for village_id, row_html in row_pattern.findall(res):
+            if overview_type == 'own':
+                # merchants availability typically shown as a/b in the row
+                merchants_match = re.search(
+                    r"(\d+)\s*/\s*(\d+)",
+                    row_html,
+                )
+                if merchants_match:
+                    merchants_avail = int(merchants_match.group(1))
+                    merchants_total = int(merchants_match.group(2))
+                else:
+                    merchants_avail = merchants_total = 0
+                data[village_id] = {
+                    "merchants_avail": merchants_avail,
+                    "merchants_total": merchants_total,
+                }
+            else:
+                data[village_id] = {
+                    "incoming_wood": _extract_icon_value(row_html, 'wood'),
+                    "incoming_stone": _extract_icon_value(row_html, '(stone|clay)'),
+                    "incoming_iron": _extract_icon_value(row_html, 'iron'),
+                }
+
+        return data
 
     @staticmethod
     def units_in_total(res):
