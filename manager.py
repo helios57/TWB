@@ -5,6 +5,7 @@ import sys
 
 from game.attack import AttackCache
 from game.reports import ReportCache
+from game.warehouse_balancer import ResourceCoordinator
 
 
 class VillageManager:
@@ -109,6 +110,14 @@ class VillageManager:
                 oldest_file = list_of_files.pop(0)
                 logger.info(f"Delete old report ({oldest_file})")
                 os.remove(os.path.abspath(oldest_file))
+
+    @staticmethod
+    def resource_balancer(wrapper, config):
+        coordinator = ResourceCoordinator(wrapper=wrapper, config=config)
+        try:
+            coordinator.run()
+        except Exception as exc:  # pragma: no cover - defensive guard
+            logging.getLogger("ResourceCoordinator").exception("Resource balancer failed: %s", exc)
 
 
 if __name__ == "__main__":
