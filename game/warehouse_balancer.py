@@ -8,7 +8,15 @@ import time
 from dataclasses import dataclass, field
 from typing import Dict, Iterable, List, Optional, Tuple
 
+try:  # optional dependency
+    import requests  # type: ignore
+    RequestsError = requests.RequestException  # type: ignore[attr-defined]
+except Exception:  # pragma: no cover - defensive guard
+    requests = None  # type: ignore
+    RequestsError = Exception
+
 from core.extractors import Extractor
+from core.exceptions import InvalidJSONException
 from core.filemanager import FileManager
 
 
@@ -78,6 +86,8 @@ class Shipment:
 class ResourceCoordinator:
     """Implements the resource redistribution strategy described in the integration plan."""
 
+    SUPPORTED_MODES = {"requests_only", "requests_first", "balance_even"}
+
     DEFAULTS = {
         "enabled": False,
         "mode": "requests_only",
@@ -91,6 +101,7 @@ class ResourceCoordinator:
     }
 
     MERCHANT_CAPACITY = 1000
+    MAX_LEDGER_ENTRIES = 200
 
     def __init__(self, wrapper, config: Dict):
         self.wrapper = wrapper
@@ -101,6 +112,7 @@ class ResourceCoordinator:
         self.ledger: Dict[str, float] = {}
         self.current_time = time.time()
         self.primary_village_id = self._detect_primary_village()
+        self._chunk_warning_emitted = False
 
     # ------------------------------------------------------------------
     # Public API
@@ -112,14 +124,17 @@ class ResourceCoordinator:
 
         self.current_time = time.time()
 
-        if not self.primary_village_id:
-            self.logger.debug("No village configured; skipping balancer run")
-            return
-
         village_states = self._load_village_states()
         if not village_states:
             self.logger.debug("No managed village caches found; skipping")
             return
+
+        if not self.primary_village_id or self.primary_village_id not in village_states:
+            self.primary_village_id = next(iter(village_states))
+            self.logger.warning(
+                "Primary village unavailable; falling back to %s",
+                self.primary_village_id,
+            )
 
         self._augment_with_overviews(village_states)
         self._prepare_runtime_fields(village_states)
@@ -140,7 +155,14 @@ class ResourceCoordinator:
         merged.update(self.config.get("balancer", {}))
 
         merged["enabled"] = bool(merged.get("enabled"))
-        merged["mode"] = str(merged.get("mode", "requests_only"))
+        mode = str(merged.get("mode", "requests_only"))
+        if mode not in self.SUPPORTED_MODES:
+            self.logger.warning(
+                "Unknown balancer mode '%s'; falling back to 'requests_only'",
+                mode,
+            )
+            mode = "requests_only"
+        merged["mode"] = mode
         merged["needs_more_pct"] = float(merged.get("needs_more_pct", 0.85))
         merged["built_out_pct"] = float(merged.get("built_out_pct", 0.25))
         merged["max_shipments_per_run"] = max(0, _parse_int(merged.get("max_shipments_per_run")))
@@ -178,30 +200,42 @@ class ResourceCoordinator:
             cache_entry = FileManager.load_json_file(f"cache/managed/{filename}")
             if not cache_entry:
                 continue
+            if not isinstance(cache_entry, dict):
+                self.logger.warning("Cache entry %s is not a JSON object; skipping", filename)
+                continue
 
             resources = {
-                res: _parse_int(cache_entry.get("resources", {}).get(res, 0))
+                res: _parse_int((cache_entry.get("resources") or {}).get(res, 0))
                 for res in RESOURCE_TYPES
             }
             required = cache_entry.get("required_resources") or {}
-            requests: List[RequestEntry] = []
+            if not isinstance(required, dict):
+                self.logger.debug("required_resources for %s is not a mapping; ignoring", village_id)
+                required = {}
+            reqs: List[RequestEntry] = []
             totals = _zero_resources()
             for source_name, res_map in required.items():
                 if not isinstance(res_map, dict):
+                    self.logger.debug(
+                        "Skipping malformed request block '%s' in village %s",
+                        source_name,
+                        village_id,
+                    )
                     continue
-                priority = self._source_priority(str(source_name))
+                source_label = str(source_name)
+                priority = self._source_priority(source_label)
                 for res, value in res_map.items():
                     if res not in RESOURCE_TYPES:
                         continue
                     amount = _parse_int(value)
                     if amount <= 0:
                         continue
-                    requests.append(RequestEntry(res, amount, priority, str(source_name)))
+                    reqs.append(RequestEntry(res, amount, priority, source_label))
                     totals[res] += amount
 
             name = cache_entry.get("name") or f"Village {village_id}"
             coords = _parse_coords(name)
-            building_levels = cache_entry.get("buidling_levels") or {}
+            building_levels = cache_entry.get("building_levels") or cache_entry.get("buidling_levels") or {}
             market_level = _parse_int(building_levels.get("market", 0))
 
             village_cfg = config_villages.get(village_id) or {}
@@ -215,7 +249,7 @@ class ResourceCoordinator:
                 storage=0,
                 resources=resources,
                 incoming=_zero_resources(),
-                requests=sorted(requests, key=lambda r: (r.priority, -r.amount)),
+                requests=sorted(reqs, key=lambda r: (r.priority, -r.amount)),
                 request_totals=totals,
                 under_attack=bool(cache_entry.get("under_attack")),
                 market_level=market_level,
@@ -281,8 +315,11 @@ class ResourceCoordinator:
             url = f"game.php?village={self.primary_village_id}&screen={path}"
             response = self.wrapper.get_url(url)
             return response.text if response else None
+        except RequestsError as exc:
+            self.logger.warning("Failed to fetch %s due to network error: %s", path, exc)
+            return None
         except Exception as exc:  # pragma: no cover - defensive guard
-            self.logger.debug("Failed to fetch %s: %s", path, exc)
+            self.logger.exception("Unexpected failure fetching %s", path)
             return None
 
     # ------------------------------------------------------------------
@@ -468,6 +505,9 @@ class ResourceCoordinator:
     def _apply_chunk(self, amount: int) -> int:
         chunk = self.settings["min_chunk"]
         if chunk <= 0:
+            if not self._chunk_warning_emitted:
+                self.logger.warning("min_chunk is %s; transfers will not be chunked", chunk)
+                self._chunk_warning_emitted = True
             return max(0, amount)
         return max(0, (amount // chunk) * chunk)
 
@@ -481,17 +521,53 @@ class ResourceCoordinator:
     # Ledger management
     # ------------------------------------------------------------------
     def _load_ledger(self) -> None:
-        data = FileManager.load_json_file(self.ledger_path)
+        try:
+            data = FileManager.load_json_file(self.ledger_path)
+        except InvalidJSONException:
+            self.logger.warning("Ledger file is corrupted; resetting %s", self.ledger_path)
+            FileManager.save_json_file({}, self.ledger_path)
+            self.ledger = {}
+            return
         if not data:
             self.ledger = {}
             return
+        if not isinstance(data, dict):
+            self.logger.warning("Ledger file has unexpected structure; resetting %s", self.ledger_path)
+            FileManager.save_json_file({}, self.ledger_path)
+            self.ledger = {}
+            return
+
         cooldown = self.settings["transfer_cooldown_min"] * 60
         now = self.current_time
-        self.ledger = {
-            key: ts
+
+        valid_entries = [
+            (key, ts)
             for key, ts in data.items()
-            if isinstance(ts, (int, float)) and (cooldown <= 0 or now - ts < cooldown)
-        }
+            if isinstance(ts, (int, float))
+        ]
+
+        if cooldown > 0:
+            filtered = {
+                key: ts
+                for key, ts in valid_entries
+                if now - ts < cooldown
+            }
+            if len(filtered) != len(valid_entries):
+                FileManager.save_json_file(filtered, self.ledger_path)
+            self.ledger = filtered
+            return
+
+        valid_entries.sort(key=lambda item: item[1], reverse=True)
+        limited = dict(valid_entries[: self.MAX_LEDGER_ENTRIES])
+        if len(valid_entries) > self.MAX_LEDGER_ENTRIES:
+            self.logger.debug(
+                "Ledger pruned from %d to %d entries (no cooldown mode)",
+                len(valid_entries),
+                len(limited),
+            )
+            if len(valid_entries) != len(limited):
+                FileManager.save_json_file(limited, self.ledger_path)
+        self.ledger = limited
 
     def _route_on_cooldown(self, key: Tuple[str, str]) -> bool:
         signature = f"{key[0]}->{key[1]}"
@@ -509,6 +585,9 @@ class ResourceCoordinator:
         for shipment in shipments:
             signature = f"{shipment.source.village_id}->{shipment.destination.village_id}"
             self.ledger[signature] = now
+        if self.settings["transfer_cooldown_min"] <= 0 and len(self.ledger) > self.MAX_LEDGER_ENTRIES:
+            sorted_entries = sorted(self.ledger.items(), key=lambda item: item[1], reverse=True)
+            self.ledger = dict(sorted_entries[: self.MAX_LEDGER_ENTRIES])
         FileManager.save_json_file(self.ledger, self.ledger_path)
 
     # ------------------------------------------------------------------
