@@ -90,6 +90,17 @@
     "trade_multiplier_value": 1.0,
     "trade_max_per_hour": 1
   },
+  "balancer": {
+    "enabled": false,
+    "mode": "requests_only",
+    "needs_more_pct": 0.85,
+    "built_out_pct": 0.25,
+    "max_shipments_per_run": 25,
+    "min_chunk": 1000,
+    "transfer_cooldown_min": 10,
+    "block_when_under_attack": true,
+    "dry_run": true
+  },
   "world": {
     "knight_enabled": null,
     "flags_enabled": null,
