@@ -42,7 +42,8 @@ class VillageManager:
                             loot[r] = loot[r] + int(res[r])
                             t[r] = t[r] + int(res[r])
                         num_attack.append(reports[rep])
-                    except:
+                    except (KeyError, ValueError, TypeError) as e:
+                        logger.debug("Skipping report %s: %s", rep, e)
                         pass
             percentage_lost = 0
 

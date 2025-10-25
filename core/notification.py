@@ -13,11 +13,18 @@ class _Notification:
     token = None
 
     def __init__(self):
+        self.loop = None
         self.get_config()
 
         if self.enabled:
             self.loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(self.loop)
             self.bot = telegram.Bot(token=self.token)
+
+    def __del__(self):
+        """Cleanup event loop on destruction"""
+        if self.loop and not self.loop.is_closed():
+            self.loop.close()
 
     def get_config(self):
         try:

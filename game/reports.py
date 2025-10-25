@@ -274,12 +274,16 @@ class ReportManager:
             report_type,
             origin_village=None,
             dest_village=None,
-            losses={},
-            data={},
+            losses=None,
+            data=None,
     ):
         """
         Creates a report file
         """
+        if losses is None:
+            losses = {}
+        if data is None:
+            data = {}
         output = {
             "type": report_type,
             "origin": origin_village,

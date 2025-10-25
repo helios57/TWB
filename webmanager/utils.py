@@ -1,6 +1,7 @@
 import collections
 import json
 import os
+import signal
 import subprocess
 
 import psutil
@@ -203,5 +204,5 @@ class BotManager:
 
     def stop(self):
         if self.is_running():
-            os.kill(self.pid, sig=0)
+            os.kill(self.pid, signal.SIGTERM)
             print("Bot stopped successfully")

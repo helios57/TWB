@@ -52,7 +52,7 @@ class FileManager:
         full_path = os.path.join(FileManager.get_root(), path)
         try:
             return open(full_path, mode)
-        except:
+        except (FileNotFoundError, PermissionError, OSError):
             raise FileNotFoundException
 
     @staticmethod
