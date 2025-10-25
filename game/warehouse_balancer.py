@@ -6,12 +6,12 @@ import logging
 import re
 import time
 from dataclasses import dataclass, field
-from typing import Dict, Iterable, List, Optional, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 try:  # optional dependency
     import requests  # type: ignore
     RequestsError = requests.RequestException  # type: ignore[attr-defined]
-except Exception:  # pragma: no cover - defensive guard
+except (ImportError, AttributeError):  # pragma: no cover - defensive guard
     requests = None  # type: ignore
     RequestsError = Exception
 
@@ -103,7 +103,7 @@ class ResourceCoordinator:
     MERCHANT_CAPACITY = 1000
     MAX_LEDGER_ENTRIES = 200
 
-    def __init__(self, wrapper, config: Dict):
+    def __init__(self, wrapper, config: Dict[str, Any]):
         self.wrapper = wrapper
         self.config = config or {}
         self.logger = logging.getLogger("ResourceCoordinator")
@@ -150,7 +150,7 @@ class ResourceCoordinator:
     # ------------------------------------------------------------------
     # Configuration helpers
     # ------------------------------------------------------------------
-    def _load_settings(self) -> Dict[str, object]:
+    def _load_settings(self) -> Dict[str, Any]:
         merged = dict(self.DEFAULTS)
         merged.update(self.config.get("balancer", {}))
 
@@ -165,7 +165,12 @@ class ResourceCoordinator:
         merged["mode"] = mode
         merged["needs_more_pct"] = float(merged.get("needs_more_pct", 0.85))
         merged["built_out_pct"] = float(merged.get("built_out_pct", 0.25))
-        merged["max_shipments_per_run"] = max(0, _parse_int(merged.get("max_shipments_per_run")))
+        shipments_per_run = max(0, _parse_int(merged.get("max_shipments_per_run")))
+        if shipments_per_run == 0:
+            self.logger.warning(
+                "max_shipments_per_run is %d; unlimited transfers may impact performance", shipments_per_run
+            )
+        merged["max_shipments_per_run"] = shipments_per_run
         merged["min_chunk"] = max(0, _parse_int(merged.get("min_chunk")))
         merged["transfer_cooldown_min"] = max(0, _parse_int(merged.get("transfer_cooldown_min")))
         merged["block_when_under_attack"] = bool(merged.get("block_when_under_attack", True))
@@ -198,7 +203,7 @@ class ResourceCoordinator:
                 continue
 
             cache_entry = FileManager.load_json_file(f"cache/managed/{filename}")
-            if not cache_entry:
+            if cache_entry is None:
                 continue
             if not isinstance(cache_entry, dict):
                 self.logger.warning("Cache entry %s is not a JSON object; skipping", filename)
@@ -236,6 +241,8 @@ class ResourceCoordinator:
             name = cache_entry.get("name") or f"Village {village_id}"
             coords = _parse_coords(name)
             building_levels = cache_entry.get("building_levels") or cache_entry.get("buidling_levels") or {}
+            if "buidling_levels" in cache_entry:
+                self.logger.debug("Using legacy 'buidling_levels' cache key for %s", village_id)
             market_level = _parse_int(building_levels.get("market", 0))
 
             village_cfg = config_villages.get(village_id) or {}
@@ -318,7 +325,7 @@ class ResourceCoordinator:
         except RequestsError as exc:
             self.logger.warning("Failed to fetch %s due to network error: %s", path, exc)
             return None
-        except Exception as exc:  # pragma: no cover - defensive guard
+        except Exception:  # pragma: no cover - defensive guard
             self.logger.exception("Unexpected failure fetching %s", path)
             return None
 
@@ -351,6 +358,13 @@ class ResourceCoordinator:
                 res: state.resources.get(res, 0) + state.incoming.get(res, 0)
                 for res in RESOURCE_TYPES
             }
+            scheduled_totals = {
+                res: state.resources.get(res, 0)
+                + state.incoming.get(res, 0)
+                + state.planned_incoming.get(res, 0)
+                + state.pending_needs.get(res, 0)
+                for res in RESOURCE_TYPES
+            }
 
             for entry in state.requests:
                 res = entry.resource
@@ -366,20 +380,16 @@ class ResourceCoordinator:
                 available[res] = 0
 
                 target_cap = self._target_cap(state)
-                current_total = (
-                    state.resources.get(res, 0)
-                    + state.incoming.get(res, 0)
-                    + state.planned_incoming.get(res, 0)
-                    + state.pending_needs.get(res, 0)
-                )
                 if target_cap is not None:
-                    deficit = min(deficit, max(0, target_cap - current_total))
+                    allowed = max(0, target_cap - scheduled_totals[res])
+                    deficit = min(deficit, allowed)
 
                 deficit = self._apply_chunk(deficit)
                 if deficit <= 0:
                     continue
 
                 state.pending_needs[res] += deficit
+                scheduled_totals[res] += deficit
                 needs.append((entry.priority, state, res, deficit))
 
         needs.sort(key=lambda item: (item[0], -item[3]))
@@ -517,7 +527,7 @@ class ResourceCoordinator:
         return max(0, (amount // chunk) * chunk)
 
     @staticmethod
-    def _distance_squared(a: Tuple[int, int], b: Tuple[int, int]) -> float:
+    def _distance_squared(a: Tuple[int, int], b: Tuple[int, int]) -> int:
         ax, ay = a
         bx, by = b
         return (ax - bx) ** 2 + (ay - by) ** 2

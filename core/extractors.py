@@ -457,7 +457,8 @@ class Extractor:
         text = re.sub(r'<[^>]+>', ' ', text)
 
         matches = []
-        # First try language specific anchor
+        # First try language specific anchor (German-only wording on DE servers)
+        # This keeps backwards compatibility with existing cache data; see README for locale caveats.
         lang_match = re.findall(
             r'Erbeutete\s+Rohstoffe[^\d]*(\d[\d\.\,]*)\s*/\s*(\d[\d\.\,]*)',
             text,

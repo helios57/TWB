@@ -52,11 +52,11 @@ class Village:
 
     def get_config(self, section, parameter, default=None):
         if section not in self.config:
-            self.logger.warning("Configuration section %s does not exist!" % section)
+            self.logger.warning("Configuration section %s does not exist!", section)
             return default
         if parameter not in self.config[section]:
             self.logger.warning(
-                "Configuration parameter %s:%s does not exist!" % (section, parameter)
+                "Configuration parameter %s:%s does not exist!", section, parameter
             )
             return default
         return self.config[section][parameter]
