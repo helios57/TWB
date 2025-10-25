@@ -1,0 +1,25 @@
+name: Claude PR Comment Review
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  review:
+    if: contains(github.event.comment.body, '@claude')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          prompt: |
+            Du prüfst einen GitHub Pull Request. Fokussiere dich auf:
+            - Sicherheit, Korrektheit und Code-Qualität
+            - Kommentiere nur geänderte Dateien
+            - Gib konkrete, umsetzbare Verbesserungsvorschläge
