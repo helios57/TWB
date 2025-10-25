@@ -366,7 +366,12 @@ class ResourceCoordinator:
                 available[res] = 0
 
                 target_cap = self._target_cap(state)
-                current_total = state.resources.get(res, 0) + state.incoming.get(res, 0) + state.planned_incoming.get(res, 0)
+                current_total = (
+                    state.resources.get(res, 0)
+                    + state.incoming.get(res, 0)
+                    + state.planned_incoming.get(res, 0)
+                    + state.pending_needs.get(res, 0)
+                )
                 if target_cap is not None:
                     deficit = min(deficit, max(0, target_cap - current_total))
 
