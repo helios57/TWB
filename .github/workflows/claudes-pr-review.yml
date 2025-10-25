@@ -1,0 +1,32 @@
+name: Claude PR Review
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+  id-token: write
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Vollständige Git-Historie für Diff-Analyse
+          
+      - uses: anthropics/claude-code-action@v1
+        with:
+          claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          prompt: |
+            Review this pull request automatically.
+            Focus on:
+            - Security vulnerabilities and input validation
+            - Code correctness and potential bugs
+            - Code quality and best practices
+            - Performance issues
+            
+            Provide specific, actionable feedback with line numbers.
+            Only comment on files that were changed in this PR.
