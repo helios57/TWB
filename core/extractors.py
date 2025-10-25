@@ -1,8 +1,31 @@
 """Utility helpers for parsing Tribal Wars HTML responses."""
 
 import json
+import logging
 import re
 from typing import Any, Dict, List, Literal, Optional
+
+
+logger = logging.getLogger("Extractor")
+
+
+_ROW_PATTERN = re.compile(
+    r"<tr[^>]*?(?:data-village-id|data-id)\s*=\s*['\"](\d+)['\"][^>]*>(.+?)</tr>",
+    re.IGNORECASE | re.DOTALL,
+)
+
+_TD_SORT_PATTERN = re.compile(
+    r"<td[^>]*data-sort\s*=\s*['\"](\d+)['\"][^>]*>(.*?)</td>",
+    re.IGNORECASE | re.DOTALL,
+)
+
+_TD_GENERIC_PATTERN = re.compile(r"<td[^>]*>(.*?)</td>", re.IGNORECASE | re.DOTALL)
+
+_COORDS_PATTERN = re.compile(r"\((\d+)\|(\d+)\)")
+
+
+def _strip_html(value: str) -> str:
+    return re.sub(r"<[^>]+>", "", value).strip()
 
 
 class Extractor:
@@ -262,9 +285,6 @@ class Extractor:
         if not isinstance(res, str):
             res = res.text
 
-        def _strip_html(value: str) -> str:
-            return re.sub(r"<[^>]+>", "", value).strip()
-
         def _to_int(value: Optional[str]) -> int:
             if not value:
                 return 0
@@ -272,27 +292,26 @@ class Extractor:
             return int(cleaned) if cleaned else 0
 
         def _extract_coords(text: str) -> Optional[Dict[str, int]]:
-            match = re.search(r"\((\d+)\|(\d+)\)", text)
+            match = _COORDS_PATTERN.search(text)
             if not match:
                 return None
             return {"x": int(match.group(1)), "y": int(match.group(2))}
 
-        # rows are data-id or data-village-id
-        row_pattern = re.compile(
-            r"<tr[^>]*?(?:data-village-id|data-id)=\"(\d+)\"[^>]*>(.+?)</tr>",
-            re.IGNORECASE | re.DOTALL,
-        )
-
-        def _extract_sort(row: str, keyword: str) -> Optional[int]:
-            td_pattern = re.compile(r"<td[^>]*data-sort=\"(\d+)\"[^>]*>(.*?)</td>", re.IGNORECASE | re.DOTALL)
-            keyword_pattern = re.compile(keyword, re.IGNORECASE | re.DOTALL)
-            for sort_value, cell_html in td_pattern.findall(row):
-                if keyword_pattern.search(cell_html):
+        def _extract_sort(row: str, keywords) -> Optional[int]:
+            if isinstance(keywords, str):
+                patterns = [re.compile(re.escape(keywords), re.IGNORECASE | re.DOTALL)]
+            else:
+                patterns = [
+                    re.compile(re.escape(keyword), re.IGNORECASE | re.DOTALL)
+                    for keyword in keywords
+                ]
+            for sort_value, cell_html in _TD_SORT_PATTERN.findall(row):
+                if any(pattern.search(cell_html) for pattern in patterns):
                     return int(sort_value)
             return None
 
         data = []
-        for village_id, row_html in row_pattern.findall(res):
+        for village_id, row_html in _ROW_PATTERN.findall(res):
             # Extract display name
             name_match = re.search(
                 r"class=\"quickedit-label\"[^>]*>(.*?)</",
@@ -303,15 +322,16 @@ class Extractor:
             name = _strip_html(name_raw)
 
             coords = _extract_coords(row_html) or _extract_coords(name)
-            points = _extract_sort(row_html, r"icon\s+header\s+points")
-            wood = _extract_sort(row_html, r"icon\s+header\s+wood")
-            stone = _extract_sort(row_html, r"icon\s+header\s+(stone|clay)")
-            iron = _extract_sort(row_html, r"icon\s+header\s+iron")
-            storage = _extract_sort(row_html, r"icon\s+header\s+(storage|warehouse)")
+            points = _extract_sort(row_html, "icon header points")
+            wood = _extract_sort(row_html, "icon header wood")
+            stone = _extract_sort(row_html, ["icon header stone", "icon header clay"])
+            iron = _extract_sort(row_html, "icon header iron")
+            storage = _extract_sort(row_html, ["icon header storage", "icon header warehouse"])
 
+            fallback_used = False
             if wood is None or stone is None or iron is None or storage is None:
                 # Fallback: derive from numeric columns order after name/points
-                cells = re.findall(r"<td[^>]*>(.*?)</td>", row_html, re.IGNORECASE | re.DOTALL)
+                cells = _TD_GENERIC_PATTERN.findall(row_html)
                 numeric_values = []
                 for cell in cells:
                     text = _strip_html(cell)
@@ -321,14 +341,22 @@ class Extractor:
                 # Typical order: points, wood, stone, iron, storage, ...
                 if wood is None and len(numeric_values) >= 2:
                     wood = numeric_values[1]
+                    fallback_used = True
                 if stone is None and len(numeric_values) >= 3:
                     stone = numeric_values[2]
+                    fallback_used = True
                 if iron is None and len(numeric_values) >= 4:
                     iron = numeric_values[3]
+                    fallback_used = True
                 if storage is None and len(numeric_values) >= 5:
                     storage = numeric_values[4]
+                    fallback_used = True
                 if points is None and numeric_values:
                     points = numeric_values[0]
+                    fallback_used = True
+
+            if fallback_used:
+                logger.debug("overview_production_data fallback parsing used for village %s", village_id)
 
             entry = {
                 "id": village_id,
@@ -365,22 +393,22 @@ class Extractor:
 
         data: Dict[str, Dict[str, int]] = {}
 
-        row_pattern = re.compile(
-            r"<tr[^>]*?(?:data-village-id|data-id)=\"(\d+)\"[^>]*>(.+?)</tr>",
-            re.IGNORECASE | re.DOTALL,
-        )
-
-        def _extract_icon_value(row_html: str, resource: str) -> int:
-            td_pattern = re.compile(r"<td[^>]*>(.*?)</td>", re.IGNORECASE | re.DOTALL)
-            keyword_pattern = re.compile(rf"icon\s+header\s+(?:{resource})", re.IGNORECASE)
-            for cell_html in td_pattern.findall(row_html):
-                if keyword_pattern.search(cell_html):
+        def _extract_icon_value(row_html: str, resources) -> int:
+            if isinstance(resources, str):
+                patterns = [re.compile(rf"icon\s+header\s+{re.escape(resources)}", re.IGNORECASE)]
+            else:
+                patterns = [
+                    re.compile(rf"icon\s+header\s+{re.escape(resource)}", re.IGNORECASE)
+                    for resource in resources
+                ]
+            for cell_html in _TD_GENERIC_PATTERN.findall(row_html):
+                if any(pattern.search(cell_html) for pattern in patterns):
                     text = re.sub(r"<[^>]+>", "", cell_html)
                     cleaned = re.sub(r"[^0-9]", "", text)
                     return int(cleaned) if cleaned else 0
             return 0
 
-        for village_id, row_html in row_pattern.findall(res):
+        for village_id, row_html in _ROW_PATTERN.findall(res):
             if overview_type == 'own':
                 # merchants availability typically shown as a/b in the row
                 merchants_match = re.search(
@@ -399,7 +427,7 @@ class Extractor:
             else:
                 data[village_id] = {
                     "incoming_wood": _extract_icon_value(row_html, 'wood'),
-                    "incoming_stone": _extract_icon_value(row_html, '(stone|clay)'),
+                    "incoming_stone": _extract_icon_value(row_html, ['stone', 'clay']),
                     "incoming_iron": _extract_icon_value(row_html, 'iron'),
                 }
 
