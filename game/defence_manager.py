@@ -227,7 +227,7 @@ class DefenceManager:
         for flag_type in raw_flags:
             for level in raw_flags[flag_type]:
                 amount = raw_flags[flag_type][level]
-                if int(amount) >= 3:
+                if int(amount) >= 3 and self._can_change_flag:
                     self.flag_upgrade(flag=flag_type, level=level)
                     self.logger.info("Upgraded flag %s", flag_type)
                     upgraded += 1
