@@ -268,9 +268,6 @@ class TroopManager:
                     and data["can_research"]
             ):
                 if "research_error" in data and data["research_error"]:
-                    self.logger.debug(
-                        "Skipping research of %s because of research error", unit_type
-                    )
                     # Add needed resources to res manager?
                     r = True
                     if data["wood"] > self.game_data["village"]["wood"]:
@@ -286,7 +283,12 @@ class TroopManager:
                         self.resman.request(source="research", resource="iron", amount=req)
                         r = False
                     if not r:
+                        self.logger.debug("Skipping research of %s because of research error (not enough resources)", unit_type)
                         self.logger.debug("Research needs resources")
+                    else:
+                        self.logger.debug(
+                            "Skipping research of %s because of research error", unit_type
+                        )
                     continue
                 if "error_buildings" in data and data["error_buildings"]:
                     self.logger.debug(
@@ -321,9 +323,6 @@ class TroopManager:
         data = smith_data["available"][unit_type]
         if "can_research" in data and data["can_research"]:
             if "research_error" in data and data["research_error"]:
-                self.logger.debug(
-                    "Ignoring research of %s because of resource error %s", unit_type, str(data["research_error"])
-                )
                 # Add needed resources to res manager?
                 r = True
                 if data["wood"] > self.game_data["village"]["wood"]:
@@ -339,7 +338,14 @@ class TroopManager:
                     self.resman.request(source="research", resource="iron", amount=req)
                     r = False
                 if not r:
+                    self.logger.debug(
+                        "Ignoring research of %s because of resource error (not enough resources) %s", unit_type, str(data["research_error"])
+                    )
                     self.logger.debug("Research needs resources")
+                else:
+                    self.logger.debug(
+                        "Ignoring research of %s because of research error %s", unit_type, str(data["research_error"])
+                    )
                 return False
             if "error_buildings" in data and data["error_buildings"]:
                 self.logger.debug(
