@@ -616,19 +616,22 @@ class TroopManager:
                                 "squad_requests[0][candidate_squad][unit_counts][%s]" % item
                                 ] = troops[item]
                             total_carry += int(carry) * int(troops[item])
+                            self.logger.debug(f"Assigned {troops[item]} {item} to gather operation {available_selection}")
                         else:
                             payload[
                                 "squad_requests[0][candidate_squad][unit_counts][%s]" % item
                                 ] = "0"
                     payload["squad_requests[0][candidate_squad][carry_max]"] = str(total_carry)
                     if total_carry > 0:
+                        self.logger.info(f"Sending gather operation {available_selection} with payload: {payload}")
                         payload["h"] = self.wrapper.last_h
-                        self.wrapper.get_api_action(
+                        api_result = self.wrapper.get_api_action(
                             action="send_squads",
                             params={"screen": "scavenge_api"},
                             data=payload,
                             village_id=self.village_id,
                         )
+                        self.logger.info(f"Gather operation {available_selection} API result: {api_result}")
                         # --- OPTIMIZATION ---
                         # Zero out the troops that were just sent
                         for item_def in haul_dict:
@@ -637,10 +640,19 @@ class TroopManager:
                                 self.troops[item] = 0
                         # --- END OPTIMIZATION ---
                         self.last_gather = int(time.time())
-                        self.logger.info(f"Using troops for gather operation: {selection}")
+                        self.logger.info(f"Successfully started gather operation {selection}")
+                    else:
+                        self.logger.info(f"No troops available for gather operation {available_selection}, skipping.")
                 else:
                     # Gathering already exists or locked
-                    break
+                    if int(option) <= selection:
+                        if village_data['options'][option]['is_locked']:
+                            self.logger.info(f"Gather operation {option} is locked, skipping.")
+                        elif village_data['options'][option]['scavenging_squad'] != None:
+                            self.logger.info(f"Gather operation {option} is already underway, skipping.")
+                        else:
+                            self.logger.debug(f"Gather operation {option} doesn't meet criteria, skipping.")
+                    continue
         self.logger.info("All gather operations are underway.")
         return True
 
