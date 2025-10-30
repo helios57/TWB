@@ -84,6 +84,9 @@ class BuildingManager:
             )
 
         self.costs = Extractor.building_data(main_data_text)
+        if self.costs is None:
+            self.logger.error("Failed to extract building data from main screen")
+            return False
         self.costs = self.create_update_links(self.costs)
 
         if self.resman:
@@ -344,6 +347,9 @@ class BuildingManager:
                     # Building was completed, queueing another
                 self.game_state = Extractor.game_state(response)
                 self.costs = Extractor.building_data(response)
+                if self.costs is None:
+                    self.logger.error("Failed to extract building data after building action")
+                    return False
                 # Trigger function again because game state is changed
                 self.costs = self.create_update_links(self.costs)
                 if self.resman and "building" in self.resman.requested:
