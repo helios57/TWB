@@ -513,8 +513,8 @@ class TroopManager:
             for option in list(reversed(sorted(village_data['options'].keys())))[4 - selection:]:
                 self.logger.debug(
                     f"Option: {option} Locked? {village_data['options'][option]['is_locked']} Is underway? {village_data['options'][option]['scavenging_squad'] != None}")
-                if int(option) <= selection and not village_data['options'][option]['is_locked'] and not \
-                        village_data['options'][option]['scavenging_squad'] != None:
+                if int(option) <= selection and not village_data['options'][option]['is_locked'] and \
+                        village_data['options'][option]['scavenging_squad'] == None:
                     available_selection = int(option)
                     self.logger.info(f"Gather operation {available_selection} is ready to start.")
 
@@ -575,8 +575,8 @@ class TroopManager:
             for option in reversed(sorted(village_data['options'].keys())):
                 self.logger.debug(
                     f"Option: {option} Locked? {village_data['options'][option]['is_locked']} Is underway? {village_data['options'][option]['scavenging_squad'] != None}")
-                if int(option) <= selection and not village_data['options'][option]['is_locked'] and not \
-                        village_data['options'][option]['scavenging_squad'] != None:
+                if int(option) <= selection and not village_data['options'][option]['is_locked'] and \
+                        village_data['options'][option]['scavenging_squad'] == None:
                     available_selection = int(option)
                     self.logger.info(f"Gather operation {available_selection} is ready to start.")
                     selection = available_selection
