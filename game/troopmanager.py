@@ -593,7 +593,8 @@ class TroopManager:
                     continue
             # --- OPTIMIZATION ---
             # Persist the remaining troops to the class property so farming logic can use them.
-            self.troops = troops
+            # Convert back to strings to maintain type consistency
+            self.troops = {key: str(value) for key, value in troops.items()}
             # --- END OPTIMIZATION ---
 
         else:
@@ -644,7 +645,7 @@ class TroopManager:
                         for item_def in haul_dict:
                             item, carry = item_def.split(":")
                             if item in self.troops:
-                                self.troops[item] = 0
+                                self.troops[item] = "0"
                         # --- END OPTIMIZATION ---
                         self.last_gather = int(time.time())
                         self.logger.info(f"Successfully started gather operation {selection}")

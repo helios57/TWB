@@ -145,12 +145,13 @@ class ReportManager:
                 else:
                     res = self.put(report_id, report_type=report_type)
                     self.last_reports[report_id] = res
-        if new == 12 or full_run and page < 20:
+        if new == 12 or (full_run and page < 20):
             page += 1
             self.logger.debug(
                 "%d new reports where added, also checking page %d", new, page
             )
             return self.read(page, full_run=full_run)
+        return None
 
     def re_unit(self, inp):
         """

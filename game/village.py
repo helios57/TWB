@@ -101,12 +101,11 @@ class Village:
             )
             self.logger.info("Read game state for village")
 
-            if not self.village_id:
-                self.wrapper.reporter.report(
-                    self.village_id,
-                    "TWB_START",
-                    "Starting run for village: %s" % self.game_data["village"]["name"],
-                    )
+            self.wrapper.reporter.report(
+                self.village_id,
+                "TWB_START",
+                "Starting run for village: %s" % self.game_data["village"]["name"],
+            )
         else:
             self.logger = logging.getLogger(f"Village {self.village_id}")
             self.logger.error("Could not read game state for village")

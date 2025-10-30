@@ -92,7 +92,7 @@ class DefenceManager:
             index = 0
 
             for vil in self.my_other_villages:
-                if vil != self.village_id:
+                if vil == self.village_id:
                     continue
                 if len(self.supported) >= self.support_max_villages:
                     self.logger.debug("Already supported 2 villages, ignoring")
@@ -124,8 +124,8 @@ class DefenceManager:
         if to_hide and len(self.my_other_villages) == 1:
             # good luck ;)
             return False
-        for v_obj in self.my_other_villages:
-            vid, attack_state = v_obj
+        for vid in self.my_other_villages:
+            attack_state = self.my_other_villages[vid]
             if vid == self.village_id:
                 continue
             if not attack_state:
