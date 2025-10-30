@@ -135,25 +135,48 @@ class TroopManager:
         if self.randomize_unit_queue:
             random.shuffle(run_selection)
 
+        # Track if we've already failed due to insufficient resources
+        resource_check_failed = False
+
         for wanted in run_selection:
             # Ignore disabled units
             if wanted in disabled_units:
                 continue
 
+            # Skip if we already know resources are insufficient
+            if resource_check_failed:
+                self.logger.debug(
+                    "Skipping %s recruitment attempt - insufficient resources detected earlier",
+                    wanted
+                )
+                continue
+
             if wanted not in self.total_troops:
-                if self.recruit(
+                result = self.recruit(
                         wanted, self.wanted[building][wanted], building=building
-                ):
+                )
+                if result:
                     return True
+                # Check if failure was due to resources by looking at recruit_data
+                if self.recruit_data and wanted in self.recruit_data:
+                    get_min = self.get_min_possible(self.recruit_data[wanted])
+                    if get_min == 0:
+                        resource_check_failed = True
                 continue
 
             if self.wanted[building][wanted] > self.total_troops[wanted]:
-                if self.recruit(
+                result = self.recruit(
                         wanted,
                         self.wanted[building][wanted] - self.total_troops[wanted],
                         building=building,
-                ):
+                )
+                if result:
                     return True
+                # Check if failure was due to resources by looking at recruit_data
+                if self.recruit_data and wanted in self.recruit_data:
+                    get_min = self.get_min_possible(self.recruit_data[wanted])
+                    if get_min == 0:
+                        resource_check_failed = True
 
         self.logger.info("Recruitment:%s up-to-date", building)
         return False
