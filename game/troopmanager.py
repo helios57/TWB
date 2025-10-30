@@ -36,7 +36,6 @@ class TroopManager:
     game_data = {}
     logger = None
     max_batch_size = 50
-    wait_for = {}
 
     _waits = {}
 
@@ -69,6 +68,7 @@ class TroopManager:
         """
         self.wrapper = wrapper
         self.village_id = village_id
+        self.wait_for = {}
         self.wait_for[village_id] = {"barracks": 0, "stable": 0, "garage": 0}
         if not self.resman:
             self.resman = ResourceManager(
@@ -530,6 +530,7 @@ class TroopManager:
                     self.logger.debug(
                         f"Current Haul: {curr_haul} = Gather Batch ({gather_batch}) * Batch Multiplier {available_selection} ({batch_multiplier[available_selection - 1]})")
 
+                    troops_assigned = False
                     for item in haul_dict:
                         item, carry = item.split(":")
                         if item == "knight":
@@ -548,24 +549,41 @@ class TroopManager:
                                     temp_haul -= int(carry)
                             troops_int -= troops_selected
                             troops[item] = troops_int
+                            if troops_selected > 0:
+                                troops_assigned = True
                             payload["squad_requests[0][candidate_squad][unit_counts][%s]" % item] = str(troops_selected)
+                            self.logger.debug(f"Assigned {troops_selected} {item} to gather operation {available_selection}, {troops_int} remaining")
                         else:
                             payload["squad_requests[0][candidate_squad][unit_counts][%s]" % item] = "0"
                     payload["squad_requests[0][candidate_squad][carry_max]"] = str(curr_haul)
+                    
+                    if not troops_assigned:
+                        self.logger.info(f"No troops available for gather operation {available_selection}, skipping.")
+                        continue
+                    
+                    self.logger.info(f"Sending gather operation {available_selection} with payload: {payload}")
                     payload["h"] = self.wrapper.last_h
-                    self.wrapper.get_api_action(
+                    api_result = self.wrapper.get_api_action(
                         action="send_squads",
                         params={"screen": "scavenge_api"},
                         data=payload,
                         village_id=self.village_id,
                     )
+                    self.logger.info(f"Gather operation {available_selection} API result: {api_result}")
                     sleep += random.randint(1, 5)
                     time.sleep(sleep)
                     self.last_gather = int(time.time())
-                    self.logger.info(f"Using troops for gather operation: {available_selection}")
+                    self.logger.info(f"Successfully started gather operation {available_selection}")
                 else:
                     # Gathering already exists or locked
-                    break
+                    if int(option) <= selection:
+                        if village_data['options'][option]['is_locked']:
+                            self.logger.info(f"Gather operation {option} is locked, skipping.")
+                        elif village_data['options'][option]['scavenging_squad'] != None:
+                            self.logger.info(f"Gather operation {option} is already underway, skipping.")
+                        else:
+                            self.logger.debug(f"Gather operation {option} doesn't meet criteria, skipping.")
+                    continue
             # --- OPTIMIZATION ---
             # Persist the remaining troops to the class property so farming logic can use them.
             self.troops = troops
