@@ -236,8 +236,6 @@ class DefenceManager:
                         int(flag_type)
                     ] < int(level):
                         self.flags[int(flag_type)] = int(level)
-        if upgraded:
-            return self.manage_flags()
 
     def support(self, vid, troops=None):
         url = f"game.php?village={self.village_id}&screen=place&target={vid}"
