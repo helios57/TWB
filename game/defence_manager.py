@@ -68,11 +68,16 @@ class DefenceManager:
         )
         return self.support(requesting_village, troops=send_support)
 
-    def update(self, main, with_defence=False):
+    # --- PERFORMANCE (POINT 2) ---
+    def update(self, main_html, with_defence=False):
+        """
+        Uses cached overview_html from Village.run
+        """
         ok = True
         self.manage_flags()
         self.runs += 1
-        if "command/attack.png" in main:
+        if "command/attack.png" in main_html:
+            # --- END PERFORMANCE ---
             self.under_attack = True
             ok = False
             self.flag_logic(self.set_flag_under_attack)
@@ -284,4 +289,3 @@ class DefenceManager:
         )
 
         return result
-

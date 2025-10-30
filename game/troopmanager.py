@@ -75,14 +75,15 @@ class TroopManager:
                 wrapper=self.wrapper, village_id=self.village_id
             )
 
-    def update_totals(self):
+    # --- PERFORMANCE (POINT 2) ---
+    def update_totals(self, overview_game_data, overview_html):
         """
         Updates the total amount of recruited units
+        Uses cached game_data and overview_html from Village.run
         """
-        main_data = self.wrapper.get_action(
-            action="overview", village_id=self.village_id
-        )
-        self.game_data = Extractor.game_state(main_data)
+        # Use cached game_data
+        self.game_data = overview_game_data
+        # --- END PERFORMANCE ---
 
         if self.resman:
             if "research" in self.resman.requested:
@@ -94,14 +95,13 @@ class TroopManager:
             self.logger = logging.getLogger(f"Recruitment: {village_name}")
         self.troops = {}
 
-        get_all = (
-            f"game.php?village={self.village_id}&screen=place&mode=units&display=units"
-        )
-        result_all = self.wrapper.get_url(get_all)
-
-        for u in Extractor.units_in_village(result_all):
+        # --- PERFORMANCE (POINT 2) ---
+        # Use cached overview_html to extract units
+        # This avoids a new request to "screen=place&mode=units"
+        for u in Extractor.units_in_village(overview_html):
             k, v = u
             self.troops[k] = v
+        # --- END PERFORMANCE ---
 
         self.logger.debug("Units in village: %s", str(self.troops))
 
@@ -109,13 +109,17 @@ class TroopManager:
             return
 
         self.total_troops = {}
-        for u in Extractor.units_in_total(result_all):
+        # --- PERFORMANCE (POINT 2) ---
+        # Use cached overview_html to extract total units
+        for u in Extractor.units_in_total(overview_html):
             k, v = u
             if k in self.total_troops:
                 self.total_troops[k] = self.total_troops[k] + int(v)
             else:
                 self.total_troops[k] = int(v)
+        # --- END PERFORMANCE ---
         self.logger.debug("Village units total: %s", str(self.total_troops))
+
 
     def start_update(self, building="barracks", disabled_units=None):
         """
@@ -153,7 +157,7 @@ class TroopManager:
 
             if wanted not in self.total_troops:
                 result = self.recruit(
-                        wanted, self.wanted[building][wanted], building=building
+                    wanted, self.wanted[building][wanted], building=building
                 )
                 if result:
                     return True
@@ -166,10 +170,10 @@ class TroopManager:
 
             if self.wanted[building][wanted] > self.total_troops[wanted]:
                 result = self.recruit(
-                        wanted,
-                        self.wanted[building][wanted] - self.total_troops[wanted],
-                        building=building,
-                )
+                    wanted,
+                    self.wanted[building][wanted] - self.total_troops[wanted],
+                    building=building,
+                    )
                 if result:
                     return True
                 # Check if failure was due to resources by looking at recruit_data
@@ -466,14 +470,10 @@ class TroopManager:
         sleep = 0
         available_selection = 0
 
-        self.troops = {}
-
-        get_all = f"game.php?village={self.village_id}&screen=place&mode=units&display=units"
-        result_all = self.wrapper.get_url(get_all)
-
-        for u in Extractor.units_in_village(result_all):
-            k, v = u
-            self.troops[k] = v
+        # --- PERFORMANCE (POINT 2) ---
+        # self.troops is already populated by update_totals()
+        # Remove redundant request to screen=place&mode=units
+        # --- END PERFORMANCE ---
 
         troops = dict(self.troops)
 
@@ -616,7 +616,7 @@ class TroopManager:
                         for item_def in haul_dict:
                             item, carry = item_def.split(":")
                             if item in self.troops:
-                                self.troops[item] = "0"
+                                self.troops[item] = 0
                         # --- END OPTIMIZATION ---
                         self.last_gather = int(time.time())
                         self.logger.info(f"Using troops for gather operation: {selection}")
@@ -784,4 +784,3 @@ class TroopManager:
         seconds %= 60
 
         return "%d:%02d:%02d" % (hour, minutes, seconds)
-

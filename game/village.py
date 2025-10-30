@@ -43,6 +43,9 @@ class Village:
     forced_peace = False
     forced_peace_today_start = None
     disabled_units = []
+    # --- PERFORMANCE (POINT 2) ---
+    overview_html = None
+    # --- END PERFORMANCE ---
 
     twp = TwStats()
 
@@ -77,36 +80,45 @@ class Village:
         """
         Init the village entry and send first request
         """
-        if not self.village_id:
-            data = self.wrapper.get_url("game.php?screen=overview&intro")
-            if data:
-                self.game_data = Extractor.game_state(data)
-            if self.game_data:
+        url = "game.php?screen=overview&intro"
+        if self.village_id:
+            url = f"game.php?village={self.village_id}&screen=overview"
+
+        data = self.wrapper.get_url(url)
+
+        if data:
+            self.game_data = Extractor.game_state(data)
+            # --- PERFORMANCE (POINT 2) ---
+            self.overview_html = data.text
+            # --- END PERFORMANCE ---
+
+        if self.game_data:
+            if not self.village_id:
                 self.village_id = str(self.game_data["village"]["id"])
-                self.logger = logging.getLogger(
-                    "Village %s" % self.game_data["village"]["name"]
-                )
-                self.logger.info("Read game state for village")
-        else:
-            data = self.wrapper.get_url(
-                f"game.php?village={self.village_id}&screen=overview"
+
+            self.logger = logging.getLogger(
+                "Village %s" % self.game_data["village"]["name"]
             )
-            if data:
-                self.game_data = Extractor.game_state(data)
-                self.logger = logging.getLogger(
-                    "Village %s" % self.game_data["village"]["name"]
-                )
-                self.logger.info("Read game state for village")
+            self.logger.info("Read game state for village")
+
+            if not self.village_id:
                 self.wrapper.reporter.report(
                     self.village_id,
                     "TWB_START",
                     "Starting run for village: %s" % self.game_data["village"]["name"],
                     )
+        else:
+            self.logger = logging.getLogger(f"Village {self.village_id}")
+            self.logger.error("Could not read game state for village")
+
         if (
                 self.village_set_name
+                and self.game_data and "village" in self.game_data
                 and self.game_data["village"]["name"] != self.village_set_name
         ):
             self.logger.name = f"Village {self.village_set_name}"
+
+        # Return raw response object for setup_defence_manager
         return data
 
     def set_world_config(self):
@@ -138,7 +150,11 @@ class Village:
                 wrapper=self.wrapper, village_id=self.village_id
             )
 
+        # --- PERFORMANCE (POINT 2) ---
+        # Pass cached game_data
         self.resman.update(self.game_data)
+        # --- END PERFORMANCE ---
+
         self.wrapper.reporter.report(
             self.village_id, "TWB_PRE_RESOURCE", str(self.resman.actual)
         )
@@ -147,7 +163,11 @@ class Village:
             self.rep_man = ReportManager(
                 wrapper=self.wrapper, village_id=self.village_id
             )
-        self.rep_man.read(full_run=False)
+
+        # --- PERFORMANCE (POINT 2) ---
+        # Pass cached overview_html to avoid re-fetching page 0
+        self.rep_man.read(full_run=False, overview_html=self.overview_html)
+        # --- END PERFORMANCE ---
 
         if not self.def_man:
             self.def_man = DefenceManager(
@@ -178,12 +198,17 @@ class Village:
         self.def_man.auto_evacuate = self.get_village_config(
             self.village_id, parameter="evacuate_fragile_units_on_attack", default=False
         )
+
+        # --- PERFORMANCE (POINT 2) ---
+        # Pass cached overview_html
         self.def_man.update(
-            data.text,
+            self.overview_html,
             with_defence=self.get_config(
                 section="units", parameter="manage_defence", default=False
             ),
         )
+        # --- END PERFORMANCE ---
+
         if self.def_man.under_attack and not self.last_attack:
             self.logger.warning("Village under attack!")
             self.wrapper.reporter.report(
@@ -280,12 +305,18 @@ class Village:
         self.builder.max_queue_len = self.get_config(
             section="building", parameter="max_queued_items", default=2
         )
+
+        # --- PERFORMANCE (POINT 2) ---
+        # Pass cached game_data and overview_html
         self.builder.start_update(
+            overview_game_data=self.game_data,
+            overview_html=self.overview_html,
             build=self.get_config(
                 section="building", parameter="manage_buildings", default=True
             ),
             set_village_name=self.village_set_name,
         )
+        # --- END PERFORMANCE ---
 
     def run_snob_recruit(self):
         """
@@ -603,7 +634,11 @@ class Village:
         self.units_get_template()
         self.set_unit_wanted_levels()
 
-        self.units.update_totals()
+        # --- PERFORMANCE (POINT 2) ---
+        # Moved update_totals to run after templates are set and before recruiting
+        self.units.update_totals(self.game_data, self.overview_html)
+        # --- END PERFORMANCE ---
+
         self.run_unit_upgrades()
         self.run_snob_recruit()
         self.do_recruit()
@@ -728,4 +763,3 @@ class Village:
         else:
             village_entry["farm_bag"] = None
         FileManager.save_json_file(village_entry, f"cache/managed/{self.village_id}.json")
-
