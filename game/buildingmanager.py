@@ -64,9 +64,11 @@ class BuildingManager:
         Start a building manager run
         Uses cached game_data and overview_html passed from Village.run
         """
-        # Use cached game_data and html
+        # Use cached game_data but fetch main screen for building data
         self.game_state = overview_game_data
-        main_data_text = overview_html
+        # Building data can only be extracted from main screen, not overview
+        main_data = self.wrapper.get_action(village_id=self.village_id, action="main")
+        main_data_text = main_data.text
         # --- END PERFORMANCE ---
 
         vname = self.game_state["village"]["name"]
