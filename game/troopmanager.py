@@ -96,9 +96,20 @@ class TroopManager:
         self.troops = {}
 
         # --- PERFORMANCE (POINT 2) ---
-        # Use cached overview_html to extract units
-        # This avoids a new request to "screen=place&mode=units"
-        for u in Extractor.units_in_village(overview_html):
+        # Try to extract units from cached overview_html first
+        extracted_units = Extractor.units_in_village(overview_html)
+        self.logger.debug(f"Extractor.units_in_village from overview_html returned: {extracted_units}")
+        
+        # If overview_html doesn't contain units (units_home table), fetch from place screen
+        if not extracted_units:
+            self.logger.debug("No units found in overview_html, fetching from place screen")
+            place_url = f"game.php?village={self.village_id}&screen=place&mode=units"
+            place_data = self.wrapper.get_url(url=place_url)
+            if place_data:
+                extracted_units = Extractor.units_in_village(place_data.text)
+                self.logger.debug(f"Extractor.units_in_village from place screen returned: {extracted_units}")
+        
+        for u in extracted_units:
             k, v = u
             self.troops[k] = v
         # --- END PERFORMANCE ---
@@ -476,6 +487,8 @@ class TroopManager:
         # --- END PERFORMANCE ---
 
         troops = dict(self.troops)
+        self.logger.info(f"Starting gather with self.troops: {self.troops}")
+        self.logger.info(f"Local troops copy: {troops}")
 
         haul_dict = [
             "spear:25",
@@ -487,29 +500,30 @@ class TroopManager:
         if "archer" in self.total_troops:
             haul_dict.extend(["archer:10", "marcher:50"])
 
-        # ADVANCED GATHER: Goes from gather_selection to 1, trying the same time (approximately) for every gather. Active hours exclude LC and Axes, at night everything is used for gather (except Paladin)
+        # ADVANCED GATHER: Prioritize highest gathering operations by assigning maximum troops to them first
 
         if advanced_gather:
-            selection_map = [15, 21, 24,
-                             26]  # Divider in order to split the total carrying capacity of the troops into pieces that can fit into pretty much the same time frame
-
-            batch_multiplier = [15, 6, 3,
-                                2]  # Multiplier for equal distribution of troops. Time(gather1) = Time(gather2) if gather2 = 2.5 * gather1
-
             troops = {key: int(value) for key, value in troops.items()}
+            self.logger.info(f"Troops after int conversion: {troops}")
+            
+            # Calculate total carry capacity for logging
             total_carry = 0
             for item in haul_dict:
                 item, carry = item.split(":")
                 if item == "knight":
                     continue
                 if item in disabled_units:
+                    self.logger.debug(f"Skipping {item} - in disabled_units")
                     continue
                 if item in troops and int(troops[item]) > 0:
-                    total_carry += int(carry) * int(troops[item])
+                    carry_contribution = int(carry) * int(troops[item])
+                    total_carry += carry_contribution
+                    self.logger.debug(f"Unit {item}: {troops[item]} units * {carry} carry = {carry_contribution} total carry")
                 else:
-                    pass
-            gather_batch = math.floor(total_carry / selection_map[selection - 1])
+                    self.logger.debug(f"Unit {item}: not in troops or count is 0")
+            self.logger.info(f"Total carry capacity: {total_carry}")
 
+            # Iterate from highest to lowest operation and assign ALL available troops to each
             for option in list(reversed(sorted(village_data['options'].keys())))[4 - selection:]:
                 self.logger.debug(
                     f"Option: {option} Locked? {village_data['options'][option]['is_locked']} Is underway? {village_data['options'][option]['scavenging_squad'] != None}")
@@ -524,13 +538,10 @@ class TroopManager:
                         "squad_requests[0][use_premium]": "false",
                     }
 
-                    curr_haul = gather_batch * batch_multiplier[available_selection - 1]
-                    temp_haul = curr_haul
-
-                    self.logger.debug(
-                        f"Current Haul: {curr_haul} = Gather Batch ({gather_batch}) * Batch Multiplier {available_selection} ({batch_multiplier[available_selection - 1]})")
-
+                    # Assign ALL available troops to this operation (highest priority)
+                    total_carry_for_operation = 0
                     troops_assigned = False
+                    
                     for item in haul_dict:
                         item, carry = item.split(":")
                         if item == "knight":
@@ -539,23 +550,19 @@ class TroopManager:
                             continue
 
                         if item in troops and int(troops[item]) > 0:
-                            troops_int = int(troops[item])
-                            troops_selected = 0
-                            for troop in range(troops_int):
-                                if (temp_haul - int(carry) < 0):
-                                    break
-                                else:
-                                    troops_selected += 1
-                                    temp_haul -= int(carry)
-                            troops_int -= troops_selected
-                            troops[item] = troops_int
-                            if troops_selected > 0:
+                            troops_count = int(troops[item])
+                            # Assign all troops of this type to the current operation
+                            payload["squad_requests[0][candidate_squad][unit_counts][%s]" % item] = str(troops_count)
+                            total_carry_for_operation += int(carry) * troops_count
+                            self.logger.debug(f"Assigned {troops_count} {item} to gather operation {available_selection}")
+                            # Remove these troops from the pool
+                            troops[item] = 0
+                            if troops_count > 0:
                                 troops_assigned = True
-                            payload["squad_requests[0][candidate_squad][unit_counts][%s]" % item] = str(troops_selected)
-                            self.logger.debug(f"Assigned {troops_selected} {item} to gather operation {available_selection}, {troops_int} remaining")
                         else:
                             payload["squad_requests[0][candidate_squad][unit_counts][%s]" % item] = "0"
-                    payload["squad_requests[0][candidate_squad][carry_max]"] = str(curr_haul)
+                    
+                    payload["squad_requests[0][candidate_squad][carry_max]"] = str(total_carry_for_operation)
                     
                     if not troops_assigned:
                         self.logger.info(f"No troops available for gather operation {available_selection}, skipping.")
@@ -675,11 +682,12 @@ class TroopManager:
 
         existing = Extractor.active_recruit_queue(data)
         if existing:
-            self.logger.warning(
-                "Building Village %s %s recruitment queue out-of-sync"
+            self.logger.info(
+                "Building Village %s %s has active recruitment queue, syncing"
                 % (self.village_id, building)
             )
             if not self.can_fix_queue:
+                self.logger.debug("can_fix_queue is False, not clearing existing queue")
                 return True
             for entry in existing:
                 self.cancel(building=building, id=entry)

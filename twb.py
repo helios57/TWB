@@ -43,8 +43,8 @@ from core.exceptions import UnsupportedPythonVersion
 from core.extractors import Extractor
 
 # --- LOGGING IMPROVEMENT ---
-# Set default log level to INFO. Use -v for DEBUG, -q for WARNING.
-log_level = logging.INFO
+# Set default log level to DEBUG. Use -v for DEBUG, -q for WARNING.
+log_level = logging.DEBUG
 if "-v" in sys.argv or "--verbose" in sys.argv:
     log_level = logging.DEBUG
 elif "-q" in sys.argv or "--quiet" in sys.argv:
