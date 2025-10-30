@@ -101,7 +101,7 @@ class Village:
                     self.village_id,
                     "TWB_START",
                     "Starting run for village: %s" % self.game_data["village"]["name"],
-                )
+                    )
         if (
                 self.village_set_name
                 and self.game_data["village"]["name"] != self.village_set_name
@@ -190,7 +190,7 @@ class Village:
                 self.village_id,
                 "TWB_ATTACK",
                 "Village: %s under attack" % self.game_data["village"]["name"],
-            )
+                )
         self.last_attack = self.def_man.under_attack
 
     def run_quest_actions(self, config):
@@ -483,8 +483,8 @@ class Village:
                 )
                 self.logger.info(
                     "%d villages from map cache, (your location: %s)",
-                        len(self.area.villages),
-                        ":".join([str(x) for x in self.area.my_location])
+                    len(self.area.villages),
+                    ":".join([str(x) for x in self.area.my_location])
                 )
                 if not self.attack:
                     self.attack = AttackManager(
@@ -609,9 +609,21 @@ class Village:
         self.do_recruit()
         self.manage_local_resources()
 
-        self.run_farming()
+        # --- CONFIGURABLE GATHER/FARM PRIORITY ---
+        prioritize_gathering = self.get_village_config(
+            self.village_id, parameter="prioritize_gathering", default=False
+        )
 
-        self.do_gather()
+        if prioritize_gathering:
+            self.logger.debug("Prioritizing gathering over farming.")
+            self.do_gather()
+            self.run_farming()
+        else:
+            self.logger.debug("Prioritizing farming over gathering (default).")
+            self.run_farming()
+            self.do_gather()
+        # --- END CONFIGURABLE PRIORITY ---
+
         self.go_manage_market()
 
         self.set_cache_vars()
@@ -716,3 +728,4 @@ class Village:
         else:
             village_entry["farm_bag"] = None
         FileManager.save_json_file(village_entry, f"cache/managed/{self.village_id}.json")
+

@@ -154,6 +154,9 @@ class DefenceManager:
             self.flag_set(
                 set_flag, level=self.get_highest_flag_possible(flag_id=set_flag)
             )
+            # --- FIX: Manually update internal state to prevent endless loop ---
+            self.current_flag = [set_flag, self.get_highest_flag_possible(flag_id=set_flag)]
+            # --- END FIX ---
             self.logger.info(
                 "Setting flag %d level %d for village %s",
                 set_flag, self.get_highest_flag_possible(flag_id=set_flag), self.village_id
@@ -223,16 +226,16 @@ class DefenceManager:
         self.flags = {}
         for flag_type in raw_flags:
             for level in raw_flags[flag_type]:
-                for amount in raw_flags[flag_type][level]:
-                    if int(amount) >= 3:
-                        self.flag_upgrade(flag=flag_type, level=level)
-                        self.logger.info("Upgraded flag %s", flag_type)
-                        upgraded += 1
-                    if int(amount) > 0:
-                        if int(flag_type) not in self.flags or self.flags[
-                            int(flag_type)
-                        ] < int(level):
-                            self.flags[int(flag_type)] = int(level)
+                amount = raw_flags[flag_type][level]
+                if int(amount) >= 3:
+                    self.flag_upgrade(flag=flag_type, level=level)
+                    self.logger.info("Upgraded flag %s", flag_type)
+                    upgraded += 1
+                if int(amount) > 0:
+                    if int(flag_type) not in self.flags or self.flags[
+                        int(flag_type)
+                    ] < int(level):
+                        self.flags[int(flag_type)] = int(level)
         if upgraded:
             return self.manage_flags()
 
@@ -283,3 +286,4 @@ class DefenceManager:
         )
 
         return result
+
