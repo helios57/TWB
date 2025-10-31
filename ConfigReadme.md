@@ -96,7 +96,13 @@ Controls the inter-village resource coordinator that runs after each game loop.
 You can override `enabled` per village via `villages.<id>.balancer_enabled` if you want to include/exclude specific towns.
 
 ## World options
-I think only the "quests_enabled" is currently working and it should automatically finish quests once all the requirements are met. When this is the case it should restart the current run for the village because there might be a resource award paired with the quest.
+**Quests**
+The "quests_enabled" option should automatically finish quests once all the requirements are met. When this is the case it should restart the current run for the village because there might be a resource award paired with the quest.
+
+**Unit availability**
+- **archers_enabled**: Set to `false` to prevent the bot from recruiting archers and mounted archers. Useful for worlds where archers are not available.
+- **building_destruction_enabled**: Set to `false` to prevent the bot from recruiting rams and catapults. Useful for worlds where building destruction is disabled.
+- **spy_enabled**: Set to `false` to prevent the bot from recruiting spies. This speeds up village development by avoiding spy production, allowing resources to be used for other troops and buildings instead.
 
 # Village configuration
 This configures what and how villages are being managed. Both the building and units override the global template options. If you want the bot to (temporary) skip the village you can disable the "managed" option.

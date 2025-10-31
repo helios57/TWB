@@ -135,6 +135,11 @@ class Village:
         ):
             self.disabled_units.extend(["ram", "catapult"])
 
+        if not self.get_config(
+                section="world", parameter="spy_enabled", default=True
+        ):
+            self.disabled_units.append("spy")
+
         if self.get_config(
                 section="server", parameter="server_on_twstats", default=False
         ):

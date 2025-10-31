@@ -109,6 +109,7 @@
     "trade_for_premium": false,
     "archers_enabled": true,
     "building_destruction_enabled": true,
+    "spy_enabled": true,
     "boosters_enabled": null,
     "farm_bag_limit_enabled": false,
     "farm_bag_block_scouts": true
