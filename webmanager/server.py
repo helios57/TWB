@@ -51,16 +51,24 @@ def pre_process_string(key, value, village_id=None):
         'building.default': 'templates.builder',
         'village_template.units': 'templates.troops',
         'village.building': 'templates.builder',
-        'village_template.building': 'templates.builder'
+        'village_template.building': 'templates.builder',
+        'strategy.default_bootstrap_building': 'templates.builder',
+        'strategy.default_develop_building': 'templates.builder',
+        'strategy.noble_rush_core_building': 'templates.builder',
+        'strategy.noble_rush_develop_building': 'templates.builder',
+        'strategy.default_bootstrap_units': 'templates.troops',
+        'strategy.default_develop_units': 'templates.troops',
+        'strategy.noble_rush_core_units': 'templates.troops',
+        'strategy.noble_rush_develop_units': 'templates.troops',
     }
     if key in templates:
         return preprocess_select(key, value, templates[key], village_id)
     if village_id:
         return '<input type="text" class="form-control" data-village-id="%s" data-type="text" value="%s" data-type-option="%s" />' % (
-        village_id, value, key)
+        village_id, value if value is not None else '', key)
     else:
         return '<input type="text" class="form-control" data-type="text" value="%s" data-type-option="%s" />' % (
-            value, key)
+            value if value is not None else '', key)
 
 
 def pre_process_number(key, value, village_id=None):
@@ -100,8 +108,13 @@ def pre_process_config():
     config = sync()['config']
     to_hide = ["build", "villages"]
     sections = {}
-    for section in config:
-        if section in to_hide:
+    # Ensure strategy section is present and processed
+    section_order = [s for s in config.keys() if s not in to_hide]
+    if 'strategy' not in section_order:
+        section_order.append('strategy') # Add it if it's missing for some reason
+
+    for section in section_order:
+        if section not in config:
             continue
         config_data = ""
         for parameter in config[section]:
@@ -109,12 +122,15 @@ def pre_process_config():
             kvp = "%s.%s" % (section, parameter)
             if type(value) == bool:
                 config_data += '%s %s' % (fancy(kvp), pre_process_bool(kvp, value))
-            if type(value) == str:
+            elif type(value) == str:
                 config_data += '%s %s' % (fancy(kvp), pre_process_string(kvp, value))
-            if type(value) == list:
+            elif type(value) == list:
                 config_data += '%s %s' % (fancy(kvp), pre_process_list(kvp, value))
-            if type(value) == int or type(value) == float:
-                config_data += '%s %s' % (fancy(kvp), pre_process_number(kvp, value))
+            elif type(value) in [int, float] or value is None: # Handle None as a number (for core_village_id)
+                config_data += '%s %s' % (fancy(kvp), pre_process_number(kvp, value if value is not None else ''))
+            elif value is None: # Fallback for other None types
+                 config_data += '%s %s' % (fancy(kvp), pre_process_string(kvp, ''))
+
         sections[section] = config_data
     return sections
 
@@ -124,31 +140,43 @@ def pre_process_village_config(village_id):
     if village_id in config:
         config = config[village_id]
     else:
-        config = config[config.keys()[0]]
+        config = config[list(config.keys())[0]] # Fallback to first village
     config_data = ""
     for parameter in config:
         value = config[parameter]
         kvp = "village.%s" % parameter
         if type(value) == bool:
             config_data += '%s %s' % (fancy(kvp), pre_process_bool(kvp, value, village_id))
-        if type(value) == str:
+        elif type(value) == str:
             config_data += '%s %s' % (fancy(kvp), pre_process_string(kvp, value, village_id))
-        if type(value) == list:
+        elif type(value) == list:
             config_data += '%s %s' % (fancy(kvp), pre_process_list(kvp, value, village_id))
-        if type(value) == int or type(value) == float:
+        elif type(value) in [int, float]:
             config_data += '%s %s' % (fancy(kvp), pre_process_number(kvp, value, village_id))
     return config_data
 
 
 def sync():
-    reports = DataReader.cache_grab("reports")
-    villages = DataReader.cache_grab("villages")
-    attacks = DataReader.cache_grab("attacks")
+    try:
+        reports = DataReader.cache_grab("reports")
+    except FileNotFoundError:
+        reports = {}
+    try:
+        villages = DataReader.cache_grab("villages")
+    except FileNotFoundError:
+        villages = {}
+    try:
+        attacks = DataReader.cache_grab("attacks")
+    except FileNotFoundError:
+        attacks = {}
     config = DataReader.config_grab()
-    managed = DataReader.cache_grab("managed")
+    try:
+        managed = DataReader.cache_grab("managed")
+    except FileNotFoundError:
+        managed = {}
     bot_status = bm.is_running()
 
-    sort_reports = {key: value for key, value in sorted(reports.items(), key=lambda item: int(item[0]))}
+    sort_reports = {key: value for key, value in sorted(reports.items(), key=lambda item: int(item[0]))} if reports else {}
     n_items = {k: sort_reports[k] for k in list(sort_reports)[:100]}
 
     out_struct = {
@@ -196,7 +224,9 @@ def get_village_config():
 def get_map():
     sync_data = sync()
     center_id = request.args.get("center", None)
-    center = next(iter(sync_data['bot'])) if not center_id else center_id
+    center = next(iter(sync_data['bot'])) if not center_id and sync_data['bot'] else center_id
+    if not center:
+        return "No villages managed yet. Please configure a village.", 404
     map_data = json.dumps(MapBuilder.build(sync_data['villages'], current_village=center, size=15))
     return render_template('map.html', data=sync_data, map=map_data)
 
@@ -238,13 +268,19 @@ def get_js():
 @app.route('/app/config/set', methods=['GET'])
 def config_set():
     vid = request.args.get("village_id", None)
+    value = request.args.get("value", None)
+    parameter = request.args.get("parameter")
+
+    # Handle 'null' string from UI for empty optional fields
+    if value == 'null' or value == '':
+        value = None
+
     if not vid:
-        DataReader.config_set(parameter=request.args.get("parameter"), value=request.args.get("value", None))
+        DataReader.config_set(parameter=parameter, value=value)
     else:
-        param = request.args.get("parameter")
-        if param.startswith("village."):
-            param = param.replace("village.", "")
-        DataReader.village_config_set(village_id=vid, parameter=param, value=request.args.get("value", None))
+        if parameter.startswith("village."):
+            param = parameter.replace("village.", "")
+        DataReader.village_config_set(village_id=vid, parameter=param, value=value)
 
     return jsonify(sync())
 

@@ -1,0 +1,13 @@
+main:5
+barracks:1
+smith:1
+place:1
+stable:5
+main:20
+smith:20
+market:10
+snob:1
+storage:30
+farm:30
+wall:20
+garage:1

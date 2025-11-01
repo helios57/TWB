@@ -2,49 +2,67 @@
 
 {% block content %}
 <div class="row">
-	<table class="table table-striped">
-		<thead>
-			<tr>
-				<th>ID#</th>
-				<th>Name</th>
-				<th>Info</th>
-				<th>Building</th>
-				<th>Units</th>
-				<th>Actions</th>
-			</tr>
-		</thead>
-		<tbody>
-			{% for village_id in data.bot %}
-				<tr>
-					<td>{{village_id}}</td>
-					<td>{{data.bot[village_id].public.name}}</td>
-					<td>
-						<img src="/static/images/wood.png" /> {{data.bot[village_id].resources.wood}}
-						<img src="/static/images/stone.png" /> {{data.bot[village_id].resources.stone}}
-						<img src="/static/images/iron.png" /> {{data.bot[village_id].resources.iron}}
-						<img src="/static/images/worker.png" /> {{data.bot[village_id].resources["pop"]}}
-					</td>
-					<td>{% if village_id in data.config.villages %} {{data.config.villages[village_id].building}} {% else %} No config {% endif %}</td>
-					<td>{% if village_id in data.config.villages %} {{data.config.villages[village_id].units}} {% else %} No config {% endif %}</td>
-					<td>
-						<a href="map?center={{village_id}}" class="btn btn-success btn-sm">Map</a>
-						<a href="village?id={{village_id}}" class="btn btn-success btn-sm">Config</a>
-					</td>
-				</tr>
-				<tr>
-					<td></td>
-					<td>
-						{% for unit in data.bot[village_id].troops %}
-							<img src="/static/images/unit_{{unit}}.png" alt="{{unit}}" /> {{data.bot[village_id].troops[unit]}}
-						{% endfor %}
-					</td>
-					<td>
-						Building: {{data.bot[village_id].queued | count}}
-					</td>
-				</tr>
-			{% endfor %}
-		</tbody>
-	</table>
+    <table class="table table-striped table-bordered">
+        <thead class="thead-dark">
+            <tr>
+                <th>Dorf (ID)</th>
+                <th>Ressourcen</th>
+                <th>Bevölkerung</th>
+                <th>Strategie/Rolle</th>
+                <th>Bau-Absicht</th>
+                <th>Truppen-Absicht</th>
+                <th>Aktionen</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for village_id in data.bot %}
+            <tr>
+                <td>
+                    <strong>{{ data.bot[village_id].public.name | default('Unbekannt') }}</strong>
+                    <br>
+                    <small class="text-muted">#{{ village_id }}</small>
+                </td>
+                <td>
+                    <img src="/static/images/wood.png" title="Holz" /> {{ data.bot[village_id].resources.wood }}
+                    <img src="/static/images/stone.png" title="Lehm" /> {{ data.bot[village_id].resources.stone }}
+                    <img src="/static/images/iron.png" title="Eisen" /> {{ data.bot[village_id].resources.iron }}
+                </td>
+                <td>
+                    <img src="/static/images/worker.png" title="Bevölkerung" /> {{ data.bot[village_id].resources.pop }}
+                </td>
+                <td><strong>{{ data.bot[village_id].strategy_role | default('Statisch') }}</strong></td>
+                <td>{{ data.bot[village_id].intent_building | default('N/A') }}</td>
+                <td>{{ data.bot[village_id].intent_troops | default('N/A') }}</td>
+                <td>
+                    <a href="map?center={{ village_id }}" class="btn btn-success btn-sm">Karte</a>
+                    <a href="village?id={{ village_id }}" class="btn btn-primary btn-sm">Konfig</a>
+                </td>
+            </tr>
+            {% if data.bot[village_id].troops %}
+            <tr class="troop-details">
+                <td colspan="7">
+                    <small>
+                    {% for unit in data.bot[village_id].troops %}
+                        <img src="/static/images/unit_{{unit}}.png" alt="{{unit}}" title="{{unit}}" style="height: 16px;"/> {{ data.bot[village_id].troops[unit] }}
+                    {% endfor %}
+                    </small>
+                </td>
+            </tr>
+            {% endif %}
+            {% endfor %}
+        </tbody>
+    </table>
 </div>
+
+<style>
+    .table td, .table th {
+        vertical-align: middle;
+    }
+    .troop-details td {
+        border-top: none !important;
+        padding-top: 0;
+        padding-bottom: 0.5rem;
+    }
+</style>
 
 {% endblock %}

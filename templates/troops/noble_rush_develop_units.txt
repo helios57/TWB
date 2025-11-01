@@ -1,0 +1,7 @@
+{
+    "build": {
+        "barracks": { "spear": 5000, "sword": 5000 },
+        "stable": { "light": 500 }
+    },
+    "farm": { "light": 25 }
+}

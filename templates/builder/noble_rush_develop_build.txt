@@ -1,0 +1,9 @@
+wall:20
+main:30
+barracks:30
+stable:30
+storage:30
+farm:30
+wood:30
+stone:30
+iron:30

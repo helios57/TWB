@@ -1,0 +1,21 @@
+{
+    "build": {
+        "barracks": { "spear": 100, "axe": 100 },
+        "stable": { "light": 247 }
+    },
+    "farm": { "light": 5, "spear": 5 }
+}
+{
+    "building": "main", "level": 20,
+    "build": {
+        "barracks": { "axe": 3000 },
+        "stable": { "light": 1500 },
+        "garage": { "ram": 300 }
+    },
+    "upgrades": {
+        "light": 3,
+        "axe": 3,
+        "ram": 3
+    },
+    "farm": { "light": 50, "axe": 25 }
+}

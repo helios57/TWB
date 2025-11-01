@@ -37,6 +37,7 @@ from core.updater import check_update
 from core.filemanager import FileManager
 from core.request import WebWrapper
 from game.village import Village
+from game.strategic_manager import StrategicManager
 from manager import VillageManager
 from pages.overview import OverviewPage
 from core.exceptions import UnsupportedPythonVersion
@@ -417,6 +418,13 @@ class TWB:
                     print("Deployed new configuration file")
                 village_number = 1
                 logger = logging.getLogger("TWB")
+
+                # --- STRATEGY INTEGRATION ---
+                all_village_data = {v.village_id: v.game_data for v in self.villages if v.game_data}
+                strategy_manager = StrategicManager(config=config, all_villages_data=all_village_data)
+                strategies = strategy_manager.run()
+                # --- END STRATEGY INTEGRATION ---
+
                 for village in self.villages:
                     if village.village_id not in self.found_villages:
                         logger.warning(
@@ -425,6 +433,9 @@ class TWB:
                             f"This might be a detection issue rather than the village being unavailable."
                         )
                         continue
+
+                    village_strategy = strategies.get(village.village_id)
+
                     if not rm:
                         rm = village.rep_man
                     else:
@@ -443,7 +454,7 @@ class TWB:
                         template = template.replace("{num}", num_pad)
                         village.village_set_name = template
 
-                    village.run(config=config)
+                    village.run(config=config, strategy=village_strategy)
 
                     if (
                             village.get_config(

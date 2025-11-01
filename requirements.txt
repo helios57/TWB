@@ -1,7 +1,4 @@
 requests
-coloredlogs
-psutil
-flask
 pyquery
-beautifulsoup4
-python-telegram-bot
+flask
+psutil
