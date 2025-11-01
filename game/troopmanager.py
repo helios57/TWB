@@ -192,15 +192,61 @@ class TroopManager:
 
     def get_template_action(self, levels):
         """
-        Read data from templates and determine the troops based op building progression
+        Read data from templates and determine the troops based op building progression.
+        Handles both the legacy format and the new staged JSON format.
         """
+        if not self.logger:
+            self.logger = logging.getLogger(f"TroopManager:{self.village_id}")
+
+        if not self.template:
+            return None
+
+        # --- NEW: Staged Template Logic ---
+        # Check if it's the new format by inspecting the first element
+        if isinstance(self.template, list) and self.template and isinstance(self.template[0], dict) and 'stage' in self.template[0]:
+            self.logger.debug("Processing new staged unit template.")
+
+            # Iterate through stages in reverse to find the highest achievable stage
+            for stage in sorted(self.template, key=lambda x: x['stage'], reverse=True):
+                prereqs_met = True
+                for req in stage.get("pre_requisites", []):
+                    if req["type"] == "building":
+                        if levels.get(req["name"], 0) < req["level"]:
+                            prereqs_met = False
+                            break # This prerequisite is not met
+
+                if prereqs_met:
+                    self.logger.info(f"Current active unit stage: {stage['name']} (Stage {stage['stage']})")
+                    # This is the active stage, transform its data into the legacy format
+                    wanted_build = {}
+                    for unit_req in stage.get("units", []):
+                        building = self.unit_building.get(unit_req["name"])
+                        if building:
+                            if building not in wanted_build:
+                                wanted_build[building] = {}
+                            wanted_build[building][unit_req["name"]] = unit_req["amount"]
+
+                    wanted_upgrades = {}
+                    for research_req in stage.get("research", []):
+                        wanted_upgrades[research_req["name"]] = research_req["level"]
+
+                    self.wanted_levels = wanted_upgrades
+
+                    # Return in the format expected by village.py
+                    return {"build": wanted_build, "upgrades": wanted_upgrades, "farm": stage.get("farm", None)}
+
+            self.logger.warning("No stage prerequisites met in the unit template.")
+            return {"build": {}, "upgrades": {}} # Return empty dict if no stages are active
+
+        # --- LEGACY: Old Template Logic ---
+        self.logger.debug("Processing legacy unit template.")
         last = None
         wanted_upgrades = {}
         for x in self.template:
-            if x["building"] not in levels:
+            if "building" not in x or x["building"] not in levels:
                 return last
 
-            if x["level"] > levels[x["building"]]:
+            if "level" not in x or x["level"] > levels[x["building"]]:
                 return last
 
             last = x

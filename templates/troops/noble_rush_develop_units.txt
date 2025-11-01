@@ -1,7 +1,14 @@
-{
-    "build": {
-        "barracks": { "spear": 5000, "sword": 5000 },
-        "stable": { "light": 500 }
-    },
-    "farm": { "light": 25 }
-}
+[
+    {
+        "stage": 1,
+        "name": "Initial Defense",
+        "pre_requisites": [],
+        "research": [],
+        "units": [
+            {"name": "spear", "amount": 5000},
+            {"name": "sword", "amount": 5000},
+            {"name": "light", "amount": 500}
+        ],
+        "farm": { "light": 25 }
+    }
+]

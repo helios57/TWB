@@ -28,7 +28,7 @@
                     <img src="/static/images/iron.png" title="Eisen" /> {{ data.bot[village_id].resources.iron }}
                 </td>
                 <td>
-                    <img src="/static/images/worker.png" title="Bevölkerung" /> {{ data.bot[village_id].resources.pop }}
+                    <img src="/static/images/worker.png" title="Bevölkerung" /> {{ data.bot[village_id].resources['pop'] }}
                 </td>
                 <td><strong>{{ data.bot[village_id].strategy_role | default('Statisch') }}</strong></td>
                 <td>{{ data.bot[village_id].intent_building | default('N/A') }}</td>

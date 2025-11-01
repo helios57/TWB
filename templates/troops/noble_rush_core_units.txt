@@ -1,21 +1,49 @@
-{
-    "build": {
-        "barracks": { "spear": 100, "axe": 100 },
-        "stable": { "light": 247 }
+[
+    {
+        "stage": 1,
+        "name": "Early Farming",
+        "pre_requisites": [],
+        "research": [
+            {"name": "spear", "level": 1},
+            {"name": "axe", "level": 1}
+        ],
+        "units": [
+            {"name": "spear", "amount": 50},
+            {"name": "axe", "amount": 50},
+            {"name": "spy", "amount": 5}
+        ]
     },
-    "farm": { "light": 5, "spear": 5 }
-}
-{
-    "building": "main", "level": 20,
-    "build": {
-        "barracks": { "axe": 3000 },
-        "stable": { "light": 1500 },
-        "garage": { "ram": 300 }
+    {
+        "stage": 2,
+        "name": "Acceleration",
+        "pre_requisites": [
+            {"type": "building", "name": "stable", "level": 5},
+            {"type": "building", "name": "smith", "level": 5}
+        ],
+        "research": [
+            {"name": "light", "level": 3}
+        ],
+        "units": [
+            {"name": "light", "amount": 2000}
+        ]
     },
-    "upgrades": {
-        "light": 3,
-        "axe": 3,
-        "ram": 3
-    },
-    "farm": { "light": 50, "axe": 25 }
-}
+    {
+        "stage": 3,
+        "name": "Nuke",
+        "pre_requisites": [
+            {"type": "building", "name": "barracks", "level": 25},
+            {"type": "building", "name": "stable", "level": 20},
+            {"type": "building", "name": "garage", "level": 15},
+            {"type": "building", "name": "smith", "level": 20}
+        ],
+        "research": [
+            {"name": "axe", "level": 3},
+            {"name": "ram", "level": 3}
+        ],
+        "units": [
+            {"name": "axe", "amount": 3000},
+            {"name": "light", "amount": 1500},
+            {"name": "ram", "amount": 300}
+        ]
+    }
+]

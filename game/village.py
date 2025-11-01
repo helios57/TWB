@@ -228,6 +228,15 @@ class Village:
                     self.village_id, "TWB_QUEST", "Collected quest reward(s)"
                 )
 
+            daily_reward = Extractor.get_daily_reward(self.wrapper.last_response)
+            if daily_reward:
+                self.logger.info("Collecting daily reward")
+                self.wrapper.get_api_action(
+                    action="collect_daily_reward",
+                    params={"screen": "daily_bonus", "type": daily_reward},
+                    village_id=self.village_id,
+                )
+
     def units_get_template(self):
         """
         Fetches the unit template, prioritizing the one from the strategy.
