@@ -235,6 +235,14 @@ class AttackManager:
                     self.set_ignored_farm(vid, "scouted", 120)
                 else:
                     self.logger.info(f"[FARM] Not enough scouts to check {vid}")
+                    # Fallback: If we have farm units, send a single unit to generate a report
+                    if self.template:
+                        for unit in self.template:
+                            if self.troopmanager.total_troops.get(unit, 0) > 0:
+                                self.logger.info(f"[FARM] Probing target {target['name']} with 1x {unit}")
+                                self.send_attack(target, {unit: 1})
+                                self.set_ignored_farm(vid, "probed", 120)
+                                break  # only send one probe
 
             # ATTACK LOGIC
             elif cache_entry:
