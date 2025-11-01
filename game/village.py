@@ -64,10 +64,10 @@ class Village:
 
     def get_config(self, section, parameter, default=None):
         if section not in self.config:
-            self.logger.warning("[SYSTEM] Configuration section %s does not exist!", section)
+            self.logger.debug("[SYSTEM] Configuration section %s does not exist!", section)
             return default
         if parameter not in self.config[section]:
-            self.logger.warning(
+            self.logger.debug(
                 "[SYSTEM] Configuration parameter %s:%s does not exist!", section, parameter
             )
             return default
@@ -78,7 +78,7 @@ class Village:
             return default
         vdata = self.config["villages"][village_id]
         if parameter not in vdata:
-            self.logger.warning(
+            self.logger.debug(
                 "[SYSTEM] Village %s configuration parameter %s does not exist!",
                 village_id, parameter
             )
@@ -228,7 +228,7 @@ class Village:
                     self.village_id, "TWB_QUEST", "Collected quest reward(s)"
                 )
 
-            daily_reward = Extractor.get_daily_reward(self.wrapper.last_response)
+            daily_reward = Extractor.get_daily_reward(self.wrapper.last_response.text)
             if daily_reward:
                 self.logger.info("[SYSTEM] Collecting daily reward.")
                 self.wrapper.get_api_action(
@@ -250,9 +250,9 @@ class Village:
         if self.strategy and 'units_template' in self.strategy:
             unit_config = self.strategy['units_template']
         else:
-            unit_config = self.get_village_config(self.village_id, "units")
+            unit_config = self.get_village_config(self.village_id, "units", default=None)
             if not unit_config:
-                self.logger.warning("[SYSTEM] Village %s does not have 'units' config override, falling back to default.", self.village_id)
+                self.logger.info("[SYSTEM] Village %s does not have 'units' config override, falling back to default.", self.village_id)
                 unit_config = self.get_config("units", "default", "basic")
 
         try:
@@ -483,7 +483,7 @@ class Village:
             raise VillageInitException
 
         self.set_world_config()
-        vdata = self.get_config(section="villages", parameter=self.village_id)
+        vdata = self.get_config(section="villages", parameter=self.village_id, default={})
         if not self.get_village_config(self.village_id, parameter="managed", default=False):
             return False
 
@@ -603,7 +603,7 @@ class Village:
             )
 
         # Snob manager run (needs its own refactoring later, but works for now)
-        if self.get_village_config(self.village_id, "snobs") and current_levels.get("snob", 0) > 0:
+        if self.get_village_config(self.village_id, "snobs", default=0) > 0 and current_levels.get("snob", 0) > 0:
             if not self.snobman:
                 self.snobman = SnobManager(wrapper=self.wrapper, village_id=self.village_id)
                 self.snobman.troop_manager = self.units
@@ -631,7 +631,7 @@ class Village:
 
 
     def get_quests(self):
-        result = Extractor.get_quests(self.wrapper.last_response)
+        result = Extractor.get_quests(self.wrapper.last_response.text)
         if result:
             qres = self.wrapper.get_api_action(
                 action="quest_complete",
@@ -653,6 +653,13 @@ class Village:
         if result is None:
             self.logger.warning("[SYSTEM] Failed to fetch quest reward data from API.")
             return False
+
+        # Validate the structure of the API response before accessing keys
+        if "response" not in result or "dialog" not in result["response"]:
+            self.logger.warning("[SYSTEM] Quest reward API response is missing expected keys ('response' or 'dialog').")
+            self.logger.debug(f"[SYSTEM] Full API response: {result}")
+            return False
+
         # The data is escaped for JS, so unescape it before sending it to the extractor.
         rewards = Extractor.get_quest_rewards(decode(result["response"]["dialog"], 'unicode-escape'))
         for reward in rewards:

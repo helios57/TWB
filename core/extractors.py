@@ -640,3 +640,20 @@ class Extractor:
             if isinstance(chest, dict) and chest.get("is_collected"):
                 return reward_key
         return None
+
+    @staticmethod
+    def get_flags(res):
+        """
+        Extracts flag data from the rally point.
+        """
+        if not isinstance(res, str):
+            res = res.text
+
+        flags_data = re.search(r'FlagsScreen.set_flags\((.+?)\);', res)
+        if flags_data:
+            try:
+                return json.loads(flags_data.group(1))
+            except json.JSONDecodeError:
+                logger.warning("Failed to parse flag data JSON.")
+                return None
+        return None

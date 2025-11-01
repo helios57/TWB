@@ -20,6 +20,7 @@ class Request:
     last_h = None
     reporter = Reporter()
     delay = 1.0
+    last_response = None
     endpoint = None
     logger = None
 
@@ -92,6 +93,7 @@ class Request:
             if response.text:
                 self.set_h(response.text)
 
+            self.last_response = response
             return response
 
         except requests.exceptions.RequestException as e:

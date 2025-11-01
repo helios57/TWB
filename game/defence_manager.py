@@ -208,14 +208,15 @@ class DefenceManager:
             return
 
         flags = Extractor.get_flags(flag_data.text)
-        for flag_type, flag in flags.items():
-            if flag["level"] < flag["max_level"]:
-                if self.wrapper.get_config(
-                    "world", f"flag_{flag_type}_enabled", False
-                ):
-                    self.logger.warning(
-                        f"[DEFENCE] Flag {flag_type} is not at max level, but upgrading is not implemented yet."
-                    )
+        if flags:
+            for flag_type, flag in flags.items():
+                if flag["level"] < flag["max_level"]:
+                    if self.wrapper.get_config(
+                        "world", f"flag_{flag_type}_enabled", False
+                    ):
+                        self.logger.warning(
+                            f"[DEFENCE] Flag {flag_type} is not at max level, but upgrading is not implemented yet."
+                        )
                     # Upgrade logic placeholder
                     # costs = flag['upgrade_costs']
                     # if self.units.resman.has_res(costs):

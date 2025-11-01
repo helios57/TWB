@@ -67,14 +67,13 @@ class TwStats:
         else:
             url = self.base_url.format(world=self.world, type=f"{item_type}config")
             try:
-                response = requests.get(url)
+                response = requests.get(url, timeout=10)
                 response.raise_for_status()
                 data = self.parse_config(response.text)
                 FileManager.save_json_file(data, cache_path)
                 self.logger.info(f"[TWSTATS] Synced {item_type} config with twstats.com")
             except requests.exceptions.RequestException as e:
-                self.logger.error(f"[TWSTATS] Error fetching {item_type} config: {e}")
-                # Try to load from cache as a fallback
+                self.logger.warning(f"[TWSTATS] Could not fetch {item_type} config from twstats.com: {e}. Using cached data if available.")
                 data = FileManager.load_json_file(cache_path) if os.path.exists(cache_path) else {}
 
         if item_type == "building":
@@ -89,7 +88,13 @@ class TwStats:
         :return: parsed config
         """
         result = {}
+        if not text_data:
+            return result
+
         lines = text_data.strip().split("\n")
+        if len(lines) < 2:
+            return result
+
         headers = lines[0].split(";")
 
         for line in lines[1:]:
