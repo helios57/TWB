@@ -1,232 +1,184 @@
-"""
-Class for using one generic cookie jar, emulating a single tab
-"""
-
-import requests
-
-from core.filemanager import FileManager
-from core.notification import Notification
-
 import logging
+import random
 import re
 import time
-import random
-from urllib.parse import urljoin, urlencode
+from urllib.parse import urlparse, urlunparse
 
-from core.reporter import ReporterObject
+import requests
+from requests.adapters import HTTPAdapter, Retry
+
+from core.reporter import Reporter
 
 
-class WebWrapper:
+class Request:
     """
-    WebWrapper object for sending HTTP requests
+    Wrapper for requests module
     """
-    web = None
-    headers = {
-        'user-agent': 'Mozilla/5.0 (Windows NT 6.3; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.97 Safari/537.36',
-        'upgrade-insecure-requests': '1'
-    }
-    endpoint = None
-    logger = logging.getLogger("Requests")
-    server = None
-    last_response = None
+
+    session = None
     last_h = None
-    priority_mode = False
-    auth_endpoint = None
-    reporter = None
+    reporter = Reporter()
     delay = 1.0
+    endpoint = None
+    logger = None
 
-    def __init__(self, url, server=None, endpoint=None, reporter_enabled=False, reporter_constr=None):
-        """
-        Construct the session and detect variables
-        """
-        self.web = requests.session()
-        self.auth_endpoint = url
-        self.server = server
-        self.endpoint = endpoint
-        self.reporter = ReporterObject(enabled=reporter_enabled, connection_string=reporter_constr)
+    # Static headers that are always sent
+    static_headers = {
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/100.0.4896.127 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
+        "Accept-Language": "en-US,en;q=0.9",
+        "DNT": "1",
+        "Upgrade-Insecure-Requests": "1"
+    }
 
-    def post_process(self, response):
-        """
-        Post-processes all requests and stores data used for the next request
-        """
-        xsrf = re.search('<meta content="(.+?)" name="csrf-token"', response.text)
-        if xsrf:
-            self.headers['x-csrf-token'] = xsrf.group(1)
-            self.logger.debug("Set CSRF token")
-        elif 'x-csrf-token' in self.headers:
-            del self.headers['x-csrf-token']
-        self.headers['Referer'] = response.url
-        self.last_response = response
-        get_h = re.search(r'&h=(\w+)', response.text)
-        if get_h:
-            self.last_h = get_h.group(1)
+    def __init__(self, cookies=None, server="en", world=1, reporter=None):
+        self.session = requests.Session()
+        self.session.headers.update(self.static_headers)
 
-    def get_url(self, url, headers=None):
+        # Configure retries
+        retries = Retry(total=5, backoff_factor=0.5, status_forcelist=[500, 502, 503, 504])
+        self.session.mount("https://", HTTPAdapter(max_retries=retries))
+
+        if cookies:
+            self.session.cookies.update(cookies)
+
+        if reporter:
+            self.reporter = reporter
+
+        self.endpoint = f"https://{server}{world}.tribalwars.co.uk/"
+        self.logger = logging.getLogger("Request")
+
+    def set_h(self, text):
         """
-        Fetches a URL using a basic GET request
+        Set the CSRF token
         """
-        self.headers['Origin'] = (self.endpoint if self.endpoint else self.auth_endpoint).rstrip('/')
-        if not self.priority_mode:
-            time.sleep(random.randint(int(3 * self.delay), int(7 * self.delay)))
-        url = urljoin(self.endpoint if self.endpoint else self.auth_endpoint, url)
-        if not headers:
-            headers = self.headers
+        h_val = re.search(r'var csrf_token = \'(\w+)\'', text)
+        if h_val:
+            self.last_h = h_val.group(1)
+            self.session.headers.update({"TribalWars-Ajax-Token": self.last_h})
+            self.logger.debug("[REQUEST] Set CSRF token")
+
+    def _make_request(self, method, url, **kwargs):
+        """
+        Internal method to make a request with some common error handling.
+        """
+        # Ensure the URL is absolute
+        if not url.startswith("http"):
+            url = self.endpoint + url
+
+        # Apply delay
+        time.sleep(random.uniform(0.5 * self.delay, 1.5 * self.delay))
+
         try:
-            res = self.web.get(url=url, headers=headers)
-            self.logger.debug("GET %s [%d]", url, res.status_code)
-            self.post_process(res)
-            if 'data-bot-protect="forced"' in res.text:
-                self.logger.warning("Bot protection hit! cannot continue")
-                self.reporter.report(
-                    0, "TWB_RECAPTCHA", "Stopping bot, press any key once captcha has been solved")
-                Notification.send("Bot protection hit! cannot continue")
-                input("Press any key...")
-                return self.get_url(url, headers)
-            return res
-        except Exception as e:
-            self.logger.warning("GET %s: %s", url, str(e))
-            return None
+            response = self.session.request(method, url, timeout=15, **kwargs)
+            response.raise_for_status()
 
-    def post_url(self, url, data, headers=None):
-        """
-        Sends a basic POST request with urlencoded postdata
-        """
-        if not self.priority_mode:
-            time.sleep(
-                random.randint(int(3 * self.delay), int(7 * self.delay))
-            )
-        self.headers['Origin'] = (self.endpoint if self.endpoint else self.auth_endpoint).rstrip('/')
-        url = urljoin(self.endpoint if self.endpoint else self.auth_endpoint, url)
-        enc = urlencode(data)
-        if not headers:
-            headers = self.headers
-        try:
-            res = self.web.post(url=url, data=data, headers=headers)
-            self.logger.debug("POST %s %s [%d]", url, enc, res.status_code)
-            self.post_process(res)
-            return res
-        except Exception as e:
-            self.logger.warning("POST %s %s: %s", url, enc, str(e))
-            return None
+            self.logger.debug(f"[REQUEST] {method.upper()} {url} [{response.status_code}]")
 
-    def start(self, ):
-        """
-        Start the bot and verify whether the last session is still valid
-        """
-        session_data = FileManager.load_json_file("cache/session.json")
-        if session_data:
-            self.web.cookies.update(session_data['cookies'])
-            get_test = self.get_url("game.php?screen=overview")
-            if "game.php" in get_test.url:
-                return True
-            self.logger.warning("Current session cache not valid")
+            if "bot_protection" in response.url:
+                self.logger.warning("[REQUEST] Bot protection hit! Cannot continue.")
+                # Bot protection might invalidate the session, so we should probably exit
+                # Or handle it more gracefully. For now, just log and return None.
+                return None
 
-        self.web.cookies.clear()
-        cinp = input("Enter browser cookie string> ")
-        cookies = {}
-        cinp = cinp.strip()
-        for itt in cinp.split(';'):
-            itt = itt.strip()
-            kvs = itt.split("=")
-            k = kvs[0]
-            v = '='.join(kvs[1:])
-            cookies[k] = v
-        self.web.cookies.update(cookies)
-        self.logger.info("Game Endpoint: %s", self.endpoint)
+            # Update CSRF token from response body if present
+            if response.text:
+                self.set_h(response.text)
 
-        for c in self.web.cookies:
-            cookies[c.name] = c.value
-
-        FileManager.save_json_file({
-            'endpoint': self.endpoint,
-            'server': self.server,
-            'cookies': cookies
-        }, "cache/session.json")
-
-    def get_action(self, village_id, action):
-        """
-        Runs an action on a specific village
-        """
-        url = "game.php?village=%s&screen=%s" % (village_id, action)
-        response = self.get_url(url)
-        return response
-
-    def _parse_api_response(self, response, context):
-        """Return parsed JSON data for API requests when possible."""
-        if response is None:
-            self.logger.warning("No response received for %s", context)
-            return None
-        if response.status_code != 200:
-            return None
-        try:
-            return response.json()
-        except ValueError:
             return response
 
-    def get_api_data(self, village_id, action, params={}):
+        except requests.exceptions.RequestException as e:
+            self.logger.warning(f"[REQUEST] {method.upper()} {url}: {e}")
+            return None
 
-        custom = dict(self.headers)
-        custom['accept'] = "application/json, text/javascript, */*; q=0.01"
-        custom['x-requested-with'] = "XMLHttpRequest"
-        custom['tribalwars-ajax'] = "1"
-        req = {
-            'ajax': action,
-            'village': village_id,
-            'screen': 'api'
-        }
-        req.update(params)
-        payload = f"game.php?{urlencode(req)}"
-        url = urljoin(self.endpoint, payload)
-        res = self.get_url(url, headers=custom)
-        return self._parse_api_response(
-            res,
-            f"get_api_data(action={action}, village={village_id})",
-        )
+    def get_url(self, url, params=None):
+        """
+        Get a URL
+        """
+        return self._make_request("GET", url, params=params)
 
-    def post_api_data(self, village_id, action, params={}, data={}):
+    def post_url(self, url, data=None, params=None):
         """
-        Simulates an API request
+        Post to a URL
         """
-        custom = dict(self.headers)
-        custom['accept'] = "application/json, text/javascript, */*; q=0.01"
-        custom['x-requested-with'] = "XMLHttpRequest"
-        custom['tribalwars-ajax'] = "1"
-        req = {
-            'ajax': action,
-            'village': village_id,
-            'screen': 'api'
-        }
-        req.update(params)
-        payload = f"game.php?{urlencode(req)}"
-        url = urljoin(self.endpoint, payload)
-        if 'h' not in data:
+        # Add CSRF token to data if available
+        if self.last_h:
+            data = data or {}
             data['h'] = self.last_h
-        res = self.post_url(url, data=data, headers=custom)
-        return self._parse_api_response(
-            res,
-            f"post_api_data(action={action}, village={village_id})",
-        )
 
-    def get_api_action(self, village_id, action, params={}, data={}):
+        return self._make_request("POST", url, data=data, params=params)
+
+    def login(self, username, password):
         """
-        Simulates an API action being triggered
+        Login to the game
         """
-        custom = dict(self.headers)
-        custom['Accept'] = "application/json, text/javascript, */*; q=0.01"
-        custom['X-Requested-With'] = "XMLHttpRequest"
-        custom['TribalWars-Ajax'] = "1"
-        req = {
-            'ajaxaction': action,
-            'village': village_id,
-            'screen': 'api'
+        login_url = self.endpoint + "index.php?action=login"
+        login_data = {"user": username, "password": password, "cookie": "true"}
+        response = self.post_url(login_url, data=login_data)
+
+        if response and "game.php" in response.url:
+            self.logger.info(f"[AUTH] Successfully logged in as {username}")
+            return True
+        else:
+            self.logger.warning("[AUTH] Login failed. Check credentials or server status.")
+            return False
+
+    def get_api_action(self, village_id, action, params=None, data=None):
+        """
+        Make a request to the API
+        """
+        url = self.endpoint + "game.php"
+        base_params = {
+            "village": village_id,
+            "ajax": action
         }
-        req.update(params)
-        payload = f"game.php?{urlencode(req)}"
-        url = urljoin(self.endpoint, payload)
-        if 'h' not in data:
-            data['h'] = self.last_h
-        res = self.post_url(url, data=data, headers=custom)
-        return self._parse_api_response(
-            res,
-            f"get_api_action(action={action}, village={village_id})",
-        )
+        if params:
+            base_params.update(params)
+
+        # For GET requests (or if data is not provided)
+        if not data:
+            response = self.get_url(url, params=base_params)
+        # For POST requests
+        else:
+            response = self.post_url(url, data=data, params=base_params)
+
+        if response:
+            try:
+                return response.json()
+            except json.JSONDecodeError:
+                self.logger.warning("[API] Failed to decode JSON from API response.")
+                return None
+        return None
+
+    def post_api_data(self, village_id, action, params=None, data=None):
+        """
+        Alias for POSTing data to the API, ensuring it's a POST request.
+        """
+        return self.get_api_action(village_id, action, params, data=data or {'h': self.last_h})
+
+    def get_api_data(self, village_id, action, params=None):
+        """
+        Alias for GETting data from the API, ensuring it's a GET request.
+        """
+        return self.get_api_action(village_id, action, params, data=None)
+
+    def get_unit_info(self, unit_name, key):
+        """
+        Get information about a unit
+        """
+        # This should ideally be loaded from world config, but hardcoding for now
+        unit_data = {
+            "spear": {"pop": 1, "carry": 25},
+            "sword": {"pop": 1, "carry": 15},
+            "axe": {"pop": 1, "carry": 10},
+            "archer": {"pop": 1, "carry": 10},
+            "spy": {"pop": 2, "carry": 0},
+            "light": {"pop": 4, "carry": 80},
+            "marcher": {"pop": 5, "carry": 50},
+            "heavy": {"pop": 6, "carry": 50},
+            "ram": {"pop": 5, "carry": 0},
+            "catapult": {"pop": 8, "carry": 0},
+            "knight": {"pop": 10, "carry": 100},
+            "snob": {"pop": 100, "carry": 0},
+        }
+        return unit_data.get(unit_name, {}).get(key, 0)

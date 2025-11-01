@@ -1,440 +1,351 @@
-"""
-Anything that has to do with the recruiting of troops
-"""
 import logging
-import math
-import random
 import time
+from datetime import datetime
 
-from core.extractors import Extractor
-from game.resources import ResourceManager
+from game.resources import ResourceManager as Resources
 
 
 class TroopManager:
     """
-    Troopmanager class
+    Recruitment manager that handles everything about troops
     """
-    can_recruit = True
-    can_attack = True
-    can_dodge = False
-    can_scout = True
-    can_farm = True
-    can_gather = True
-    can_fix_queue = True
-    randomize_unit_queue = True
-
-    queue = []
-    troops = {}
-
-    total_troops = {}
-
-    _research_wait = 0
-
-    wrapper = None
-    village_id = None
-    recruit_data = {}
-    game_data = {}
-    logger = None
-    max_batch_size = 50
-
-    _waits = {}
-
-    wanted = {"barracks": {}}
-
-    # Maps troops to the building they are created from
-    unit_building = {
-        "spear": "barracks",
-        "sword": "barracks",
-        "axe": "barracks",
-        "archer": "barracks",
-        "spy": "stable",
-        "light": "stable",
-        "marcher": "stable",
-        "heavy": "stable",
-        "ram": "garage",
-        "catapult": "garage",
-    }
-
-    wanted_levels = {}
-
-    last_gather = 0
 
     resman = None
-    template = None
+    troops = {}
+    total_troops = {}
+    wanted = {}
+    wanted_levels = {}
+    template = {}
+    vil_id = None
+    wrapper = None
+    can_attack = False
+    can_farm = False
+    can_scout = True
+    max_batch_size = 25
+    units_in_village_file = {}
+    logger = None
+    is_recruiting = False
 
     def __init__(self, wrapper=None, village_id=None):
-        """
-        Create the troop manager
-        """
         self.wrapper = wrapper
         self.village_id = village_id
-        self.wait_for = {}
-        self.wait_for[village_id] = {"barracks": 0, "stable": 0, "garage": 0}
-        if not self.resman:
-            self.resman = ResourceManager(
-                wrapper=self.wrapper, village_id=self.village_id
-            )
 
-    def decide_next_recruit(self, game_state, recruit_data, wanted_units, total_troops, disabled_units=None):
+    def time_til_finished(self, f_time):
         """
-        Decides on the next recruitment action based on provided data.
+        :param f_time: timestamp for when a recruitment is finished
+        :return: string with human readable time
         """
-        if disabled_units is None:
-            disabled_units = []
+        f_time = int(f_time)
+        return str(datetime.fromtimestamp(f_time) - datetime.fromtimestamp(time.time()))
 
-        self.game_data = game_state
-        self.recruit_data = recruit_data
-        self.wanted = wanted_units
-        self.total_troops = total_troops
+    def has_building_level(self, building, level):
+        """
+        Check if a building has the required level
+        """
+        if self.resman:
+            if building in self.resman.game_state["village"]["buildings"]:
+                if (
+                        self.resman.game_state["village"]["buildings"][building] >= level
+                ):
+                    return True
+        return False
 
+    def recruit_is_possible(self, building, unit):
+        """
+        Check if a recruitment is possible
+        """
+        if building in self.is_recruiting:
+            return False
+        return True
+
+    def _should_recruit(self, wanted_unit):
+        """
+        (Private) Determines if a unit type should be recruited based on current troop levels.
+        """
+        if wanted_unit not in self.wanted or self.wanted[wanted_unit] == 0:
+            return False
+
+        current_amount = self.total_troops.get(wanted_unit, 0)
+
+        # Simple case: if we have fewer than wanted, recruit
+        if current_amount < self.wanted[wanted_unit]:
+            return True
+
+        # Advanced case for "-1" (fill rest of farm space)
+        # This logic is complex and might be better handled in the decision method itself.
+        # For now, we'll just say yes if it's -1 and we have *some* troops of that type.
+        if self.wanted[wanted_unit] == -1 and current_amount > 0:
+            return True # This is a simplification, actual logic is in `decide_next_recruit`
+
+        return False
+
+    def _decide_recruit_action(self, game_state, recruit_data, unit_type, amount):
+        """
+        (Private) Creates a recruit action dictionary if recruitment is possible.
+        """
+        village_name = game_state['village']['name']
         if not self.logger:
-            village_name = self.game_data["village"]["name"]
+            # Note: The logger name is based on the first village that uses this manager.
+            # This is acceptable as the manager instance is per-village.
             self.logger = logging.getLogger(f"Recruitment: {village_name}")
 
-        for building in self.wanted:
-            if self.wait_for[self.village_id][building] > time.time():
-                human_ts = self.readable_ts(self.wait_for[self.village_id][building])
-                self.logger.info("%s still busy for %s", building, human_ts)
-                continue
+        building = recruit_data[unit_type]["building"]
+        if recruit_data[unit_type]["in_recruitment"]:
+            finish_time = recruit_data[unit_type]["recruitment_finish_time"]
+            human_ts = self.time_til_finished(finish_time)
+            intent = f"{building.capitalize()} is busy for {human_ts}"
+            self.logger.info(f"[TROOPS] {intent}")
+            return {"action": "wait", "building": building, "intent": intent}
 
-            run_selection = list(self.wanted[building].keys())
-            if self.randomize_unit_queue:
-                random.shuffle(run_selection)
+        if not self.total_troops:
+             self.total_troops = {k: 0 for k in recruit_data.keys()}
 
-            resource_check_failed = False
-
-            for wanted_unit in run_selection:
-                if wanted_unit in disabled_units:
+        max_build = {}
+        for wanted_unit in self.wanted:
+            if self._should_recruit(wanted_unit):
+                costs = recruit_data[wanted_unit]["costs"]
+                can_build = self.resman.get_max_build(costs)
+                if can_build == 0:
+                    self.logger.debug(f"[TROOPS] Skipping {wanted_unit} - insufficient resources detected")
                     continue
+                max_build[wanted_unit] = can_build
 
-                if resource_check_failed:
-                    self.logger.debug("Skipping %s - insufficient resources detected", wanted_unit)
-                    continue
+        if not max_build:
+            return {"action": "wait_resources", "intent": "Waiting for resources for all wanted units."}
 
-                amount_wanted = self.wanted[building][wanted_unit]
-                current_amount = self.total_troops.get(wanted_unit, 0)
+        # Determine which unit to prioritize (for now, the one we can build most of)
+        # This can be made more sophisticated later
+        if not unit_type or unit_type not in max_build:
+            unit_type = max(max_build, key=max_build.get)
 
-                if amount_wanted > current_amount:
-                    amount_to_recruit = amount_wanted - current_amount
-                    recruit_action = self._decide_recruit_action(
-                        wanted_unit, amount_to_recruit, building=building
-                    )
+        get_min = max_build[unit_type]
 
-                    if recruit_action["action"] == "recruit":
-                        return recruit_action
+        # Respect the batch size limit
+        if get_min > self.max_batch_size:
+            get_min = self.max_batch_size
 
-                    if recruit_action.get("reason") == "insufficient_resources":
-                        resource_check_failed = True
+        if not recruit_data[unit_type]["is_researched"]:
+            intent = f"Cannot recruit {unit_type}: not researched."
+            self.logger.warning(f"[TROOPS] {intent}")
+            return {"action": "none", "intent": intent}
 
-        return {"action": "idle", "intent": f"Rekrutierungs-Warteschlange aktuell."}
+        if not all(self.has_building_level(req, recruit_data[unit_type]["requirements"][req]) for req in recruit_data[unit_type]["requirements"]):
+            intent = f"Cannot recruit {unit_type}: requirements not met."
+            self.logger.warning(f"[TROOPS] {intent}")
+            return {"action": "none", "intent": intent}
 
-    def _decide_recruit_action(self, unit_type, amount=10, building="barracks"):
+        if get_min > 0:
+            intent = f"Recruiting {get_min}x {unit_type}"
+            return {
+                "action": "recruit",
+                "building": recruit_data[unit_type]["building"],
+                "unit": unit_type,
+                "amount": get_min,
+                "intent": intent
+            }
+        else:
+            return {
+                "action": "wait_resources",
+                "unit": unit_type,
+                "intent": f"Waiting for resources for {unit_type}."
+            }
+
+    def get_template_action(self, building_levels):
         """
-        Makes a decision about recruiting a single unit type.
-        """
-        self.logger.info("Deciding recruitment for %d %s", amount, unit_type)
-
-        if amount > self.max_batch_size:
-            amount = self.max_batch_size
-
-        if not self.recruit_data or unit_type not in self.recruit_data:
-            self.logger.warning("Recruitment of %s failed: not researched or unavailable.", unit_type)
-            return {"action": "research", "unit": unit_type, "intent": f"Forschung für {unit_type} benötigt."}
-
-        resources = self.recruit_data[unit_type]
-        if not resources or not resources.get("requirements_met", False):
-            self.logger.warning("Recruitment of %s failed: requirements not met.", unit_type)
-            return {"action": "research", "unit": unit_type, "intent": f"Forschung für {unit_type} benötigt."}
-
-        get_min = self.get_min_possible(resources)
-        if get_min == 0:
-            self.logger.info("Recruitment of %s failed: not enough resources.", unit_type)
-            self.reserve_resources(resources, amount, 0, unit_type)
-            return {"action": "wait_resources", "reason": "insufficient_resources", "unit": unit_type, "intent": f"Warte auf Rohstoffe für {unit_type}."}
-
-        if get_min < amount:
-            self.logger.info("Recruitment of %d %s was set to %d because of resources", amount, unit_type, get_min)
-            amount = get_min
-
-        # No need to reserve resources anymore!
-        if f"recruitment_{unit_type}" in self.resman.requested:
-            self.resman.requested.pop(f"recruitment_{unit_type}", None)
-
-        self.wait_for[self.village_id][building] = int(time.time()) + (amount * int(resources["build_time"]))
-
-        return {
-            "action": "recruit",
-            "building": building,
-            "unit": unit_type,
-            "amount": amount,
-            "intent": f"Rekrutiere {amount} {unit_type}."
-        }
-
-    def get_min_possible(self, entry):
-        """
-        Calculates which units are needed the most
-        To get some balance of the total amount
-        """
-        return min(
-            [
-                math.floor(self.game_data["village"]["wood"] / entry["wood"]),
-                math.floor(self.game_data["village"]["stone"] / entry["stone"]),
-                math.floor(self.game_data["village"]["iron"] / entry["iron"]),
-                math.floor(
-                    (
-                            self.game_data["village"]["pop_max"]
-                            - self.game_data["village"]["pop"]
-                    )
-                    / entry["pop"]
-                ),
-            ]
-        )
-
-    def get_template_action(self, levels):
-        """
-        Read data from templates and determine the troops based op building progression.
-        Handles both the legacy format and the new staged JSON format.
+        Gets the current troop goals based on building levels from a staged template.
         """
         if not self.logger:
             self.logger = logging.getLogger(f"TroopManager:{self.village_id}")
 
-        if not self.template:
-            return None
+        if "stages" in self.template:
+            self.logger.debug("[TROOPS] Processing new staged unit template.")
+            # New template format with stages
 
-        # --- NEW: Staged Template Logic ---
-        # Check if it's the new format by inspecting the first element
-        if isinstance(self.template, list) and self.template and isinstance(self.template[0], dict) and 'stage' in self.template[0]:
-            self.logger.debug("Processing new staged unit template.")
+            # Sort stages just in case they are not in order
+            sorted_stages = sorted(self.template["stages"], key=lambda x: x["stage"])
 
-            # Iterate through stages in reverse to find the highest achievable stage
-            for stage in sorted(self.template, key=lambda x: x['stage'], reverse=True):
-                prereqs_met = True
-                for req in stage.get("pre_requisites", []):
-                    if req["type"] == "building":
-                        if levels.get(req["name"], 0) < req["level"]:
-                            prereqs_met = False
-                            break # This prerequisite is not met
+            # Find the highest stage that meets prerequisites
+            active_stage = None
+            for stage in reversed(sorted_stages):
+                prereqs = stage.get("prerequisites", {})
+                if all(building_levels.get(b, 0) >= prereqs[b] for b in prereqs):
+                    active_stage = stage
+                    break
 
-                if prereqs_met:
-                    self.logger.info(f"Current active unit stage: {stage['name']} (Stage {stage['stage']})")
-                    # This is the active stage, transform its data into the legacy format
-                    wanted_build = {}
-                    for unit_req in stage.get("units", []):
-                        building = self.unit_building.get(unit_req["name"])
-                        if building:
-                            if building not in wanted_build:
-                                wanted_build[building] = {}
-                            wanted_build[building][unit_req["name"]] = unit_req["amount"]
-
-                    wanted_upgrades = {}
-                    for research_req in stage.get("research", []):
-                        wanted_upgrades[research_req["name"]] = research_req["level"]
-
-                    self.wanted_levels = wanted_upgrades
-
-                    # Return in the format expected by village.py
-                    return {"build": wanted_build, "upgrades": wanted_upgrades, "farm": stage.get("farm", None)}
-
-            self.logger.warning("No stage prerequisites met in the unit template.")
-            return {"build": {}, "upgrades": {}} # Return empty dict if no stages are active
-
-        # --- LEGACY: Old Template Logic ---
-        self.logger.debug("Processing legacy unit template.")
-        last = None
-        wanted_upgrades = {}
-        for x in self.template:
-            if "building" not in x or x["building"] not in levels:
-                return last
-
-            if "level" not in x or x["level"] > levels[x["building"]]:
-                return last
-
-            last = x
-            if "upgrades" in x:
-                for unit in x["upgrades"]:
-                    if (
-                            unit not in wanted_upgrades
-                            or x["upgrades"][unit] > wanted_upgrades[unit]
-                    ):
-                        wanted_upgrades[unit] = x["upgrades"][unit]
-
-            self.wanted_levels = wanted_upgrades
-        return last
-
-    def research_time(self, time_str):
-        """
-        Calculates unit research time
-        """
-        parts = [int(x) for x in time_str.split(":")]
-        return parts[2] + (parts[1] * 60) + (parts[0] * 60 * 60)
+            if active_stage:
+                self.logger.info(f"[TROOPS] Current active unit stage: {active_stage['name']} (Stage {active_stage['stage']})")
+                self.wanted = active_stage.get("build", {})
+                self.wanted_levels = active_stage.get("upgrade", {})
+                self.can_farm = active_stage.get("farm", False)
+                self.can_attack = active_stage.get("attack", False)
+                return active_stage
+            else:
+                self.logger.warning("[TROOPS] No stage prerequisites met in the unit template.")
+                return None
+        else:
+            # Legacy template support
+            self.logger.debug("[TROOPS] Processing legacy unit template.")
+            self.wanted = self.template.get("build", {})
+            self.wanted_levels = self.template.get("upgrade", {})
+            self.can_farm = self.template.get("farm", False)
+            self.can_attack = self.template.get("attack", False)
+            return self.template
 
     def decide_next_research(self, smith_data):
         """
-        Decides on the next research action.
+        (BLL) Decides the next unit to research based on wanted levels.
+        Returns a research_action dictionary.
         """
-        self.logger.debug("Managing Upgrades")
-        if self._research_wait > time.time():
-            self.logger.debug(
-                "Smith still busy for %d seconds", int(self._research_wait - time.time())
-            )
-            return {"action": "idle", "intent": "Schmiede beschäftigt."}
-
-        unit_levels = self.wanted_levels
-        if not unit_levels:
-            self.logger.debug("Not upgrading because nothing is requested")
-            return {"action": "idle", "intent": "Keine Upgrades benötigt."}
+        self.logger.debug("[TROOPS] Managing Upgrades")
+        if not self.wanted_levels:
+            self.logger.debug("[TROOPS] Not upgrading because nothing is requested in template.")
+            return {"action": "none", "intent": "No research goals defined."}
 
         if not smith_data:
-            self.logger.debug("Error reading smith data")
-            return {"action": "error", "intent": "Fehler beim Lesen der Schmiede-Daten."}
+            self.logger.debug("[TROOPS] Error reading smith data.")
+            return {"action": "none", "intent": "Could not read smith data."}
 
-        for unit_type in unit_levels:
-            if unit_type not in smith_data.get("available", {}):
-                self.logger.warning("Unit %s not available in smith.", unit_type)
+        for unit_type, target_level in self.wanted_levels.items():
+            if unit_type not in smith_data:
+                self.logger.warning(f"[TROOPS] Unit {unit_type} not available in smith.")
                 continue
 
-            wanted_level = unit_levels[unit_type]
-            data = smith_data["available"][unit_type]
-            current_level = int(data["level"])
+            current_level = smith_data[unit_type]["level"]
+            if current_level < target_level:
+                # Check if we can research the *next* level
+                next_level_data = smith_data[unit_type].get(str(current_level + 1), {})
 
-            if current_level < wanted_level and data.get("can_research"):
-                if data.get("research_error"):
-                    self.logger.debug("Cannot research %s due to research error (resources?).", unit_type)
-                    # Request resources if needed
-                    r = True
-                    if data["wood"] > self.game_data["village"]["wood"]:
-                        req = data["wood"] - self.game_data["village"]["wood"]
-                        self.resman.request(source="research", resource="wood", amount=req)
-                        r = False
-                    if data["stone"] > self.game_data["village"]["stone"]:
-                        req = data["stone"] - self.game_data["village"]["stone"]
-                        self.resman.request(source="research", resource="stone", amount=req)
-                        r = False
-                    if data["iron"] > self.game_data["village"]["iron"]:
-                        req = data["iron"] - self.game_data["village"]["iron"]
-                        self.resman.request(source="research", resource="iron", amount=req)
-                        r = False
-                    continue
+                if not next_level_data:
+                     continue # Max level reached or data missing
 
-                if data.get("error_buildings"):
-                    self.logger.debug("Cannot research %s due to missing buildings.", unit_type)
-                    continue
+                if next_level_data.get("can_research", False):
+                    costs = next_level_data["costs"]
+                    if self.resman.has_res(costs):
+                        return {
+                            "action": "research",
+                            "unit": unit_type,
+                            "intent": f"Researching {unit_type} to level {current_level + 1}"
+                        }
+                    else:
+                        # Don't block other research, just note we're waiting
+                        continue
 
-                if "research_time" in data:
-                     self._research_wait = time.time() + self.research_time(data["research_time"])
+        return {"action": "none", "intent": "All research goals met or waiting for resources."}
 
-                return {
-                    "action": "research",
-                    "unit": unit_type,
-                    "intent": f"Erforsche {unit_type} auf Stufe {current_level + 1}."
+
+    def _add_recruit_resource_request(self, recruit_data, unit_type, create_amount):
+        """
+        (Private) Adds a resource request to the ResourceManager for recruitment.
+        """
+        if create_amount > 0 and unit_type in recruit_data:
+            costs = recruit_data[unit_type]["costs"]
+            res_needed = {res: costs[res] * create_amount for res in costs}
+            self.logger.debug(f"[TROOPS] Requesting resources to recruit {create_amount} of {unit_type}")
+            self.resman.add_request(
+                vil_id=self.village_id,
+                prio=5,
+                req_id=f"recruit_{unit_type}",
+                w_time=int(time.time() + 3600),  # Request for an hour from now
+                wait_time=3600,
+                res=res_needed,
+            )
+
+    def decide_next_gather(self, village_data, troops_at_home, selection, disabled_units, advanced_gather):
+        actions = []
+        scavenging_squads = village_data.get("scavenging_squads", {})
+
+        for option_id, option_data in village_data.get("scavenging_options", {}).items():
+            if option_data["is_locked"]:
+                if advanced_gather and self.resman.has_res(option_data["unlock_costs"]):
+                    self.logger.info(f"[GATHER] Decided to unlock gather option {option_id}.")
+                    actions.append({"action": "unlock_gather", "option_id": option_id})
+                else:
+                    self.logger.debug(f"[GATHER] Cannot afford to unlock gather option {option_id}.")
+                continue
+
+            if not option_data.get("squad_id") and option_id not in scavenging_squads:
+                # This option is available, let's decide if we send troops
+
+                # Simple strategy: send all available troops of a certain type
+                # More complex strategies can be added later
+
+                # Determine candidate units (not disabled, present at home)
+                candidate_units = {
+                    unit: troops_at_home[unit]
+                    for unit in option_data["allowed_units"]
+                    if unit not in disabled_units and troops_at_home.get(unit, 0) > 0
                 }
 
-        return {"action": "idle", "intent": "Upgrade-Level aktuell."}
+                if not candidate_units:
+                    continue # No suitable troops for this option
 
-    def reserve_resources(self, resources, wanted_times, has_times, unit_type):
+                # Simple selection logic: use the most numerous unit
+                unit_to_send = max(candidate_units, key=candidate_units.get)
+                amount_to_send = candidate_units[unit_to_send]
+
+                # Ensure we don't send more than the capacity allows
+                unit_carry = village_data["unit_carry"][unit_to_send]
+                if amount_to_send * unit_carry > option_data["carry_max"]:
+                    amount_to_send = option_data["carry_max"] // unit_carry
+
+                if amount_to_send > 0:
+                    payload = {
+                        "squad_requests[0][option_id]": option_id,
+                        f"squad_requests[0][unit_counts][{unit_to_send}]": amount_to_send,
+                    }
+                    intent = f"Sending {amount_to_send} {unit_to_send} to gather."
+                    actions.append({"action": "gather", "intent": intent, "payload": payload})
+
+                    # Assume we can only send one squad per cycle for simplicity
+                    return actions
+
+        return actions
+
+    def decide_next_recruit(self, game_state, recruit_data, wanted_units, total_troops, disabled_units):
         """
-        Reserve resources for a certain recruiting action
+        (BLL) Main decision-making function for recruitment.
         """
-        # Resources per unit, batch wanted, batch already recruiting
-        create_amount = wanted_times - has_times
-        self.logger.debug(f"Requesting resources to recruit %d of %s", create_amount, unit_type)
-        for res in ["wood", "stone", "iron"]:
-            req = resources[res] * (wanted_times - has_times)
-            self.resman.request(source=f"recruitment_{unit_type}", resource=res, amount=req)
+        self.total_troops = total_troops
+        self.wanted = wanted_units
 
-    def _unlock_gather_options(self, village_data):
-        """
-        Checks for locked gather options and unlocks them if resources are available.
-        """
-        if not village_data or 'options' not in village_data:
-            return []
+        # Remove disabled units from wanted list to prevent errors
+        for unit in disabled_units:
+            self.wanted.pop(unit, None)
 
-        unlock_actions = []
-        for option_id in sorted(village_data['options'].keys()):
-            option = village_data['options'][option_id]
+        # Find the unit with the biggest deficit
+        best_unit = None
+        max_deficit = 0
 
-            if option.get('is_locked') and option.get('unlock_costs'):
-                costs = option['unlock_costs']
-                can_afford = all(self.game_data['village'].get(res, 0) >= cost for res, cost in costs.items())
+        for unit, target_amount in self.wanted.items():
+            if target_amount == 0:
+                continue
 
-                if can_afford:
-                    self.logger.info(f"Decided to unlock gather option {option_id}.")
-                    unlock_actions.append({
-                        "action": "unlock_gather",
-                        "option_id": option_id,
-                        "intent": f"Schalte Sammel-Option {option_id} frei."
-                    })
-                else:
-                    self.logger.debug(f"Cannot afford to unlock gather option {option_id}.")
+            current_amount = self.total_troops.get(unit, 0)
 
-        return unlock_actions
+            if target_amount == -1: # Fill farm space logic
+                # This is complex. For now, we'll treat it as a low-priority goal.
+                # A better implementation would calculate remaining farm space.
+                deficit = 1 # Small deficit to give it some priority
+            else:
+                deficit = target_amount - current_amount
 
-    def decide_next_gather(self, village_data, troops_at_home, selection=1, disabled_units=None, advanced_gather=True):
-        """
-        Decides on the next gathering action.
-        """
-        if disabled_units is None:
-            disabled_units = []
-        if not self.can_gather:
-            return []
+            if deficit > max_deficit:
+                max_deficit = deficit
+                best_unit = unit
 
-        gather_actions = []
+        if not best_unit:
+            return {"action": "none", "intent": "All troop goals met."}
 
-        # First, decide if any locked options can be unlocked
-        unlock_actions = self._unlock_gather_options(village_data)
-        if unlock_actions:
-            return unlock_actions # Prioritize unlocking
+        # Now, get the specific action for the prioritized unit
+        action = self._decide_recruit_action(
+            game_state=game_state,
+            recruit_data=recruit_data,
+            unit_type=best_unit,
+            amount=max_deficit  # The 'amount' is recalculated inside based on resources
+        )
 
-        available_troops = troops_at_home.copy()
+        # If we are waiting for resources, add a request to resman
+        if action.get("action") == "wait_resources" and "unit" in action:
+            self._add_recruit_resource_request(recruit_data, action["unit"], self.max_batch_size)
 
-        haul_dict = {
-            "spear": 25, "sword": 15, "heavy": 50, "axe": 10, "light": 80,
-            "archer": 10, "marcher": 50
-        }
-
-        options_to_consider = list(reversed(sorted(village_data.get('options', {}).keys())))
-
-        if advanced_gather:
-            # Advanced: Assign all available troops to the best available slots
-            for option_id in options_to_consider:
-                option = village_data['options'][option_id]
-                if int(option_id) <= selection and not option.get('is_locked') and not option.get('scavenging_squad'):
-                    payload = { "squad_requests[0][option_id]": str(option_id) }
-                    total_carry = 0
-                    troops_assigned = False
-                    
-                    for unit, count in available_troops.items():
-                        if unit in haul_dict and unit not in disabled_units and count > 0:
-                            payload[f"squad_requests[0][candidate_squad][unit_counts][{unit}]"] = str(count)
-                            total_carry += haul_dict[unit] * count
-                            troops_assigned = True
-                    
-                    if troops_assigned:
-                        payload["squad_requests[0][candidate_squad][carry_max]"] = str(total_carry)
-                        gather_actions.append({
-                            "action": "gather",
-                            "payload": payload,
-                            "intent": f"Sende alle Truppen zum Sammeln (Option {option_id})."
-                        })
-                        # Since we send all troops, we can break
-                        break
-        else:
-            # Basic: Send all troops to the first available slot
-            # This logic is simpler and might not be necessary if advanced is default
-            pass
-
-        return gather_actions
-
-
-    def readable_ts(self, seconds):
-        """
-        Human readable timestamp
-        """
-        seconds -= time.time()
-        seconds = seconds % (24 * 3600)
-        hour = seconds // 3600
-        seconds %= 3600
-        minutes = seconds // 60
-        seconds %= 60
-
-        return "%d:%02d:%02d" % (hour, minutes, seconds)
+        return action

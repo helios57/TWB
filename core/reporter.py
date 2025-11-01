@@ -1,238 +1,184 @@
-"""
-This module can be used in order to report actions to a file or remote MySQL server
-"""
+import json
 import logging
+import os
 import time
-import warnings
 
-try:
-    import pymysql
-
-    HAS_PYMYSQL = True
-except ImportError:
-    HAS_PYMYSQL = False
+from core.filemanager import FileManager
 
 
-class RemoteReporter:
+class Reporter:
     """
-    Base class for a reporter object
+    Reporting engine that can report to different sources like discord, file, mysql etc.
     """
-    def report(self, connection, village_id, action, data):
-        """
-        Sets report data
-        """
-        return
 
-    def add_data(self, connection, village_id, data_type, data):
-        """
-        Sets type-specific data
-        """
-        return
+    webhook_url = None
+    file_log = False
+    file_log_path = None
+    mysql = False
+    mysql_con = None
+    mysql_insert_queue = []
+    logger = None
 
-    def get_config(self, connection, village_id, action, data):
-        """
-        Gets the configuration from reporter
-        """
-        return
+    def __init__(self, webhook_url=None, file_log=False, file_log_path=None, mysql=False, mysql_con=None):
+        self.webhook_url = webhook_url
+        self.file_log = file_log
+        self.file_log_path = file_log_path
+        self.mysql = mysql
+        if mysql_con:
+            self.setup_mysql(mysql_con)
 
-    def setup(self, connection):
-        """
-        Set-up the reporter
-        """
-        return
+        self.logger = logging.getLogger("Reporter")
 
+    def report(self, village_id, r_type, message, data=None):
+        """
+        Report a message to the different sources
+        :param village_id: village id
+        :param r_type: report type
+        :param message: message to report
+        :param data: optional data to report
+        """
+        if self.file_log:
+            self.report_to_file(village_id, r_type, message, data)
+        if self.mysql and self.mysql_con:
+            self.report_to_mysql(village_id, r_type, message, data)
+        # Discord reporting can be added here if needed
 
-class FileReporter:
-    """
-    Reporter that writes data to a text file
-    """
-    def report(self, connection, village_id, action, data):
+    def add_data(self, village_id, key, data):
         """
-        Writes an entry to a report file
+        Add data to the data cache
+        :param village_id: village id
+        :param key: key to store the data under
+        :param data: data to store
         """
-        with open(connection, 'a', encoding="utf-8") as f:
-            f.write("%d - %s - %s - %s\n" % (time.time(), village_id, action, data))
-        return
+        if self.mysql and self.mysql_con:
+            self.add_data_mysql(village_id, key, data)
 
-    def add_data(self, connection, village_id, data_type, data):
+    def report_to_file(self, village_id, r_type, message, data=None):
         """
-        Unused for this type
+        Report a message to a file
+        :param village_id: village id
+        :param r_type: report type
+        :param message: message to report
+        :param data: optional data to report
         """
-        return
+        if not self.file_log_path:
+            return
 
-    def get_config(self, connection, village_id, action, data):
-        """
-        Unused for this type
-        """
-        return
+        log_entry = {
+            "timestamp": time.time(),
+            "village_id": village_id,
+            "type": r_type,
+            "message": message,
+            "data": data
+        }
 
-    def setup(self, connection):
-        """
-        Make sure the logfile exists
-        """
-        with open(connection, 'w', encoding="utf-8") as f:
-            f.write("Starting bot at %d\n" % time.time())
+        # Append to a general log file
+        with open(os.path.join(self.file_log_path, "reporter.log"), "a") as f:
+            f.write(json.dumps(log_entry) + "\n")
 
+    def add_data_mysql(self, village_id, key, data):
+        """
+        Add data to the data cache in mysql
+        :param village_id: village id
+        :param key: key to store the data under
+        :param data: data to store
+        """
+        ts = int(time.time())
+        query = "INSERT INTO `data` (`village_id`, `key`, `value`, `timestamp`) VALUES (%s, %s, %s, %s) ON DUPLICATE KEY UPDATE value = %s, timestamp = %s"
+        self.mysql_insert_queue.append((query, (village_id, key, data, ts, data, ts)))
+        self.process_mysql_queue()
 
-class MySQLReporter(RemoteReporter):
-    """
-    Uses a (remote) MySQL server for logging
-    """
-    @staticmethod
-    def connection_from_object(cobj):
+    def report_to_mysql(self, village_id, r_type, message, data=None):
         """
-        Fetches variables from a connection config
+        Report a message to mysql
+        :param village_id: village id
+        :param r_type: report type
+        :param message: message to report
+        :param data: optional data to report
         """
-        return pymysql.connect(
-            host=cobj['host'],
-            port=cobj['port'],
-            user=cobj['user'],
-            password=cobj['password'],
-            database=cobj['database'])
+        ts = int(time.time())
+        query = "INSERT INTO `logs` (`village_id`, `type`, `message`, `data`, `timestamp`) VALUES (%s, %s, %s, %s, %s)"
+        log_data = (village_id, r_type, message, json.dumps(data) if data else None, ts)
+        self.mysql_insert_queue.append((query, log_data))
+        self.process_mysql_queue()
 
-    def report(self, connection, village_id, action, data):
+    def process_mysql_queue(self, force=False):
         """
-        Add a report entry
+        Process the mysql insert queue
+        :param force: force processing the queue
         """
-        con = MySQLReporter.connection_from_object(connection)
-        cur = con.cursor()
-        cur.execute("INSERT INTO twb_logs (village, action, data, ts) VALUES (%s, %s, %s, NOW())",
-                    (village_id, action, data))
-        con.commit()
-        cur.close()
-        con.close()
+        if not self.mysql_con or not self.mysql:
+            return
 
-    def add_data(self, connection, village_id, data_type, data):
-        """
-        Saves data to a remote MySQL server
-        """
-        con = self.connection_from_object(connection)
-        cur = con.cursor()
-        cur.execute(
-            "SELECT * FROM twb_data WHERE village_id = %s AND data_type = %s",
-            (village_id, data_type)
-        )
-        if cur.rowcount > 0:
-            cur.execute(
-                "UPDATE twb_data SET data = %s, last_update = NOW() WHERE village_id = %s AND data_type = %s",
-                (data, village_id, data_type)
-            )
-        else:
-            cur.execute(
-                "INSERT INTO twb_data (village_id, data_type, data, last_update) VALUES (%s, %s, %s, NOW())",
-                (village_id, data_type, data)
-            )
-        con.commit()
-        cur.close()
-        con.close()
+        if len(self.mysql_insert_queue) > 10 or force:
+            try:
+                cursor = self.mysql_con.cursor()
+                for query, data in self.mysql_insert_queue:
+                    cursor.execute(query, data)
+                self.mysql_con.commit()
+                self.mysql_insert_queue = []
+            except Exception as e:
+                self.logger.error("[REPORTER] Error processing MySQL queue: %s", e)
 
-    def setup(self, connection):
+    def setup_mysql(self, mysql_con):
         """
-        Creates the initial database tables
+        Setup the mysql database
+        :param mysql_con: mysql connection data
         """
         try:
-            con = self.connection_from_object(connection)
-            query_data = """CREATE TABLE IF NOT EXISTS `twb_data` (
-                    `id`  int NOT NULL AUTO_INCREMENT ,
-                    `village_id`  int NULL ,
-                    `data_type`  varchar(50) NULL ,
-                    `data`  text NULL ,
-                    `last_update`  datetime NULL ,
-                    PRIMARY KEY (`id`)
-                    )"""
-            query_logs = """CREATE TABLE IF NOT EXISTS `twb_logs` (
-                            `id`  int NOT NULL AUTO_INCREMENT ,
-                            `village_id`  int NULL ,
-                            `action`  varchar(50) NULL ,
-                            `data`  text NULL ,
-                            `ts`  datetime NULL ,
-                            PRIMARY KEY (`id`)
-                            )"""
-            cur = con.cursor()
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore")
-                cur.execute(query_data)
-                cur.execute(query_logs)
-                con.commit()
-            cur.close()
-            con.close()
-            return True
+            import pymysql
+        except ImportError:
+            self.logger.error("[REPORTER] pymysql is required for MYSQL logging. You can install it using: pip install pymysql")
+            self.mysql = False
+            return
+
+        try:
+            self.mysql_con = pymysql.connect(
+                host=mysql_con["host"],
+                user=mysql_con["user"],
+                password=mysql_con["password"],
+                database=mysql_con["database"],
+                port=mysql_con.get("port", 3306)
+            )
+
+            cursor = self.mysql_con.cursor()
+
+            # Create logs table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS `logs` (
+                    `id` INT NOT NULL AUTO_INCREMENT,
+                    `village_id` VARCHAR(10) NOT NULL,
+                    `type` VARCHAR(50) NOT NULL,
+                    `message` TEXT,
+                    `data` JSON,
+                    `timestamp` INT NOT NULL,
+                    PRIMARY KEY (`id`),
+                    INDEX `village_id` (`village_id`),
+                    INDEX `type` (`type`)
+                )
+            """)
+
+            # Create data table
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS `data` (
+                    `village_id` VARCHAR(10) NOT NULL,
+                    `key` VARCHAR(50) NOT NULL,
+                    `value` JSON,
+                    `timestamp` INT NOT NULL,
+                    PRIMARY KEY (`village_id`, `key`)
+                )
+            """)
+
+            self.mysql_con.commit()
+            self.logger.info("[REPORTER] MySQL set-up complete.")
         except Exception as e:
-            print(f"MYSQL ERROR: {e}")
-            return False
+            self.logger.error("[REPORTER] Unable to set-up MySQL logging, disabling! Error: %s", e)
+            self.mysql = False
 
-
-class ReporterObject:
-    """
-    Base reporting object for a remote/local logger
-    """
-    enabled = False
-    object = None
-    logger = logging.getLogger("RemoteLogger")
-    connection = None
-
-    def __init__(self, enabled=False, connection_string=None):
+    def __del__(self):
         """
-        Detects reporter configuration
+        Destructor to ensure the queue is processed before exit
         """
-        if enabled and connection_string:
-            self.enabled = True
-            self.setup(connection_string=connection_string)
-
-    def setup(self, connection_string):
-        """
-        Fetchers the used reporter
-        """
-        if connection_string.startswith('mysql://'):
-            if not HAS_PYMYSQL:
-                self.logger.error("pymysql is required for MYSQL logging\nYou can install it using pip install pymysql")
-                self.enabled = False
-                return
-
-            parameters = connection_string.split('://')[1]
-            creds, host_and_db = parameters.split('@')
-            username, password = creds.split(':')
-            host, database = host_and_db.split('/')
-            port = 3306
-            if ":" in host:
-                host, port = host.split(":")
-                port = int(port)
-            self.connection = {"host": host, "port": port, "user": username, "password": password, "database": database}
-            self.object = MySQLReporter()
-            if self.object.setup(self.connection):
-                self.logger.info("MySQL set-up complete")
-            else:
-                self.logger.info("Unable to set-up MySQL logging, disabling!")
-                self.enabled = False
-        elif connection_string.startswith('file://'):
-            outfile = connection_string.split("://")[1]
-            outfile = outfile.replace('{ts}', str(int(time.time())))
-            self.connection = outfile
-            self.object = FileReporter()
-            self.object.setup(self.connection)
-        else:
-            self.object = RemoteReporter()
-
-    def report(self, village_id, action, data):
-        """
-        Run the report function on the installed reporter
-        """
-        if self.enabled:
-            return self.object.report(self.connection, village_id, action, data)
-        return
-
-    def add_data(self, village_id, data_type, data):
-        """
-        Run the add_data function on the installed reporter
-        """
-        if self.enabled:
-            return self.object.add_data(self.connection, village_id, data_type, data)
-        return
-
-    def get_config(self, village_id, action, data):
-        """
-        Run the get_config function on the installed reporter
-        """
-        if self.enabled:
-            return self.object.get_config(self.connection, village_id, action, data)
-        return
+        self.process_mysql_queue(force=True)
+        if self.mysql_con:
+            self.mysql_con.close()

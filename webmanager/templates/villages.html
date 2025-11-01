@@ -23,9 +23,9 @@
                     <small class="text-muted">#{{ village_id }}</small>
                 </td>
                 <td>
-                    <img src="/static/images/wood.png" title="Holz" /> {{ data.bot[village_id].resources.wood }}
-                    <img src="/static/images/stone.png" title="Lehm" /> {{ data.bot[village_id].resources.stone }}
-                    <img src="/static/images/iron.png" title="Eisen" /> {{ data.bot[village_id].resources.iron }}
+                    <img src="/static/images/wood.png" title="Holz" /> {{ "%.0f"|format(data.bot[village_id].resources.wood) }}
+                    <img src="/static/images/stone.png" title="Lehm" /> {{ "%.0f"|format(data.bot[village_id].resources.stone) }}
+                    <img src="/static/images/iron.png" title="Eisen" /> {{ "%.0f"|format(data.bot[village_id].resources.iron) }}
                 </td>
                 <td>
                     <img src="/static/images/worker.png" title="Bevölkerung" /> {{ data.bot[village_id].resources['pop'] }}
@@ -40,11 +40,25 @@
             </tr>
             {% if data.bot[village_id].troops %}
             <tr class="troop-details">
-                <td colspan="7">
+                <td colspan="3">
                     <small>
+                    <strong>Truppen:</strong>
                     {% for unit in data.bot[village_id].troops %}
                         <img src="/static/images/unit_{{unit}}.png" alt="{{unit}}" title="{{unit}}" style="height: 16px;"/> {{ data.bot[village_id].troops[unit] }}
                     {% endfor %}
+                    </small>
+                </td>
+                <td colspan="4">
+                    <small>
+                        <strong>Bau-Plan: </strong> {{ data.bot[village_id].action_plan_build | join(', ') }}<br>
+                        <strong>Rekrutierungs-Ziele: </strong>
+                        {% for unit, count in data.bot[village_id].action_plan_recruit.items() %}
+                            {{unit}}: {{count}}{% if not loop.last %},{% endif %}
+                        {% endfor %}<br>
+                        <strong>Forschungs-Ziele: </strong>
+                        {% for unit, level in data.bot[village_id].action_plan_research.items() %}
+                            {{unit}}: {{level}}{% if not loop.last %},{% endif %}
+                        {% endfor %}
                     </small>
                 </td>
             </tr>

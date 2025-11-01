@@ -64,11 +64,11 @@ class Village:
 
     def get_config(self, section, parameter, default=None):
         if section not in self.config:
-            self.logger.warning("Configuration section %s does not exist!", section)
+            self.logger.warning("[SYSTEM] Configuration section %s does not exist!", section)
             return default
         if parameter not in self.config[section]:
             self.logger.warning(
-                "Configuration parameter %s:%s does not exist!", section, parameter
+                "[SYSTEM] Configuration parameter %s:%s does not exist!", section, parameter
             )
             return default
         return self.config[section][parameter]
@@ -79,7 +79,7 @@ class Village:
         vdata = self.config["villages"][village_id]
         if parameter not in vdata:
             self.logger.warning(
-                "Village %s configuration parameter %s does not exist!",
+                "[SYSTEM] Village %s configuration parameter %s does not exist!",
                 village_id, parameter
             )
             return default
@@ -106,7 +106,7 @@ class Village:
             self.logger = logging.getLogger(
                 "Village %s" % self.game_data["village"]["name"]
             )
-            self.logger.info("Read game state for village")
+            self.logger.info("[SYSTEM] Initialized")
 
             self.wrapper.reporter.report(
                 self.village_id,
@@ -115,7 +115,7 @@ class Village:
             )
         else:
             self.logger = logging.getLogger(f"Village {self.village_id}")
-            self.logger.error("Could not read game state for village")
+            self.logger.error("[SYSTEM] Could not read game state for village")
 
         if (
                 self.village_set_name
@@ -206,7 +206,7 @@ class Village:
         )
 
         if self.def_man.under_attack and not self.last_attack:
-            self.logger.warning("Village under attack!")
+            self.logger.warning("[DEFENCE] Village under attack!")
             self.wrapper.reporter.report(
                 self.village_id,
                 "TWB_ATTACK",
@@ -217,7 +217,7 @@ class Village:
     def run_quest_actions(self, config):
         if self.get_config(section="world", parameter="quests_enabled", default=False):
             if self.get_quests():
-                self.logger.info("There where completed quests, re-running function")
+                self.logger.info("[SYSTEM] Completed quests found, re-running village loop.")
                 self.wrapper.reporter.report(
                     self.village_id, "TWB_QUEST", "Completed quest"
                 )
@@ -230,7 +230,7 @@ class Village:
 
             daily_reward = Extractor.get_daily_reward(self.wrapper.last_response)
             if daily_reward:
-                self.logger.info("Collecting daily reward")
+                self.logger.info("[SYSTEM] Collecting daily reward.")
                 self.wrapper.get_api_action(
                     action="collect_daily_reward",
                     params={"screen": "daily_bonus", "type": daily_reward},
@@ -252,7 +252,7 @@ class Village:
         else:
             unit_config = self.get_village_config(self.village_id, "units")
             if not unit_config:
-                self.logger.warning("Village %s does not have 'units' config override, falling back to default.", self.village_id)
+                self.logger.warning("[SYSTEM] Village %s does not have 'units' config override, falling back to default.", self.village_id)
                 unit_config = self.get_config("units", "default", "basic")
 
         try:
@@ -260,7 +260,7 @@ class Village:
                 category="troops", template=unit_config, output_json=True
             )
         except Exception as e:
-            self.logger.error("Could not load unit template file '%s': %s", unit_config, e)
+            self.logger.error("[TROOPS] Could not load unit template file '%s': %s", unit_config, e)
             raise InvalidUnitTemplateException
 
     def _complete_actions(self, text):
@@ -274,7 +274,7 @@ class Village:
             quickbuild_url = f"game.php?village={self.village_id}&screen=main&ajaxaction=build_order_reduce"
             quickbuild_url += f"&h={self.wrapper.last_h}&id={res.group(1)}&destroy=0"
             result = self.wrapper.get_url(quickbuild_url)
-            self.logger.debug("Quick build action was completed")
+            self.logger.debug("[BUILD] Quick build action was completed")
             return result
         return None
 
@@ -285,7 +285,7 @@ class Village:
         if self.get_config(
                 section="market", parameter="auto_trade", default=False
         ) and self.builder.get_level("market"):
-            self.logger.info("Managing market")
+            self.logger.info("[MARKET] Managing market...")
             self.resman.trade_max_per_hour = self.get_config(
                 section="market", parameter="trade_max_per_hour", default=1
             )
@@ -324,7 +324,7 @@ class Village:
             return
 
         if self.def_man and self.def_man.under_attack:
-            self.logger.info("Skipping gathering due to incoming attack.")
+            self.logger.info("[GATHER] Skipping gathering due to incoming attack.")
             return
 
         # 1. Fetch & Parse Data
@@ -346,7 +346,7 @@ class Village:
         # 3. Execute Actions
         for action in gather_actions:
             if action["action"] == "unlock_gather":
-                self.logger.info(f"Executing unlock gather option: {action['option_id']}")
+                self.logger.info(f"[GATHER] Executing unlock gather option: {action['option_id']}")
                 self.wrapper.get_api_action(
                     action="unlock_option",
                     params={"screen": "scavenge_api"},
@@ -357,7 +357,7 @@ class Village:
                 break
 
             elif action["action"] == "gather":
-                self.logger.info(f"Executing gather action: {action['intent']}")
+                self.logger.info(f"[GATHER] {action['intent']}")
                 payload = action['payload']
                 payload["h"] = self.wrapper.last_h
                 payload["squad_requests[0][village_id]"] = self.village_id
@@ -383,7 +383,7 @@ class Village:
                     section="farms", parameter="force_scout_if_available", default=True
                 )
                 self.logger.info(
-                    "%d villages from map cache, (your location: %s)",
+                    "[FARM] %d villages from map cache, (your location: %s)",
                     len(self.area.villages),
                     ":".join([str(x) for x in self.area.my_location])
                 )
@@ -397,7 +397,7 @@ class Village:
                     self.attack.repman = self.rep_man
 
                 if self.forced_peace_today:
-                    self.logger.info("Forced peace time coming up today!")
+                    self.logger.info("[FARM] Forced peace time coming up today!")
                     self.attack.forced_peace_time = self.forced_peace_today_start
 
                 self.attack.target_high_points = self.get_config("farms", "attack_higher_points", False)
@@ -438,7 +438,7 @@ class Village:
                 self.forced_peace_today = True
                 self.forced_peace_today_start = start_dt
             if start_dt < now < end_dt:
-                self.logger.debug("Currently in a forced peace time! No attacks will be send.")
+                self.logger.debug("[SYSTEM] Currently in a forced peace time! No attacks will be send.")
                 self.forced_peace = True
                 break
 
@@ -449,14 +449,14 @@ class Village:
         self.current_unit_entry = self.units.get_template_action(self.builder.levels)
         if self.current_unit_entry and self.units.wanted != self.current_unit_entry["build"]:
             self.logger.info(
-                "%s as wanted units for current village", str(self.current_unit_entry["build"])
+                "[TROOPS] Set wanted units: %s", str(self.current_unit_entry["build"])
             )
             self.units.wanted = self.current_unit_entry["build"]
         if self.units.wanted_levels != {}:
             for disabled in self.disabled_units:
                 self.units.wanted_levels.pop(disabled, None)
             self.logger.info(
-                "%s as wanted upgrades for current village", str(self.units.wanted_levels)
+                "[TROOPS] Set wanted research levels: %s", str(self.units.wanted_levels)
             )
 
     def manage_local_resources(self):
@@ -466,8 +466,8 @@ class Village:
                 to_dell.append(x)
         for x in to_dell:
             self.resman.requested.pop(x)
-        self.logger.debug("Current resources: %s", str(self.resman.actual))
-        self.logger.debug("Requested resources: %s", str(self.resman.requested))
+        self.logger.debug("[RESOURCE] Current resources: %s", str(self.resman.actual))
+        self.logger.debug("[RESOURCE] Requested resources: %s", str(self.resman.requested))
 
     def run(self, config=None, first_run=False, strategy=None):
         self.config = config
@@ -520,6 +520,7 @@ class Village:
             build_enabled=self.get_config("building", "manage_buildings", True)
         )
         self.current_builder_intent = build_action.get("intent", "OK")
+        self.logger.info(f"[BUILD] Intent: {self.current_builder_intent}")
 
         # Troop/Upgrade Decision (with prioritization)
         recruit_action = None
@@ -533,10 +534,8 @@ class Village:
             prioritize_snob_check = True
 
         if prioritize_building:
-            self.logger.info("Recruitment paused: Builder has insufficient funds.")
             self.current_troops_intent = "Pausiert (Priorität Gebäude)"
         elif prioritize_snob_check and self.snobman and self.snobman.can_snob and self.snobman.is_incomplete:
-            self.logger.info("Recruitment paused: Priority for Noble production.")
             self.current_troops_intent = "Pausiert (Priorität AG-Produktion)"
         else:
             # Decide on recruitment
@@ -560,11 +559,12 @@ class Village:
             smith_data = Extractor.smith_data(smith_page)
             research_action = self.units.decide_next_research(smith_data)
             # Research intent could also be displayed, but troop intent is likely more important for now
+        self.logger.info(f"[TROOPS] Intent: {self.current_troops_intent}")
 
         # 3. EXECUTE ACTIONS
         # Execute Build Action
         if build_action["action"] == "build":
-            self.logger.info(f"Executing build action: {build_action['building_name']} to level {build_action['new_level']}")
+            self.logger.info(f"[BUILD] Executing: Build {build_action['building_name']} to level {build_action['new_level']}")
             response = self.wrapper.get_url(build_action["build_link"])
 
             # Logic from `complete_actions`
@@ -572,15 +572,15 @@ class Village:
             if completed_response:
                 # If an action was completed, we should ideally refetch data and re-run the logic
                 # For simplicity now, we'll just log it. A full re-run might be better.
-                self.logger.info("Instantly completed a building, state has changed.")
+                self.logger.info("[BUILD] Instantly completed a building, state has changed.")
 
         elif build_action["action"] == "prioritize":
             # Logic to handle prioritization is already in the manager (modifies queue)
-            self.logger.info(f"Prioritizing {build_action['building_name']} as per manager decision.")
+            self.logger.info(f"[BUILD] Prioritizing {build_action['building_name']} as per manager decision.")
 
         # Execute Recruit Action
         if recruit_action and recruit_action["action"] == "recruit":
-            self.logger.info(f"Executing recruit action: {recruit_action['amount']} {recruit_action['unit']}")
+            self.logger.info(f"[TROOPS] Executing: Recruit {recruit_action['amount']}x {recruit_action['unit']}")
             self.wrapper.get_api_action(
                 village_id=self.village_id,
                 action="train",
@@ -590,7 +590,7 @@ class Village:
 
         # Execute Research Action
         if research_action and research_action["action"] == "research":
-            self.logger.info(f"Executing research action for: {research_action['unit']}")
+            self.logger.info(f"[TROOPS] Executing: Research {research_action['unit']}")
             self.wrapper.get_api_action(
                 village_id=self.village_id,
                 action="research",
@@ -616,7 +616,7 @@ class Village:
         self.go_manage_market()
 
         self.set_cache_vars()
-        self.logger.info("Village cycle done, returning to overview")
+        self.logger.info("[SYSTEM] Village cycle done.")
 
         # Reporting
         self.wrapper.reporter.report(self.village_id, "TWB_POST_RESOURCE", str(self.resman.actual))
@@ -635,9 +635,9 @@ class Village:
                 params={"quest": result, "skip": "false"},
             )
             if qres:
-                self.logger.info("Completed quest: %s", str(result))
+                self.logger.info("[SYSTEM] Completed quest: %s", str(result))
                 return True
-        self.logger.debug("There where no completed quests")
+        self.logger.debug("[SYSTEM] No completed quests found.")
         return False
 
     def get_quest_rewards(self):
@@ -647,7 +647,7 @@ class Village:
             params={"screen": 'new_quests', "tab": "main-tab", "quest": 0},
         )
         if result is None:
-            self.logger.warning("Failed to fetch quest reward data from API")
+            self.logger.warning("[SYSTEM] Failed to fetch quest reward data from API.")
             return False
         # The data is escaped for JS, so unescape it before sending it to the extractor.
         rewards = Extractor.get_quest_rewards(decode(result["response"]["dialog"], 'unicode-escape'))
@@ -655,7 +655,7 @@ class Village:
             # First check if there is enough room for storing the reward
             for t_resource in reward["reward"]:
                 if self.resman.storage - self.resman.actual[t_resource] < reward["reward"][t_resource]:
-                    self.logger.info("Not enough room to store the %s part of the reward", t_resource)
+                    self.logger.info("[SYSTEM] Not enough room to store the %s part of the reward", t_resource)
                     return False
 
             qres = self.wrapper.post_api_data(
@@ -666,14 +666,14 @@ class Village:
             )
             if qres:
                 if not qres['response']:
-                    self.logger.debug("Error getting reward! %s", qres)
+                    self.logger.debug("[SYSTEM] Error getting reward! %s", qres)
                     return False
                 else:
-                    self.logger.info("Got quest reward: %s", str(reward))
+                    self.logger.info("[SYSTEM] Claimed quest reward: %s", str(reward))
                     for t_resource in reward["reward"]:
                         self.resman.actual[t_resource] += reward["reward"][t_resource]
 
-        self.logger.debug("There where no (more) quest rewards")
+        self.logger.debug("[SYSTEM] No (more) quest rewards to claim.")
         return len(rewards) > 0
 
     def set_cache_vars(self):
@@ -684,15 +684,25 @@ class Village:
             "required_resources": self.resman.requested,
             "available_troops": self.units.troops if self.units else {},
             "building_levels": self.builder.levels if self.builder else {},
-            "building_queue": self.builder.queue if self.builder else [],
+            "building_queue_from_template": self.builder.queue if self.builder else [],
             "troops": self.units.total_troops if self.units else {},
             "under_attack": self.def_man.under_attack if self.def_man else False,
             "last_run": int(time.time()),
-            # --- NEW ---
+            # --- STRATEGY & INTENT ---
             "strategy_role": self.strategy.get('role', 'Statisch') if self.strategy else 'Statisch',
             "intent_building": self.current_builder_intent,
             "intent_troops": self.current_troops_intent,
+            # --- ACTION PLAN ---
+            "action_plan_build": self.builder.queue if self.builder else [],
+            "action_plan_recruit": self.units.wanted if self.units else {},
+            "action_plan_research": self.units.wanted_levels if self.units else {}
         }
+
+        # Add live building queue from game
+        main_data_text = self.wrapper.get_action(village_id=self.village_id, action="main").text
+        village_entry["building_queue_live"] = self.builder.get_build_queue(main_data_text) if self.builder else []
+
+
         if self.attack and self.attack.last_farm_bag_state:
             current = self.attack.last_farm_bag_state.get("current")
             maximum = self.attack.last_farm_bag_state.get("max")
