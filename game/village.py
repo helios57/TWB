@@ -552,6 +552,7 @@ class Village:
             # This needs to be fetched, can't be in TroopManager
             place_data = self.wrapper.get_url(f"game.php?village={self.village_id}&screen=place&mode=units")
             total_troops = {k: v for k, v in Extractor.units_in_village(place_data.text)}
+            self.logger.info(f"[TROOPS] Available: {total_troops}")
 
             recruit_action = self.units.decide_next_recruit(
                 game_state=self.game_data,

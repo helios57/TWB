@@ -297,15 +297,10 @@ class AttackManager:
         data = self.wrapper.get_url(url)
         form_data = {"x": target["x"], "y": target["y"], "attack": "Angreifen"}
 
-        for unit in troops:
-            if unit in self.troopmanager.total_troops:
-                available = self.troopmanager.total_troops[unit]
-                if available >= troops[unit]:
-                    form_data[unit] = str(troops[unit])
-                else:
-                    form_data[unit] = "0"
-            else:
-                form_data[unit] = "0"
+        for unit, required in troops.items():
+            available = self.troopmanager.total_troops.get(unit, 0)
+            amount_to_send = min(available, required)
+            form_data[unit] = str(amount_to_send)
 
         # Check if any troops are being sent
         if all(unit not in form_data or form_data[unit] == "0" for unit in self.troopmanager.total_troops.keys()):
@@ -332,9 +327,12 @@ class AttackManager:
         res = self.wrapper.post_url(url, data=form_data)
 
         # Update troops in village after sending attack
-        for unit, amount in troops.items():
+        for unit, amount_str in form_data.items():
             if unit in self.troopmanager.total_troops:
-                self.troopmanager.total_troops[unit] -= int(amount)
+                amount = int(amount_str)
+                if amount > 0:
+                    self.troopmanager.total_troops[unit] -= amount
+                    self.logger.info(f"[FARM] Dispatched {amount} {unit}(s), {self.troopmanager.total_troops[unit]} remaining.")
 
         # Check for farm bag limit after attack
         if "farm_limit_reached_warning" in res.text:
