@@ -333,6 +333,10 @@ class Village:
         gather_page = self.wrapper.get_url(f"game.php?village={self.village_id}&screen=place&mode=scavenge")
         village_data = Extractor.village_data(gather_page)
 
+        if village_data is None:
+            self.logger.warning("[GATHER] Could not extract village data for gathering. Skipping.")
+            return
+
         place_data = self.wrapper.get_url(f"game.php?village={self.village_id}&screen=place&mode=units")
         troops_at_home = {k: int(v) for k, v in Extractor.units_in_village(place_data.text)}
 
@@ -650,13 +654,13 @@ class Village:
             village_id=self.village_id,
             params={"screen": 'new_quests', "tab": "main-tab", "quest": 0},
         )
-        if result is None:
-            self.logger.warning("[SYSTEM] Failed to fetch quest reward data from API.")
+        if not isinstance(result, dict):
+            self.logger.warning("[SYSTEM] Failed to fetch quest reward data from API or unexpected format.")
             return False
 
         # Validate the structure of the API response before accessing keys
-        if "response" not in result or "dialog" not in result["response"]:
-            self.logger.warning("[SYSTEM] Quest reward API response is missing expected keys ('response' or 'dialog').")
+        if "response" not in result or "dialog" not in result.get("response", {}):
+            self.logger.debug("[SYSTEM] Quest reward API response is missing expected keys ('response' or 'dialog').")
             self.logger.debug(f"[SYSTEM] Full API response: {result}")
             return False
 

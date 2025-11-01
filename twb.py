@@ -81,13 +81,17 @@ class TWB:
         """
         Loads village data from the configuration.
         """
-        village_ids = self.config.get("villages", {}).keys()
-        if not village_ids:
-            self.logger.warning("[TWB] No villages found in config.json. The bot will have nothing to do.")
+        managed_villages = {
+            vid: vdata for vid, vdata in self.config.get("villages", {}).items()
+            if vdata.get("managed", True)
+        }
 
-        for vil_id in village_ids:
+        if not managed_villages:
+            self.logger.warning("[TWB] No managed villages found in config.json. The bot will have nothing to do.")
+
+        for vil_id in managed_villages.keys():
             self.villages[vil_id] = Village(village_id=vil_id, wrapper=self.wrapper)
-        self.logger.info(f"[TWB] Loaded {len(self.villages)} village(s).")
+        self.logger.info(f"[TWB] Loaded {len(self.villages)} managed village(s).")
 
 
     def setup_logging(self):
