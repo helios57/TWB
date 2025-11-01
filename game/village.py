@@ -304,9 +304,11 @@ class Village:
                 )
             )
 
-        res = self.wrapper.get_action(village_id=self.village_id, action="overview")
-        self.game_data = Extractor.game_state(res)
-        self.resman.update(self.game_data)
+        res = self.wrapper.get_api_action(village_id=self.village_id, action="overview")
+        if res:
+            self.game_data = Extractor.game_state(res)
+            self.resman.update(self.game_data)
+
         if self.get_config(
                 section="world", parameter="trade_for_premium", default=False
         ) and self.get_village_config(
@@ -490,7 +492,8 @@ class Village:
         self.run_quest_actions(config=config)
 
         # 1. FETCH & PARSE DATA
-        main_data_text = self.wrapper.get_action(village_id=self.village_id, action="main").text
+        main_data_response = self.wrapper.get_url(f"game.php?village={self.village_id}&screen=main")
+        main_data_text = main_data_response.text if main_data_response else ""
         building_data = Extractor.building_data(main_data_text)
         current_levels = self.game_data["village"]["buildings"]
 
@@ -515,6 +518,7 @@ class Village:
         build_action = self.builder.decide_next_build(
             game_state=self.game_data,
             building_data=building_data,
+            main_page_html=main_data_text,
             queue=self.builder.queue,
             current_levels=current_levels,
             build_enabled=self.get_config("building", "manage_buildings", True)
@@ -555,8 +559,8 @@ class Village:
             self.current_troops_intent = recruit_action.get("intent", "Warte...")
 
             # Decide on research
-            smith_page = self.wrapper.get_action(village_id=self.village_id, action="smith")
-            smith_data = Extractor.smith_data(smith_page)
+            smith_page = self.wrapper.get_url(f"game.php?village={self.village_id}&screen=smith")
+            smith_data = Extractor.smith_data(smith_page.text if smith_page else "")
             research_action = self.units.decide_next_research(smith_data)
             # Research intent could also be displayed, but troop intent is likely more important for now
         self.logger.info(f"[TROOPS] Intent: {self.current_troops_intent}")
@@ -699,7 +703,8 @@ class Village:
         }
 
         # Add live building queue from game
-        main_data_text = self.wrapper.get_action(village_id=self.village_id, action="main").text
+        main_data_response = self.wrapper.get_url(f"game.php?village={self.village_id}&screen=main")
+        main_data_text = main_data_response.text if main_data_response else ""
         village_entry["building_queue_live"] = self.builder.get_build_queue(main_data_text) if self.builder else []
 
 

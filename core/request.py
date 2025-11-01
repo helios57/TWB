@@ -3,6 +3,7 @@ import random
 import re
 import time
 from urllib.parse import urlparse, urlunparse
+import json
 
 import requests
 from requests.adapters import HTTPAdapter, Retry
@@ -31,7 +32,7 @@ class Request:
         "Upgrade-Insecure-Requests": "1"
     }
 
-    def __init__(self, cookies=None, server="en", world=1, reporter=None):
+    def __init__(self, cookies=None, server=None, world=None, endpoint=None, reporter=None):
         self.session = requests.Session()
         self.session.headers.update(self.static_headers)
 
@@ -45,7 +46,15 @@ class Request:
         if reporter:
             self.reporter = reporter
 
-        self.endpoint = f"https://{server}{world}.tribalwars.co.uk/"
+        if endpoint:
+            # Ensure endpoint is just the base URL (e.g., https://de247.die-staemme.de/)
+            parsed_url = urlparse(endpoint)
+            self.endpoint = urlunparse((parsed_url.scheme, parsed_url.netloc, '', '', '', ''))
+        elif server and world:
+            self.endpoint = f"https://{server}{world}.tribalwars.co.uk/"
+        else:
+            raise ValueError("Either 'endpoint' or both 'server' and 'world' must be provided.")
+
         self.logger = logging.getLogger("Request")
 
     def set_h(self, text):
@@ -64,7 +73,8 @@ class Request:
         """
         # Ensure the URL is absolute
         if not url.startswith("http"):
-            url = self.endpoint + url
+            # Safely join the endpoint and the relative URL
+            url = self.endpoint + "/" + url.lstrip("/")
 
         # Apply delay
         time.sleep(random.uniform(0.5 * self.delay, 1.5 * self.delay))
@@ -77,11 +87,8 @@ class Request:
 
             if "bot_protection" in response.url:
                 self.logger.warning("[REQUEST] Bot protection hit! Cannot continue.")
-                # Bot protection might invalidate the session, so we should probably exit
-                # Or handle it more gracefully. For now, just log and return None.
                 return None
 
-            # Update CSRF token from response body if present
             if response.text:
                 self.set_h(response.text)
 
@@ -101,33 +108,45 @@ class Request:
         """
         Post to a URL
         """
-        # Add CSRF token to data if available
         if self.last_h:
             data = data or {}
             data['h'] = self.last_h
 
         return self._make_request("POST", url, data=data, params=params)
 
-    def login(self, username, password):
+    def login(self, username=None, password=None):
         """
-        Login to the game
+        Login to the game using credentials or verify existing session
         """
-        login_url = self.endpoint + "index.php?action=login"
-        login_data = {"user": username, "password": password, "cookie": "true"}
-        response = self.post_url(login_url, data=login_data)
+        # If username and password are provided, perform a full login
+        if username and password:
+            login_url = "index.php?action=login"
+            login_data = {"user": username, "password": password, "cookie": "true"}
+            response = self.post_url(login_url, data=login_data)
 
-        if response and "game.php" in response.url:
-            self.logger.info(f"[AUTH] Successfully logged in as {username}")
-            return True
+            if response and "game.php" in response.url:
+                self.logger.info(f"[AUTH] Successfully logged in as {username}")
+                return True
+            else:
+                self.logger.warning("[AUTH] Login failed. Check credentials or server status.")
+                return False
+
+        # Otherwise, verify if the current session (from cookies) is valid
         else:
-            self.logger.warning("[AUTH] Login failed. Check credentials or server status.")
-            return False
+            overview_page = self.get_url("game.php?screen=overview")
+            if overview_page and "game.php" in overview_page.url:
+                self.logger.info("[AUTH] Session is valid.")
+                return True
+            else:
+                self.logger.warning("[AUTH] Session is invalid or expired.")
+                return False
 
     def get_api_action(self, village_id, action, params=None, data=None):
         """
         Make a request to the API
         """
-        url = self.endpoint + "game.php"
+        api_url = "game.php"
+
         base_params = {
             "village": village_id,
             "ajax": action
@@ -135,18 +154,16 @@ class Request:
         if params:
             base_params.update(params)
 
-        # For GET requests (or if data is not provided)
         if not data:
-            response = self.get_url(url, params=base_params)
-        # For POST requests
+            response = self.get_url(api_url, params=base_params)
         else:
-            response = self.post_url(url, data=data, params=base_params)
+            response = self.post_url(api_url, data=data, params=base_params)
 
         if response:
             try:
                 return response.json()
             except json.JSONDecodeError:
-                self.logger.warning("[API] Failed to decode JSON from API response.")
+                self.logger.warning("[API] Failed to decode JSON from API response for action: %s", action)
                 return None
         return None
 

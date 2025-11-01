@@ -5,6 +5,7 @@ import argparse
 import sys
 import time
 from threading import Thread
+import os
 
 # from core.g_manager import GUIManager
 from game.village import Village, VillageInitException
@@ -25,28 +26,69 @@ class TWB:
         self.g_manager = None
         self.stopping = False
 
-        # Load configuration
+        self.load_config()
+        self.setup_logging()
+        self.initialize_wrapper()
+
+        if self.wrapper and self.wrapper.login():
+            self.load_villages()
+        else:
+            self.logger.error("[TWB] Login failed. Please check your session.json or config.json credentials.")
+            sys.exit(1)
+
+    def load_config(self):
+        """
+        Loads configuration from config.json
+        """
         try:
             with open("config.json") as f:
                 self.config = json.load(f)
         except IOError:
-            print("[TWB] config.json not found! Please create one.")
-            sys.exit(1)
+            # Create a minimal config if it doesn't exist to prevent crashes
+            self.config = {}
+            print("[TWB] config.json not found! Please create one. Using minimal config.")
 
-        self.setup_logging()
-
+    def initialize_wrapper(self):
+        """
+        Initializes the Request wrapper with session or config data.
+        """
         from core.request import Request as WebWrapper
+
+        # Prioritize session.json
+        if os.path.exists("session.json"):
+            try:
+                with open("session.json") as f:
+                    session_data = json.load(f)
+                self.logger.info("[AUTH] Found session.json. Attempting to login with session cookies.")
+                self.wrapper = WebWrapper(
+                    cookies=session_data.get("cookies"),
+                    endpoint=session_data.get("endpoint")
+                )
+                return
+            except (IOError, json.JSONDecodeError) as e:
+                self.logger.warning("[AUTH] Could not load session.json: %s. Falling back to config.json.", e)
+
+        # Fallback to config.json
+        self.logger.info("[AUTH] No valid session.json found. Attempting to use config.json.")
+        server_config = self.config.get("server", {})
         self.wrapper = WebWrapper(
-            cookies=self.config.get("cookie"),
-            server=self.config["server"]["server"],
-            world=self.config["server"]["world"],
+            server=server_config.get("server"),
+            world=server_config.get("world"),
+            endpoint=server_config.get("endpoint")
         )
-        if self.wrapper:
-            for vil in self.config["villages"]:
-                self.villages[vil] = Village(village_id=vil, wrapper=self.wrapper)
-        else:
-            self.logger.error("[TWB] Login failed, please check your cookie!")
-            sys.exit(1)
+
+    def load_villages(self):
+        """
+        Loads village data from the configuration.
+        """
+        village_ids = self.config.get("villages", {}).keys()
+        if not village_ids:
+            self.logger.warning("[TWB] No villages found in config.json. The bot will have nothing to do.")
+
+        for vil_id in village_ids:
+            self.villages[vil_id] = Village(village_id=vil_id, wrapper=self.wrapper)
+        self.logger.info(f"[TWB] Loaded {len(self.villages)} village(s).")
+
 
     def setup_logging(self):
         """
@@ -55,7 +97,6 @@ class TWB:
         log_level = self.config.get("bot", {}).get("log_level", "INFO")
         log_format = '%(asctime)s %(name)-25s %(levelname)-8s %(message)s'
 
-        # Use coloredlogs for console output
         coloredlogs.install(level=log_level, fmt=log_format, level_styles={
             'debug': {'color': 'white', 'faint': True},
             'info': {'color': 'cyan'},
@@ -66,13 +107,12 @@ class TWB:
 
         self.logger = logging.getLogger("TribalWarsBot")
 
-        # Optional: Add a file handler
-        if self.config.get("bot", {}).get("log_to_file", False):
+        if self.config and self.config.get("bot", {}).get("log_to_file", False):
             file_handler = logging.FileHandler('twb.log')
             file_handler.setLevel(log_level)
             formatter = logging.Formatter(log_format)
             file_handler.setFormatter(formatter)
-            logging.getLogger('').addHandler(file_handler) # Add to root logger
+            logging.getLogger('').addHandler(file_handler)
             self.logger.info("[TWB] Logging to file enabled.")
 
     def run(self):
@@ -81,7 +121,6 @@ class TWB:
         """
         self.logger.info("[TWB] Bot started!")
 
-        # Initialize Strategic Manager if enabled
         strategy_manager = None
         if self.config.get("strategy", {}).get("enabled", False):
             self.logger.info("[STRATEGY] Strategic Manager is enabled.")
@@ -93,7 +132,6 @@ class TWB:
 
         while not self.stopping:
             try:
-                # Get strategies from the strategic manager
                 strategies = {}
                 if strategy_manager:
                     strategies = strategy_manager.run()
@@ -132,6 +170,7 @@ if __name__ == '__main__':
 
     bot = TWB(arguments=arguments)
 
+    # GUI logic commented out for now
     # if arguments.gui:
     #     bot.g_manager = GUIManager(bot_instance=bot)
     #     t = Thread(target=bot.run)

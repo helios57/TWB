@@ -157,7 +157,7 @@ class TroopManager:
         if not self.logger:
             self.logger = logging.getLogger(f"TroopManager:{self.village_id}")
 
-        if "stages" in self.template:
+        if isinstance(self.template, dict) and "stages" in self.template:
             self.logger.debug("[TROOPS] Processing new staged unit template.")
             # New template format with stages
 
@@ -183,13 +183,14 @@ class TroopManager:
                 self.logger.warning("[TROOPS] No stage prerequisites met in the unit template.")
                 return None
         else:
-            # Legacy template support
-            self.logger.debug("[TROOPS] Processing legacy unit template.")
-            self.wanted = self.template.get("build", {})
-            self.wanted_levels = self.template.get("upgrade", {})
-            self.can_farm = self.template.get("farm", False)
-            self.can_attack = self.template.get("attack", False)
-            return self.template
+            # Legacy template support (or non-staged dict)
+            self.logger.debug("[TROOPS] Processing legacy or non-staged unit template.")
+            template_dict = self.template if isinstance(self.template, dict) else {}
+            self.wanted = template_dict.get("build", {})
+            self.wanted_levels = template_dict.get("upgrade", {})
+            self.can_farm = template_dict.get("farm", False)
+            self.can_attack = template_dict.get("attack", False)
+            return template_dict
 
     def decide_next_research(self, smith_data):
         """

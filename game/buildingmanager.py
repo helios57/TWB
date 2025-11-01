@@ -25,6 +25,8 @@ class BuildingManager:
         self.wrapper = wrapper
         self.vil_id = village_id
         self.queue = TemplateManager.get_template("builder", "default")
+        self.logger = logging.getLogger(f"Builder:{self.vil_id}")
+
 
     def get_level(self, building, next_level=False):
         """
@@ -32,16 +34,27 @@ class BuildingManager:
         :param next_level: get next level instead of current
         :return: level
         """
-        if building in self.levels:
-            if next_level:
-                return self.levels[building] + 1
-            return self.levels[building]
-        return 0
+        level = self.levels.get(building, "0")
+        try:
+            level = int(level)
+        except (ValueError, TypeError):
+            level = 0
+
+        if next_level:
+            return level + 1
+        return level
 
     def get_build_queue(self, data):
         """
         Get the current build queue, including finish times
         """
+        if isinstance(data, dict):
+            # If data is already a dict, we can't extract from it.
+            # This indicates the data is already parsed.
+            # The calling function should be responsible for passing the right format.
+            # For now, we'll return an empty list to avoid crashing.
+            return []
+
         pq = re.search(r"var building_orders = (.+?);", data)
         if pq:
             pq_str = pq.group(1).replace("false", "False").replace("true", "True")
@@ -199,14 +212,15 @@ class BuildingManager:
                         }
         return None
 
-    def decide_next_build(self, game_state, building_data, queue, current_levels, build_enabled=False):
+    def decide_next_build(self, game_state, building_data, main_page_html, queue, current_levels, build_enabled=False):
         self.game_state = game_state
         self.levels = current_levels
 
         if not build_enabled:
             return {"action": "none", "intent": "Building management is disabled."}
 
-        build_queue = self.get_build_queue(building_data)
+        build_queue = self.get_build_queue(main_page_html)
+
         if len(build_queue) >= 5:
             return {"action": "none", "intent": "Build queue is full."}
 

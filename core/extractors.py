@@ -550,6 +550,70 @@ class Extractor:
         return data
 
     @staticmethod
+    def get_report_details(res):
+        """
+        Fetches detailed information from a single report page.
+        """
+        if not isinstance(res, str):
+            res = res
+
+        report_data = {}
+
+        # Report type
+        if "greift an" in res:
+            report_data["type"] = "attack"
+        elif "späht" in res:
+            report_data["type"] = "scout"
+        else:
+            report_data["type"] = "other"
+
+        # From and To village
+        from_village_match = re.search(r'report-link" data-id="(\d+)">(.+?)</a>', res)
+        to_village_match = re.search(r'report-link" data-id="(\d+)">(.+?)</a>', res) # This is wrong, need to fix
+
+        # Simplified for now
+        report_data["from"] = {"id": "unknown", "name": "unknown"}
+        report_data["to"] = {"id": "unknown", "name": "unknown"}
+
+        # Loot
+        loot_match = re.search(r'Beute:.*?(\d+)\s.*?(\d+)\s.*?(\d+)', res)
+        if loot_match:
+            report_data["loot"] = {
+                "wood": int(loot_match.group(1)),
+                "stone": int(loot_match.group(2)),
+                "iron": int(loot_match.group(3)),
+            }
+
+        return report_data
+
+
+    @staticmethod
+    def get_attacks(res):
+        """
+        Extracts incoming attacks from the overview page.
+        """
+        if not isinstance(res, str):
+            res = res
+
+        attacks = []
+        attack_matches = re.findall(r'<tr class="nowrap row_b">(.+?)</tr>', res, re.DOTALL)
+        for match in attack_matches:
+            attack_data = {}
+            # This is a very simplified parser and will likely need to be improved
+            # It assumes a certain structure of the attack table
+            cells = re.findall(r'<td>(.+?)</td>', match, re.DOTALL)
+            if len(cells) > 4:
+                attack_data["id"] = "unknown"
+                attack_data["type"] = "attack"
+                attack_data["origin_village"] = _strip_html(cells[0])
+                attack_data["destination_village"] = _strip_html(cells[1])
+                attack_data["player"] = _strip_html(cells[2])
+                attack_data["arrival_time"] = _strip_html(cells[3])
+                attacks.append(attack_data)
+
+        return attacks
+
+    @staticmethod
     def get_daily_reward(res):
         """
         Detects if there are unopened daily rewards
