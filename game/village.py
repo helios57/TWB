@@ -617,6 +617,56 @@ class Village:
         self.wrapper.reporter.add_data(self.village_id, "village.config", json.dumps(vdata))
 
 
+    def get_quests(self):
+        result = Extractor.get_quests(self.wrapper.last_response)
+        if result:
+            qres = self.wrapper.get_api_action(
+                action="quest_complete",
+                village_id=self.village_id,
+                params={"quest": result, "skip": "false"},
+            )
+            if qres:
+                self.logger.info("Completed quest: %s", str(result))
+                return True
+        self.logger.debug("There where no completed quests")
+        return False
+
+    def get_quest_rewards(self):
+        result = self.wrapper.get_api_data(
+            action="quest_popup",
+            village_id=self.village_id,
+            params={"screen": 'new_quests', "tab": "main-tab", "quest": 0},
+        )
+        if result is None:
+            self.logger.warning("Failed to fetch quest reward data from API")
+            return False
+        # The data is escaped for JS, so unescape it before sending it to the extractor.
+        rewards = Extractor.get_quest_rewards(decode(result["response"]["dialog"], 'unicode-escape'))
+        for reward in rewards:
+            # First check if there is enough room for storing the reward
+            for t_resource in reward["reward"]:
+                if self.resman.storage - self.resman.actual[t_resource] < reward["reward"][t_resource]:
+                    self.logger.info("Not enough room to store the %s part of the reward", t_resource)
+                    return False
+
+            qres = self.wrapper.post_api_data(
+                action="claim_reward",
+                village_id=self.village_id,
+                params={"screen": "new_quests"},
+                data={"reward_id": reward["id"]}
+            )
+            if qres:
+                if not qres['response']:
+                    self.logger.debug("Error getting reward! %s", qres)
+                    return False
+                else:
+                    self.logger.info("Got quest reward: %s", str(reward))
+                    for t_resource in reward["reward"]:
+                        self.resman.actual[t_resource] += reward["reward"][t_resource]
+
+        self.logger.debug("There where no (more) quest rewards")
+        return len(rewards) > 0
+
     def set_cache_vars(self):
         village_entry = {
             "name": self.game_data["village"]["name"],
