@@ -20,6 +20,8 @@ class Request:
     last_h = None
     reporter = Reporter()
     delay = 1.0
+    min_delay = 2
+    max_delay = 20
     last_response = None
     endpoint = None
     logger = None
@@ -78,7 +80,7 @@ class Request:
             url = self.endpoint + "/" + url.lstrip("/")
 
         # Apply delay
-        time.sleep(random.uniform(0.5 * self.delay, 1.5 * self.delay))
+        time.sleep(random.uniform(self.min_delay, self.max_delay))
 
         try:
             response = self.session.request(method, url, timeout=15, **kwargs)
