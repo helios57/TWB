@@ -100,6 +100,9 @@ class TroopManager:
         extracted_units = Extractor.units_in_village(overview_html)
         self.logger.debug(f"Extractor.units_in_village from overview_html returned: {extracted_units}")
         
+        # Track which HTML source to use for total units extraction
+        html_source_for_totals = overview_html
+        
         # If overview_html doesn't contain units (units_home table), fetch from place screen
         if not extracted_units:
             self.logger.debug("No units found in overview_html, fetching from place screen")
@@ -108,6 +111,8 @@ class TroopManager:
             if place_data:
                 extracted_units = Extractor.units_in_village(place_data.text)
                 self.logger.debug(f"Extractor.units_in_village from place screen returned: {extracted_units}")
+                # Use place screen data for total units extraction too
+                html_source_for_totals = place_data.text
         
         for u in extracted_units:
             k, v = u
@@ -121,8 +126,8 @@ class TroopManager:
 
         self.total_troops = {}
         # --- PERFORMANCE (POINT 2) ---
-        # Use cached overview_html to extract total units
-        for u in Extractor.units_in_total(overview_html):
+        # Use the appropriate HTML source to extract total units
+        for u in Extractor.units_in_total(html_source_for_totals):
             k, v = u
             if k in self.total_troops:
                 self.total_troops[k] = self.total_troops[k] + int(v)

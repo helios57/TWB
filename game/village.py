@@ -39,7 +39,6 @@ class Village:
     village_set_name = None
     last_attack = None
     build_config = None
-    current_unit_entry = None
     forced_peace = False
     forced_peace_today_start = None
     disabled_units = []
@@ -52,6 +51,7 @@ class Village:
     def __init__(self, village_id=None, wrapper=None):
         self.village_id = village_id
         self.wrapper = wrapper
+        self.current_unit_entry = None
 
     def get_config(self, section, parameter, default=None):
         if section not in self.config:
@@ -501,8 +501,31 @@ class Village:
         except (TypeError, ValueError):
             margin = 0.02
         self.attack.farm_bag_limit_margin = max(0.0, min(0.2, margin))
-        if self.current_unit_entry:
-            self.attack.template = self.current_unit_entry["farm"]
+        
+        # Collect farm templates from all unlocked entries (fallback support)
+        farm_templates = []
+        if self.units.template:
+            for entry in self.units.template:
+                # Check if this entry is unlocked (building exists and level requirement met)
+                if entry.get("building") not in self.builder.levels:
+                    break  # Stop at first locked entry
+                if entry.get("level", 1) > self.builder.levels.get(entry.get("building"), 0):
+                    break  # Stop if level requirement not met
+                
+                # Add farm template from this entry if it exists
+                if "farm" in entry:
+                    farm_config = entry["farm"]
+                    # Ensure farm_config is a list
+                    if isinstance(farm_config, dict):
+                        farm_templates.append(farm_config)
+                    elif isinstance(farm_config, list):
+                        farm_templates.extend(farm_config)
+        
+        if farm_templates:
+            self.attack.template = farm_templates
+        else:
+            self.logger.warning("No farm templates available from unlocked entries")
+            self.attack.template = []
 
     def run_farming(self):
         """
