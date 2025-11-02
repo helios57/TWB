@@ -64,14 +64,25 @@ class BuildingManager:
         Start a building manager run
         Uses cached game_data and overview_html passed from Village.run
         """
-        # Use cached game_data but fetch main screen for building data
-        self.game_state = overview_game_data
         # Building data can only be extracted from main screen, not overview
         main_data = self.wrapper.get_action(village_id=self.village_id, action="main")
         main_data_text = main_data.text
-        # --- END PERFORMANCE ---
 
-        vname = self.game_state["village"]["name"]
+        # Prefer passed-in overview_game_data, but fall back to parsed data if missing
+        self.game_state = overview_game_data or Extractor.game_state(main_data_text) or (
+            Extractor.game_state(overview_html) if overview_html else None
+        ) or (
+            Extractor.game_state(self.wrapper.last_response) if getattr(self.wrapper, "last_response", None) else None
+        )
+
+        if not self.game_state or "village" not in self.game_state:
+            # Cannot proceed without a valid game state; avoid crashing and log once
+            if not self.logger:
+                self.logger = logging.getLogger("Builder")
+            self.logger.error("Game state could not be determined (None or missing 'village'); skipping builder update")
+            return False
+
+        vname = self.game_state["village"].get("name", str(self.village_id))
 
         if not self.logger:
             self.logger = logging.getLogger(fr"Builder: {vname}")
