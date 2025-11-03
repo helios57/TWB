@@ -3,6 +3,9 @@ from unittest.mock import patch, MagicMock
 from datetime import datetime
 
 from game.village import Village
+from game.attack import AttackManager
+from game.buildingmanager import BuildingManager
+from game.troopmanager import TroopManager
 
 
 class TestVillage(unittest.TestCase):
@@ -19,8 +22,18 @@ class TestVillage(unittest.TestCase):
                         "end": "01.01.25 12:00:00"
                     }
                 ]
+            },
+            "bot": {},
+            "world": {},
+            "villages": {
+                "123": {}
             }
         }
+        # Mock dependencies
+        self.village.builder = MagicMock(spec=BuildingManager)
+        self.village.units = MagicMock(spec=TroopManager)
+        self.village.attack = MagicMock(spec=AttackManager)
+
 
     @patch('game.village.datetime')
     def test_check_forced_peace_today(self, mock_datetime):
@@ -51,6 +64,42 @@ class TestVillage(unittest.TestCase):
 
         # Assert
         self.assertTrue(self.village.forced_peace, "forced_peace should be True")
+
+    def test_set_farm_options_gathers_all_templates_ignoring_locked_entries(self):
+        """
+        Tests that set_farm_options correctly gathers all available farm templates
+        from a troop template, even if some entries are 'locked' by unmet building
+        level requirements. The loop should not break on the first locked entry.
+        """
+        # Arrange
+        mock_farm_template = [
+            {"name": "A_Farm", "condition": "not_full_haul", "units": {"light": 1}}
+        ]
+        mock_troop_template = [
+            {
+                "building": "barracks",
+                "level": 5,
+                "build": {"barracks": {"spear": 100}}
+            },
+            {
+                "building": "stable",
+                "level": 3,
+                "build": {"stable": {"spy": 10}},
+                "farm": mock_farm_template
+            }
+        ]
+
+        # Simulate that barracks is level 1 (locked) and stable is level 3 (unlocked)
+        self.village.builder.levels = {'barracks': 1, 'stable': 3}
+        self.village.units.template = mock_troop_template
+
+        # Act
+        self.village.set_farm_options()
+
+        # Assert
+        self.assertIsNotNone(self.village.attack.template, "Attack template should not be None.")
+        self.assertEqual(len(self.village.attack.template), 1, "Should have found one farm template.")
+        self.assertEqual(self.village.attack.template, mock_farm_template, "The correct farm template was not loaded.")
 
 
 if __name__ == '__main__':

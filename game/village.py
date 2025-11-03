@@ -538,9 +538,9 @@ class Village:
             for entry in self.units.template:
                 # Check if this entry is unlocked (building exists and level requirement met)
                 if entry.get("building") not in self.builder.levels:
-                    break  # Stop at first locked entry
+                    continue  # Skip to the next entry if building doesn't exist yet
                 if entry.get("level", 1) > self.builder.levels.get(entry.get("building"), 0):
-                    break  # Stop if level requirement not met
+                    continue  # Skip to the next entry if level requirement is not met
                 
                 # Add farm template from this entry if it exists
                 if "farm" in entry:
