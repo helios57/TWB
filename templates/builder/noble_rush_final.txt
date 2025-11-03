@@ -1,0 +1,18 @@
+# Noble Rush Strategy - Final Village Targets
+# This template defines the end-goal for a village.
+# The bot will use a dynamic priority queue to reach these levels
+# after the initial Phase 1 build order is complete.
+
+main:20
+barracks:25
+stable:20
+garage:10
+smith:20
+market:10
+snob:1
+farm:30
+storage:30
+wall:20
+wood:30
+stone:30
+iron:30

@@ -42,6 +42,7 @@ class Village:
     forced_peace = False
     forced_peace_today_start = None
     disabled_units = []
+    hoard_mode = False
     # --- PERFORMANCE (POINT 2) ---
     overview_html = None
     # --- END PERFORMANCE ---
@@ -272,12 +273,16 @@ class Village:
         """
         Run building construction actions
         """
+        if self.hoard_mode:
+            self.logger.info("Hoard mode is active, skipping building.")
+            return
+
         if not self.builder:
             self.builder = BuildingManager(
                 wrapper=self.wrapper, village_id=self.village_id
             )
             self.builder.resman = self.resman
-            # manage buildings (has to always run because recruit check depends on building levels)
+
         self.build_config = self.get_village_config(
             self.village_id, parameter="building", default=None
         )
@@ -291,18 +296,27 @@ class Village:
             self.build_config = self.get_config(
                 section="building", parameter="default", default="purple_predator"
             )
-        new_queue = TemplateManager.get_template(
+
+        # Logic to switch between phase1 and final templates
+        if self.build_config == "noble_rush_phase1" and self.builder.get_level('stable') >= 3:
+             self.logger.info("Phase 1 complete, switching to final build plan.")
+             self.build_config = "noble_rush_final"
+             # This assumes the user will have a config entry for the final plan
+             # A more robust solution might involve a "next_phase" key in the template
+
+        new_template_data = TemplateManager.get_template(
             category="builder", template=self.build_config
         )
-        if not self.builder.raw_template or self.builder.raw_template != new_queue:
-            self.builder.queue = new_queue
-            self.builder.raw_template = new_queue
-            if not self.get_config(
-                    section="world", parameter="knight_enabled", default=False
-            ):
-                self.builder.queue = [
-                    x for x in self.builder.queue if "statue" not in x
-                ]
+
+        if "final" in self.build_config:
+             self.builder.mode = "dynamic"
+             self.builder.target_levels = {line.split(':')[0]: int(line.split(':')[1]) for line in new_template_data.splitlines() if ':' in line and not line.startswith('#')}
+        else:
+             self.builder.mode = "linear"
+             self.builder.queue = [line for line in new_template_data.splitlines() if ':' in line and not line.startswith('#')]
+
+        self.builder.raw_template = new_template_data
+
         self.builder.max_lookahead = self.get_config(
             section="building", parameter="max_lookahead", default=2
         )
@@ -310,8 +324,9 @@ class Village:
             section="building", parameter="max_queued_items", default=2
         )
 
-        # --- PERFORMANCE (POINT 2) ---
-        # Pass cached game_data and overview_html
+        # Pass troop queue status to the builder for dynamic mode
+        self.builder.troop_queue_status = self.units.get_queue_times()
+
         self.builder.start_update(
             overview_game_data=self.game_data,
             overview_html=self.overview_html,
@@ -320,7 +335,6 @@ class Village:
             ),
             set_village_name=self.village_set_name,
         )
-        # --- END PERFORMANCE ---
 
     def run_snob_recruit(self):
         """
@@ -328,7 +342,7 @@ class Village:
         """
         if (
                 self.get_village_config(self.village_id, parameter="snobs", default=None)
-                and self.builder.levels["snob"] > 0
+                and self.builder.get_level("snob") > 0
         ):
             if not self.snobman:
                 self.snobman = SnobManager(
@@ -341,6 +355,12 @@ class Village:
             )
             self.snobman.building_level = self.builder.get_level("snob")
             self.snobman.run()
+
+            if self.snobman.is_incomplete:
+                self.logger.info("Activating hoard mode to save for nobleman.")
+                self.hoard_mode = True
+            else:
+                self.hoard_mode = False
 
     def check_forced_peace(self):
         """

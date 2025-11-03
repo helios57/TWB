@@ -56,6 +56,50 @@ class ReportManager:
             return True, entry["extra"]["resources"]
         return False, {}
 
+    def get_last_haul_status(self, vid):
+        """
+        Determines the status of the last haul for the A/B/C farming logic.
+        """
+        latest_report = self._get_latest_report_for_village(vid)
+        if not latest_report:
+            return "not_full" # Default to A_Farm if no report exists
+
+        extra = latest_report.get("extra", {})
+        loot = extra.get("loot", {})
+
+        if not loot:
+             return "not_full" # No loot means not full
+
+        total_loot = sum(int(v) for v in loot.values())
+
+        # Simple heuristic: if total loot is less than a full LC haul, it wasn't full
+        if total_loot < 80:
+             return "not_full"
+
+        scouted_res = self.get_scouted_resources(vid, latest_report)
+        if scouted_res > 1000:
+            return "large"
+        else:
+            return "full_small"
+
+    def get_scouted_resources(self, vid, report=None):
+        """
+        Gets the total scouted resources from the latest relevant report.
+        """
+        if not report:
+            report = self._get_latest_report_for_village(vid)
+
+        if report and "resources" in report.get("extra", {}):
+            resources = report["extra"]["resources"]
+            return sum(int(v) for v in resources.values())
+        return 0
+
+    def _get_latest_report_for_village(self, vid):
+        possible_reports = [r for r in self.last_reports.values() if r.get("dest") == vid and r.get("extra", {}).get("when")]
+        if not possible_reports:
+            return None
+        return max(possible_reports, key=lambda r: r["extra"]["when"])
+
     def safe_to_engage(self, vid):
         """
         Calculates if a village is safe to engage without custom interaction

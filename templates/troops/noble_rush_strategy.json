@@ -1,0 +1,75 @@
+[
+  {
+    "building": "barracks",
+    "level": 1,
+    "build": {
+      "barracks": {
+        "spear": 35
+      }
+    },
+    "scavenge": ["spear"]
+  },
+  {
+    "building": "smith",
+    "level": 2,
+    "upgrades": {
+      "axe": 1
+    },
+    "build": {
+      "barracks": {
+        "spear": 45,
+        "axe": 9
+      }
+    }
+  },
+  {
+    "building": "smith",
+    "level": 5,
+    "upgrades": {
+      "light": 1
+    }
+  },
+  {
+    "building": "stable",
+    "level": 3,
+    "build": {
+      "stable": {
+        "spy": 5
+      }
+    },
+    "farm": [
+      {
+        "name": "A_Farm",
+        "condition": "not_full_haul",
+        "units": {"light": 1}
+      },
+      {
+        "name": "B_Farm",
+        "condition": "full_haul_small_res",
+        "units": {"light": 4, "spy": 1}
+      },
+      {
+        "name": "C_Farm",
+        "condition": "large_res",
+        "units": {"light": 0},
+        "calculate": "total_res / 80"
+      }
+    ]
+  },
+  {
+    "building": "snob",
+    "level": 1,
+    "build": {
+      "barracks": {
+        "axe": 4000
+      },
+      "stable": {
+        "light": 2500,
+        "spy": 50
+      },
+      "garage": {
+        "ram": 250
+      }
+    }
+  }
+]
