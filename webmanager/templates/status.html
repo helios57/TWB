@@ -80,18 +80,32 @@
 
                                 <h6>Resource Income (per hour)</h6>
                                 <table class="table table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Source</th>
+                                            <th>Wood</th>
+                                            <th>Clay</th>
+                                            <th>Iron</th>
+                                        </tr>
+                                    </thead>
                                     <tbody>
                                         <tr>
-                                            <td>Wood:</td>
-                                            <td>{{ village_data.income.wood|int }}</td>
+                                            <td>Mines</td>
+                                            <td>{{ village_data.income.mines.wood|int }}</td>
+                                            <td>{{ village_data.income.mines.clay|int }}</td>
+                                            <td>{{ village_data.income.mines.iron|int }}</td>
                                         </tr>
                                         <tr>
-                                            <td>Clay:</td>
-                                            <td>{{ village_data.income.stone|int }}</td>
+                                            <td>Farming</td>
+                                            <td>{{ village_data.income.farming.wood|int }}</td>
+                                            <td>{{ village_data.income.farming.clay|int }}</td>
+                                            <td>{{ village_data.income.farming.iron|int }}</td>
                                         </tr>
                                         <tr>
-                                            <td>Iron:</td>
-                                            <td>{{ village_data.income.iron|int }}</td>
+                                            <td><strong>Total</strong></td>
+                                            <td><strong>{{ village_data.income.total.wood|int }}</strong></td>
+                                            <td><strong>{{ village_data.income.total.clay|int }}</strong></td>
+                                            <td><strong>{{ village_data.income.total.iron|int }}</strong></td>
                                         </tr>
                                     </tbody>
                                 </table>
@@ -133,6 +147,24 @@
                                 {% else %}
                                     <p>No planned actions.</p>
                                 {% endif %}
+
+                                <h6 class="mt-3">Resource Forecast for Planned Actions</h6>
+                                <table class="table table-sm">
+                                    <tbody>
+                                        <tr>
+                                            <td>Wood:</td>
+                                            <td>{{ village_data.forecast.wood|int }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Clay:</td>
+                                            <td>{{ village_data.forecast.clay|int }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Iron:</td>
+                                            <td>{{ village_data.forecast.iron|int }}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
                     </div>
@@ -188,10 +220,16 @@
                     resources_table.find('td:contains("Storage:")').next().text(village_data.resources.storage);
 
                     // Update Resource Income
-                    let income_table = card.find('h6:contains("Resource Income")').next();
-                    income_table.find('td:contains("Wood:")').next().text(village_data.income.wood);
-                    income_table.find('td:contains("Clay:")').next().text(village_data.income.stone);
-                    income_table.find('td:contains("Iron:")').next().text(village_data.income.iron);
+                    let income_table_body = card.find('h6:contains("Resource Income")').next().find('tbody');
+                    income_table_body.find('tr:contains("Mines") td:nth-child(2)').text(village_data.income.mines.wood);
+                    income_table_body.find('tr:contains("Mines") td:nth-child(3)').text(village_data.income.mines.clay);
+                    income_table_body.find('tr:contains("Mines") td:nth-child(4)').text(village_data.income.mines.iron);
+                    income_table_body.find('tr:contains("Farming") td:nth-child(2)').text(village_data.income.farming.wood);
+                    income_table_body.find('tr:contains("Farming") td:nth-child(3)').text(village_data.income.farming.clay);
+                    income_table_body.find('tr:contains("Farming") td:nth-child(4)').text(village_data.income.farming.iron);
+                    income_table_body.find('tr:contains("Total") td:nth-child(2)').find('strong').text(village_data.income.total.wood);
+                    income_table_body.find('tr:contains("Total") td:nth-child(3)').find('strong').text(village_data.income.total.clay);
+                    income_table_body.find('tr:contains("Total") td:nth-child(4)').find('strong').text(village_data.income.total.iron);
 
                     // Update Building Levels
                     let building_levels_table_body = card.find('h6:contains("Building Levels")').next().find('tbody');
@@ -225,6 +263,12 @@
                     } else {
                         actions_list.append('<p>No planned actions.</p>');
                     }
+
+                    // Update Resource Forecast
+                    let forecast_table = card.find('h6:contains("Resource Forecast")').next();
+                    forecast_table.find('td:contains("Wood:")').next().text(village_data.forecast.wood);
+                    forecast_table.find('td:contains("Clay:")').next().text(village_data.forecast.clay);
+                    forecast_table.find('td:contains("Iron:")').next().text(village_data.forecast.iron);
                 }
             }
         }
