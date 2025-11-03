@@ -81,13 +81,11 @@ class TestVillageOrchestration(unittest.TestCase):
         self.assertIn("main", self.village.builder.target_levels)
         self.assertEqual(self.village.builder.target_levels["main"], 20)
 
-    def test_run_initialization_order(self):
+    def test_troopmanager_initialization_before_buildingmanager(self):
         """
         Tests that self.units (TroopManager) is initialized before
         self.builder (BuildingManager) tries to access it.
         """
-        # Reset mocks to remove setUp configurations
-        self.village.builder = BuildingManager(self.wrapper, self.village_id)
         # We don't initialize self.village.units to simulate the error condition
         self.village.units = None
 
@@ -114,7 +112,71 @@ class TestVillageOrchestration(unittest.TestCase):
             try:
                 self.village.run(config=self.village.config)
             except AttributeError as e:
-                self.fail(f"Village.run() raised an AttributeError: {e}")
+                self.fail(f"Village.run() raised an AttributeError related to unit initialization: {e}")
+
+    def test_buildingmanager_initialization_before_set_unit_wanted_levels(self):
+        """
+        Tests that self.builder (BuildingManager) is initialized before
+        set_unit_wanted_levels tries to access it.
+        """
+        # We don't initialize self.village.builder to simulate the error condition
+        self.village.builder = None
+
+        # Provide minimal game_data to prevent VillageInitException
+        self.village.game_data = {"village": {"name": "Test Village"}}
+
+        # Mock all dependent methods to isolate the run() method's logic
+        with patch.object(self.village, 'village_init', return_value=True), \
+             patch.object(self.village, 'get_config', return_value=True), \
+             patch.object(self.village, 'set_world_config', return_value=None), \
+             patch.object(self.village, 'update_pre_run', return_value=None), \
+             patch.object(self.village, 'setup_defence_manager', return_value=None), \
+             patch.object(self.village, 'run_quest_actions', return_value=None), \
+             patch.object(self.village, 'run_unit_upgrades', return_value=None), \
+             patch.object(self.village, 'run_snob_recruit', return_value=None), \
+             patch.object(self.village, 'do_recruit', return_value=None), \
+             patch.object(self.village, 'manage_local_resources', return_value=None), \
+             patch.object(self.village, 'run_farming', return_value=None), \
+             patch.object(self.village, 'do_gather', return_value=None), \
+             patch.object(self.village, 'go_manage_market', return_value=None), \
+             patch.object(self.village, 'set_cache_vars', return_value=None):
+
+            # This is the call that would have failed with the AttributeError
+            try:
+                self.village.run(config=self.village.config)
+            except AttributeError as e:
+                self.fail(f"Village.run() raised an AttributeError related to builder initialization: {e}")
+
+    @patch('core.templates.TemplateManager.get_template')
+    def test_run_builder_with_list_template(self, mock_get_template):
+        """
+        Tests that run_builder can handle a template that is a list of strings.
+        """
+        # Configure the mock to return a list for this specific test
+        mock_get_template.return_value = ["main:1", "barracks:1"]
+
+        # Set the config to use the list-based template
+        self.village.config["villages"][self.village_id]["building"] = "list_based_template"
+
+        # We need a real builder instance for this test
+        self.village.builder = BuildingManager(self.wrapper, self.village_id)
+        self.village.builder.resman = self.village.resman
+        self.village.builder.get_level = MagicMock(return_value=0) # Ensure no buildings are built yet
+
+        # Configure the wrapper mock to return a mock response with a text attribute
+        mock_response = MagicMock()
+        mock_response.text = '{"village": {"name": "Test Village"}}'
+        self.village.wrapper.get_action.return_value = mock_response
+        self.village.wrapper.last_response = mock_response
+
+        # This is the call that would have failed with the AttributeError
+        try:
+            self.village.run_builder()
+        except AttributeError as e:
+            self.fail(f"run_builder() raised an AttributeError with a list-based template: {e}")
+
+        # Assert that the builder's queue was correctly populated
+        self.assertEqual(self.village.builder.queue, ["main:1", "barracks:1"])
 
 if __name__ == '__main__':
     unittest.main()
