@@ -828,3 +828,14 @@ class TroopManager:
         seconds %= 60
 
         return "%d:%02d:%02d" % (hour, minutes, seconds)
+
+    def get_queue_times(self):
+        """
+        Calculates remaining time for each building's recruitment queue
+        """
+        now = time.time()
+        return {
+            "barracks_queue_time": max(0, self.wait_for[self.village_id].get("barracks", 0) - now),
+            "stable_queue_time": max(0, self.wait_for[self.village_id].get("stable", 0) - now),
+            "garage_queue_time": max(0, self.wait_for[self.village_id].get("garage", 0) - now),
+        }

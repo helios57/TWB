@@ -6,6 +6,7 @@ Sounds dangerous but it just sends farms
 import json
 import logging
 import time
+import math
 from datetime import datetime
 from datetime import timedelta
 
@@ -78,88 +79,84 @@ class AttackManager:
         Run the farming logic
         """
         if not self.troopmanager.can_attack or self.troopmanager.troops == {}:
-            # Disable farming is disabled in config or no troops available
             return False
         if self.farm_bag_limit_enabled and self._farm_bag_limit_reached:
             self._refresh_farm_bag_state()
             if not self._farm_bag_limit_reached:
-                self.logger.debug(
-                    "Farm bag limit cleared after refreshing place screen"
-                )
+                self.logger.debug("Farm bag limit cleared")
         self.get_targets()
-        ignored = []
-        # Limits the amount of villages that are farmed from the current village
-        for target in self.targets[0: self.max_farms]:
-            if type(self.template) == list:
-                f = False
-                for template in self.template:
-                    if template in ignored:
-                        continue
-                    out_res = self.send_farm(target, template)
-                    if out_res == 1:
-                        f = True
-                        break
-                    elif out_res == -1:
-                        ignored.append(template)
-                if not f:
-                    continue
-            else:
-                out_res = self.send_farm(target, self.template)
-                if out_res == -1:
-                    break
+        for target in self.targets[0:self.max_farms]:
+            self.send_farm(target)
 
-    def send_farm(self, target, template):
+    def send_farm(self, target):
         """
-        Send a farming run
+        Send a farming run based on dynamic templates.
         """
-        target, _ = target
+        target_info, _ = target
+        target_id = target_info["id"]
+
         if self.farm_bag_limit_enabled and self._farm_bag_limit_reached:
-            self.logger.debug("Skipping farm target because farm bag limit was reached earlier")
+            self.logger.debug(f"Skipping {target_id}: farm bag limit reached.")
             return 0
-        missing = self.enough_in_village(template)
+
+        # Determine which farm template to use (A/B/C logic)
+        last_haul_status = self.repman.get_last_haul_status(target_id)
+        chosen_template = None
+
+        for t in self.template:
+            condition = t.get("condition")
+            if condition == "not_full_haul" and last_haul_status == "not_full":
+                chosen_template = t
+                break
+            elif condition == "full_haul_small_res" and last_haul_status == "full_small":
+                chosen_template = t
+                break
+            elif condition == "large_res" and last_haul_status == "large":
+                chosen_template = t
+                break
+
+        if not chosen_template: # Fallback to A_Farm if no status
+             chosen_template = next((t for t in self.template if t.get("condition") == "not_full_haul"), None)
+
+        if not chosen_template:
+            self.logger.warning(f"No suitable farm template found for target {target_id}")
+            return 0
+
+        troops_to_send = dict(chosen_template["units"])
+
+        # Dynamic calculation for C_Farm
+        if chosen_template.get("calculate"):
+            total_resources = self.repman.get_scouted_resources(target_id)
+            if total_resources > 0:
+                # Assuming calculator is 'total_res / 80' for LC
+                num_lc = math.ceil(total_resources / 80)
+                troops_to_send['light'] = num_lc
+            else: # Don't attack if we have no scout info for a C-type farm
+                return 0
+
+        missing = self.enough_in_village(troops_to_send)
         if not missing:
-            cached = self.can_attack(vid=target["id"], clear=False)
+            cached = self.can_attack(vid=target_id, clear=False)
             if cached:
-                attack_result = self.attack(target["id"], troops=template)
-                if attack_result == "forced_peace":
+                attack_result = self.attack(target_id, troops=troops_to_send)
+                if attack_result in ["forced_peace", "farm_bag_full", None]:
                     return 0
-                if attack_result == "farm_bag_full":
-                    return 0
+
                 self.logger.info(
-                    "Attacking %s -> %s (%s)" ,self.village_id, target["id"], str(template)
+                    "Attacking %s -> %s (%s)", self.village_id, target_id, str(troops_to_send)
                 )
-                self.wrapper.reporter.report(
-                    self.village_id,
-                    "TWB_FARM",
-                    "Attacking %s -> %s (%s)"
-                    % (self.village_id, target["id"], str(template)),
-                    )
+
                 if attack_result:
-                    for u in template:
+                    for u in troops_to_send:
                         self.troopmanager.troops[u] = str(
-                            int(self.troopmanager.troops[u]) - template[u]
+                            int(self.troopmanager.troops[u]) - troops_to_send[u]
                         )
-                    self.attacked(
-                        target["id"],
-                        scout=True,
-                        safe=True,
-                        high_profile=cached["high_profile"]
-                        if type(cached) == dict
-                        else False,
-                        low_profile=cached["low_profile"]
-                        if type(cached) == dict and "low_profile" in cached
-                        else False,
-                    )
+                    self.attacked(target_id, scout=True, safe=True)
                     return 1
                 else:
-                    self.logger.debug(
-                        "Ignoring target %s because unable to attack", target["id"]
-                    )
-                    self._unknown_ignored.append(target["id"])
+                    self._unknown_ignored.append(target_id)
         else:
-            self.logger.debug(
-                "Not sending additional farm because not enough units: %s", missing
-            )
+            self.logger.debug(f"Not enough units to farm {target_id}: {missing}")
             return -1
         return 0
 

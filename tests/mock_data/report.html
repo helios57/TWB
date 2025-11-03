@@ -1,0 +1,892 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+	<title>Bot's Village (500|500) - Die Stämme - Welt 247</title>
+	<meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+	<link id="favicon" rel="shortcut icon"  href="/favicon.ico" />
+
+	<link rel="stylesheet" type="text/css" href="https://dsde.innogamescdn.com/assets/de247/merged/game.ef2f0b.css" />
+
+			<link rel="stylesheet" type="text/css" href="https://dsde.innogamescdn.com/assets/de247/css/game/report_view.57c7f8.css" />
+
+
+    <script src="https://dsde.innogamescdn.com/assets/de247/js/lang.de_DE.9d5be5.js"></script>
+
+	<script type="text/javascript" src="https://dsde.innogamescdn.com/assets/de247/js/game/Modules/config_prepared.b76836.js"></script>
+
+	<script type="text/javascript" src="https://dsde.innogamescdn.com/assets/de247/merged/game.af0f3e.js"></script>
+
+	<script type="text/javascript" src="https://dsde.innogamescdn.com/assets/de247/merged/game.de_DE.d279d8.js"></script>
+
+			<script type="text/javascript" src="https://dsde.innogamescdn.com/assets/de247/js/game/Report.743c33.js"></script>
+
+			<script type="text/javascript" src="https://dsde.innogamescdn.com/assets/de247/js/game/ReportView.344e73.js_"></script>
+
+			<script type="text/javascript" src="https://dsde.innogamescdn.com/assets/de247/js/game/Accountmanager.4e6cd9.js_"></script>
+
+
+
+
+	<script type="text/javascript">
+        var sds = false;
+		var image_base = "https://dsde.innogamescdn.com/asset/c02e1dd8/graphic/";
+		var mobile = false;
+		var mobile_on_normal = false;
+        var mobiledevice = false;
+		var premium = false;
+		var server_utc_diff = 3600;
+
+		TribalWars.updateGameData({"player":{"id":1,"name":"bot","ally":"0","ally_level":null,"ally_member_count":null,"sitter":"0","sleep_start":"0","sitter_type":"normal","sleep_end":"0","sleep_last":"0","email_valid":"1","villages":"1","incomings":"0","supports":0,"knight_location":"1","knight_unit":"1","rank":1,"points":"579","date_started":"1761608725","is_guest":"0","confirmation_skipping_hash":"","quest_progress":"0","points_formatted":"579","rank_formatted":"1","pp":"0","new_ally_application":0,"new_ally_invite":"0","new_buddy_request":"0","new_daily_bonus":"1","new_forum_post":0,"new_post_notification":0,"new_igm":"0","new_items":"0","new_report":"0","new_quest":"1"},"quest":{"use_questlines":true},"features":{"Premium":{"possible":true,"active":false},"AccountManager":{"possible":false,"active":false},"FarmAssistent":{"possible":true,"active":true}},"village":{"id":1,"name":"Bot's Village","display_name":"Bot's Village (500|500) K55","wood":2815,"wood_prod":0.12715745700863,"wood_float":2814.670306597181,"stone":1971,"stone_prod":0.093992726657389,"stone_float":1970.973847259805,"iron":43,"iron_prod":0.059734174989697,"iron_float":43.25441767478364,"pop":1342,"pop_max":1376,"x":500,"y":500,"trader_away":0,"storage_max":4247,"bonus_id":null,"bonus":{"wood":1.07,"stone":1.07,"iron":1.07},"buildings":{"main":"16","barracks":"6","stable":"5","garage":"0","watchtower":"0","snob":"0","smith":"9","place":"1","statue":"1","market":"5","wood":"14","stone":"12","iron":"9","farm":"12","storage":"8","hide":"3","wall":"5"},"player_id":1,"modifications":0,"points":579,"last_res_tick":1762131637000,"coord":"500|500","is_farm_upgradable":true},"nav":{"parent":2},"link_base":"\/game.php?village=1&amp;screen=","link_base_pure":"\/game.php?village=1&screen=","csrf":"1","world":"de247","market":"de","RTL":false,"version":"c02e1dd8 release_8.406\n","majorVersion":"8.406","screen":"report","mode":null,"device":"desktop","pregame":false,"units":["spear","sword","axe","spy","light","heavy","ram","catapult","knight","snob","militia"],"locale":"de_DE","group_id":0,"time_generated":1762131637953});
+		var csrf_token = '1';
+
+		UI.AutoComplete.url = '/game.php?village=1&screen=api&ajaxaction=autocomplete&h=1';
+		ScriptAPI.url = '/game.php?village=1&screen=api&ajax=save_script';
+		ScriptAPI.version = parseFloat(game_data.majorVersion);
+
+
+				VillageContext._urls.overview = '/game.php?village=__village__&screen=overview';
+		VillageContext._urls.info = '/game.php?village=1&screen=info_village&id=__village__';
+		VillageContext._urls.fav = '/game.php?village=1&screen=info_village&id=__village__&ajaxaction=add_target&json=1&h=1';
+		VillageContext._urls.unfav = '/game.php?village=1&screen=info_village&id=__village__&ajaxaction=del_target&json=1&h=1';
+		VillageContext._urls.claim = '/game.php?village=1&screen=info_village&id=__village__&ajaxaction=toggle_reserve_village&json=1&h=1';
+		VillageContext._urls.market = '/game.php?village=1&screen=market&mode=send&target=__village__';
+		VillageContext._urls.place = '/game.php?village=1&screen=place&target=__village__';
+		VillageContext._urls.recruit = '/game.php?village=1&screen=train&village=__village__';
+		VillageContext._urls.map = '/game.php?village=1&screen=map&beacon=1&id=__village__';
+		VillageContext._urls.unclaim = VillageContext._urls.claim;
+        VillageContext.claim_enabled = false;
+        VillageContext.igm_enabled = true;
+        VillageContext.send_troops_enabled = true;
+        VillageContext.send_attack_disabled = false;
+
+
+
+		TribalWars._settings = {"sound":0,"map_casual_hide":1,"map_show_watchtower":0,"inline_notification_building":1,"chat_enabled":0,"chat_sound_enabled":1,"pn_suppress_prompt":1,"disable_quest_arrows":0,"disable_forum_notifications":0,"topo_show_relics":0};
+
+		$(document).ready( function() {
+			VillageContext.init();
+            UnitPopup.initLinks();
+			Quests.setQuestData({"1075":{"id":1075,"questline":1,"goals":{"buildings":[{"building":"main","level":12},{"building":"wall","level":10}]},"goals_html":[{"image":"https:\/\/dsde.innogamescdn.com\/asset\/c02e1dd8\/graphic\/big_buildings\/main1.webp","summary":"Verbessere dieses Geb\u00e4ude: Hauptgeb\u00e4ude","description":"Hauptgeb\u00e4ude: Baue dieses Geb\u00e4ude auf Stufe 12 aus.","completed":true},{"image":"https:\/\/dsde.innogamescdn.com\/asset\/c02e1dd8\/graphic\/big_buildings\/wall1.webp","summary":"Verbessere dieses Geb\u00e4ude: Wall","description":"Wall: Baue dieses Geb\u00e4ude auf Stufe 10 aus.","completed":false}],"objective":"Unser Wall muss hoch und stark sein! - Er ist extrem wichtig f\u00fcr unsere Verteidigung und kann den Unterschied zwischen Sieg oder Niederlage ausmachen. Bauen wir ihn noch etwas weiter aus, um unser Dorf zu sch\u00fctzen.","goals_completed":1,"goals_total":3,"rewards":[],"rewards_html":[],"opened":true,"finished":false,"hide":false,"can_be_skipped":false,"title":"Eine Stadt erbauen II","icon":"m\/ios\/o_hq.png","state":"active","goal_state":"new","quest_system":5},"1255":{"id":1255,"questline":2,"goals":{},"goals_html":[{"image":"https:\/\/dsde.innogamescdn.com\/asset\/c02e1dd8\/graphic\/quests\/goals\/attack_sent_via_farm_assistent.webp","summary":"Einfaches Farmen","description":"Erstelle im Farm-Assistenten eine Vorlage und greife damit ein Barbarendorf an.","completed":false}],"objective":"Der Farm-Assistent ist eine Premium-Funktion, die das Pl\u00fcndern von Rohstoffen erleichtert, indem der Aufwand f\u00fcr einen Angriff auf Barbarend\u00f6rfer erheblich verringert wird. Probiere ihn einmal aus, indem du eine Vorlage erstellst und damit ein Dorf \u00fcberf\u00e4llst.","goals_completed":0,"goals_total":1,"rewards":[],"rewards_html":[],"opened":true,"finished":false,"hide":false,"can_be_skipped":false,"title":"Pl\u00fcndern leicht gemacht","icon":"m\/ios\/o_fa.png","state":"active","goal_state":"new","quest_system":5},"1265":{"id":1265,"questline":2,"goals":{},"goals_html":[{"image":"https:\/\/dsde.innogamescdn.com\/asset\/c02e1dd8\/graphic\/awards\/award3.webp","summary":"Erfolg: Pl\u00fcnderer","description":"Zur Erreichung des Erfolges: Pl\u00fcndere 100 Mal Rohstoffe aus anderen D\u00f6rfern.","completed":false}],"objective":"Du verstehst sicher, wie wichtig Pl\u00fcnderungen sind. Aber kannst du auch ein wahrer Meister dieser Kunst werden?","goals_completed":0,"goals_total":1,"rewards":[{"small_image":false,"image":"https:\/\/dsde.innogamescdn.com\/asset\/c02e1dd8\/graphic\/flags\/package3.webp","text":"Level 3 Flagge","flag":{"description":"Level 3 Flagge","level":3,"type":null}}],"rewards_html":[{"small_image":false,"image":"https:\/\/dsde.innogamescdn.com\/asset\/c02e1dd8\/graphic\/flags\/package3.webp","text":"Level 3 Flagge","html":"<div style=\"align-items: center;display: flex;margin: 1.5em 0 0 -1em;\"><img src=\"https:\/\/dsde.innogamescdn.com\/asset\/c02e1dd8\/graphic\/flags\/small\/3.webp\" alt=\"\" \/> Level 3 Flagge<\/div>"}],"opened":true,"finished":false,"hide":false,"can_be_skipped":false,"title":"Zum Sieg!","icon":"m\/ios\/o_fa.png","state":"active","goal_state":"new","quest_system":5},"1310":{"id":1310,"questline":6,"goals":{},"goals_html":[{"image":"https:\/\/dsde.innogamescdn.com\/asset\/c02e1dd8\/graphic\/big_buildings\/market1.webp","summary":"Besuche das Premium-Depot","description":"\u00d6ffne das Premium-Depot.","completed":false},{"image":"https:\/\/dsde.innogamescdn.com\/asset\/c02e1dd8\/graphic\/big_buildings\/market1.webp","summary":"Kaufe oder verkaufe Rohstoffe.","description":"Du kannst Rohstoffe mit Premiumpunkten kaufen, du kannst auch deine zus\u00e4tzlichen Rohstoffe f\u00fcr Premiumpunkte verkaufen.","completed":false}],"objective":"Nutze das Premium-Depot, wenn du Rohstoffe kaufen, oder \u00fcbersch\u00fcssige Rohstoffe f\u00fcr Premium-Punkte verkaufen m\u00f6chtest.","goals_completed":0,"goals_total":3,"rewards":[],"rewards_html":[],"opened":false,"finished":false,"hide":false,"can_be_skipped":false,"title":"Verk\u00e4ufer","icon":"m\/ios\/o_market.png","state":"active","goal_state":"new","quest_system":5},"1400":{"id":1400,"questline":7,"goals":{},"goals_html":[{"image":"https:\/\/dsde.innogamescdn.com\/asset\/c02e1dd8\/graphic\/quests\/goals\/village_renamed.webp","summary":"\u00c4ndere den Namen deines Dorfes","description":"\u00c4ndere den Namen deines Dorfes im Hauptgeb\u00e4ude am unteren Rand.","completed":false}],"objective":"Du kannst dein Dorf im Hauptgeb\u00e4ude umbenennen.","goals_completed":0,"goals_total":1,"rewards":[],"rewards_html":[],"opened":true,"finished":false,"hide":false,"can_be_skipped":false,"title":"Ein w\u00fcrdiger Name","icon":"m\/ios\/o_friends.png","state":"active","goal_state":"new","quest_system":5},"1700":{"id":1700,"questline":10,"goals":{},"goals_html":[{"image":"https:\/\/dsde.innogamescdn.com\/asset\/c02e1dd8\/graphic\/premium\/coinbag_large.webp","summary":"\u00dcberpr\u00fcfe deine Optionen","description":"Besuche die Seite mit den Kaufoptionen.","completed":false}],"objective":"\"Die St\u00e4mme\" bietet verschiedene M\u00f6glichkeiten, dir mehr Informationen zu liefern und bestimmte Aktionen zu erleichtern. Besuche die Seite mit den Premium-Funktionen, um mehr dar\u00fcber zu erfahren.","goals_completed":0,"goals_total":1,"rewards":[{"item_id":3080,"instance_id":0,"name":"Kriegs-Kommandeur","admin_name":"Kriegs-Kommandeur. 3 days","image":"https:\/\/dsde.innogamescdn.com\/asset\/c02e1dd8\/graphic\/items\/3080.webp","image_info":{"hash":"15588","width":92,"height":92,"has_retina":true,"has_webp":true,"src":"items\/3080.png"},"type":2,"category":6,"color":null,"actions":[{"name":"Aktivieren","link":"javascript:Inventory.openItemDialog('%item_key%', 'activate_reward')","allow_sitter":true}],"links":[],"tags":[{"type":"use_type","tag":1}],"descriptions":[{"text":"Alle Rekrutierungsauftr\u00e4ge, au\u00dfer Adelsgeschlechter, kosten 5% weniger Rohstoffe!","color":null,"image":null},{"text":"Laufzeit: 72:00:00 ","color":"green","image":null},{"text":"Wirkung: Alle D\u00f6rfer","color":"green","image":null}],"new_count":0,"tooltip":"<div class=\"detail_head\">\n    <div class=\"name\">\n        Kriegs-Kommandeur    <\/div>\n    <img src=\"https:\/\/dsde.innogamescdn.com\/asset\/c02e1dd8\/graphic\/items\/3080.webp\">\n        <p style=\"\">Alle Rekrutierungsauftr\u00e4ge, au\u00dfer Adelsgeschlechter, kosten 5% weniger Rohstoffe!<\/p>\r\n    <p style=\"color: green\">Laufzeit: 72:00:00 <\/p>\r\n    <p style=\"color: green\">Wirkung: Alle D\u00f6rfer<\/p>\r\n<\/div>\n\n\n\n"}],"rewards_html":[{"small_image":false,"image":"https:\/\/dsde.innogamescdn.com\/asset\/c02e1dd8\/graphic\/items\/3080.webp","text":"Kriegs-Kommandeur","html":"<div class=\"quest-reward-image\"><img src=\"https:\/\/dsde.innogamescdn.com\/asset\/c02e1dd8\/graphic\/items\/3080.webp\" title=\"Kriegs-Kommandeur\"><\/div>\n                     <div class=\"quest-reward-text\">\n                     <p class=\"quest-reward-description\">Kriegs-Kommandeur<\/p>\n                     <\/div>"}],"opened":false,"finished":false,"hide":false,"can_be_skipped":false,"title":"Kaufoptionen","icon":"m\/ios\/o_pa.png","state":"active","goal_state":"new","quest_system":5},"1830":{"id":1830,"questline":11,"goals":{},"goals_html":[{"image":"https:\/\/dsde.innogamescdn.com\/asset\/c02e1dd8\/graphic\/quests\/goals\/recruit_troops.webp","summary":"Rekrutiere weitere Truppen","description":"Rekrutiere weitere Truppen, bis deine Armee einen Wert von mindestens 1250 Bev\u00f6lkerungspunkten hat.","completed":false}],"objective":"Du kannst dir die Werte f\u00fcr jede Einheit ansehen, indem du auf den Namen der Einheit klickst.","goals_completed":0,"goals_total":1,"rewards":[],"rewards_html":[],"opened":false,"finished":false,"hide":false,"can_be_skipped":false,"title":"Schaffe eine Armee IV","icon":"m\/ios\/o_recruit.png","state":"active","goal_state":"new","quest_system":5},"1935":{"id":1935,"questline":13,"goals":{},"goals_html":[{"image":"https:\/\/dsde.innogamescdn.com\/asset\/c02e1dd8\/graphic\/relic_system\/relic_logo.webp","summary":"Hol dir deine zweite Reliquie","description":"Adle ein anderes Dorf, um deine zweite Reliquie zu bekommen.","completed":false}],"objective":"Du bekommst Reliquien, wenn du Barbarend\u00f6rfer oder Spielerd\u00f6rfer eroberst, die eine Reliquie haben. Welche Reliquie ein Dorf hat, kannst du herausfinden, indem du es ausspionierst. Sobald du ein Dorf mit einer Reliquie erobert hast, findest du die neu erworbene Reliquie in deiner Schatzkammer.","goals_completed":0,"goals_total":1,"rewards":[],"rewards_html":[],"opened":true,"finished":false,"hide":false,"can_be_skipped":false,"title":"Finde eine weitere Reliquie","icon":"m\/ios\/o_relic.png","state":"active","goal_state":"new","quest_system":5},"7030":{"id":7030,"questline":3,"goals":{},"goals_html":[{"image":"https:\/\/dsde.innogamescdn.com\/asset\/c02e1dd8\/graphic\/quests\/goals\/knight.webp","summary":"Bringe deinem Paladin alle 4 Stufen einer F\u00e4higkeit bei","description":"Benutze F\u00e4higkeitsb\u00fccher aus deinem Inventar, um die F\u00e4higkeiten deines Paladins zu verbessern.","completed":false}],"objective":"Dein Paladin kann 12 verschiedene F\u00e4higkeiten erlernen. Jede dieser F\u00e4higkeiten besteht aus vier Stufen, wobei jede Stufe den Bonus, den du durch deinen Paladin erh\u00e4ltst, erh\u00f6ht. Die letzte Stufe einer F\u00e4higkeit gew\u00e4hrt jedoch den gr\u00f6\u00dften Bonus. Die Spezialisierung deines Paladins auf bestimmte F\u00e4higkeiten k\u00f6nnte eine gute Idee sein.","goals_completed":0,"goals_total":1,"rewards":[],"rewards_html":[],"opened":true,"finished":false,"hide":false,"can_be_skipped":false,"title":"Geselle","icon":"m\/ios\/o_knight.png","state":"active","goal_state":"new","quest_system":5},"7035":{"id":7035,"questline":3,"goals":{},"goals_html":[{"image":"https:\/\/dsde.innogamescdn.com\/asset\/c02e1dd8\/graphic\/quests\/goals\/knight.webp","summary":"Paladin: Erreiche Stufe 16","description":"Sammle genug Erfahrung mit deinem Paladin, um Stufe 16 zu erreichen.","completed":false},{"image":"https:\/\/dsde.innogamescdn.com\/asset\/c02e1dd8\/graphic\/quests\/goals\/knight.webp","summary":"Bringe deinem Paladin eine Stufe 3-F\u00e4higkeit bei","description":"Benutze ein F\u00e4higkeitsbuch aus deinem Inventar, um deinen Paladin eine neue F\u00e4higkeit aus der dritten F\u00e4higkeitsstufe zu lehren, die verf\u00fcgbar ist, wenn der Paladin Level 16 erreicht hat.","completed":false}],"objective":"Dein Paladin kann verschiedene F\u00e4higkeiten erlernen, um deinen Truppen und D\u00f6rfern zu helfen. Wenn dein Paladin Stufe 16 erreicht, wird die dritte F\u00e4higkeiten-Stufe verf\u00fcgbar und auf Stufe 24 wird die letzte Stufe freigeschaltet. Diese Stufen enthalten F\u00e4higkeiten, die deinen D\u00f6rfern oder Truppen sowohl im Angriff als auch bei der Verteidigung Vorteile verschaffen.","goals_completed":0,"goals_total":3,"rewards":[],"rewards_html":[],"opened":false,"finished":false,"hide":false,"can_be_skipped":false,"title":"Expertenstudien","icon":"m\/ios\/o_knight.png","state":"active","goal_state":"new","quest_system":5}});
+		});
+	</script>
+			<script type='text/javascript'>
+    var googletag = googletag || {};
+    googletag.cmd = googletag.cmd || [];
+    (function() {
+        var gads = document.createElement('script');
+        gads.async = true;
+        gads.type = 'text/javascript';
+        var useSSL = 'https:' == document.location.protocol;
+        gads.src = (useSSL ? 'https:' : 'http:') +
+            '//www.googletagservices.com/tag/js/gpt.js';
+        var node = document.getElementsByTagName('script')[0];
+        node.parentNode.insertBefore(gads, node);
+    })();
+</script>	</head><body id="ds_body" class="desktop   " dir="ltr"
+      >
+
+	<div class="top_bar">
+		<div class="bg_left"> </div>
+		<div class="bg_right"> </div>
+	</div>
+	<div class="top_shadow"> </div>
+	<div class="top_background"> </div>
+
+        <div class="questlog_placeholder">&nbsp;</div>
+
+	<table id="main_layout" cellspacing="0">
+		<tr style="height: 48px;">
+			<td class="topbar left fixed"></td>
+			<td class="topbar center fixed">
+				<div id="topContainer">
+					<table id="topTable" style="text-align: center;" cellspacing="0" class="menu-village-standard">
+						<tr>
+							<td style="text-align: center;">
+								<table class="menu nowrap menu-village-standard" style="white-space: nowrap; ">
+									<tr id="menu_row">
+										<td class="menu-side"></td>
+																				<td class="menu-item">
+											<a href="/game.php?village=1&amp;screen=overview">
+												<span class="icon header overview"></span>
+												Übersicht
+											</a>
+
+										</td>
+
+										<td id="header_menu_link_map" class="menu-item tooltip-delayed" title="Karte<br/> :: Tastaturkürzel: &lt;b&gt;m&lt;/b&gt;">
+											<a href="/game.php?village=1&amp;screen=map">
+												<span class="icon header map2"></span>
+												Karte
+											</a>
+										</td>
+
+										<td class="menu-item">
+											<a href="/game.php?village=1&amp;screen=report">
+												<span id="new_report" class="icon header new_report_faded"></span>
+												Berichte
+												<span id="menu_report_count" class="badge badge-report"></span>
+											</a>
+											<table cellspacing="0" class="menu_column"><tr><td class="menu-column-item"><a href="/game.php?village=1&amp;screen=report&amp;mode=all">Alle<span class="badge badge-report"> </span></a></td></tr><tr><td class="menu-column-item"><a href="/game.php?village=1&amp;screen=report&amp;mode=attack">Angriffe</a></td></tr><tr><td class="menu-column-item"><a href="/game.php?village=1&amp;screen=report&amp;mode=defense">Verteidigung</a></td></tr><tr><td class="menu-column-item"><a href="/game.php?village=1&amp;screen=report&amp;mode=support">Unterstützung</a></td></tr><tr><td class="menu-column-item"><a href="/game.php?village=1&amp;screen=report&amp;mode=trade">Handel</a></td></tr><tr><td class="menu-column-item"><a href="/game.php?village=1&amp;screen=report&amp;mode=event">Events</a></td></tr><tr><td class="menu-column-item"><a href="/game.php?village=1&amp;screen=report&amp;mode=other">Sonstiges</a></td></tr><tr><td class="menu-column-item"><a href="/game.php?village=1&amp;screen=report&amp;mode=forwarded">Weitergeleitet</a></td></tr><tr><td class="menu-column-item"><a href="/game.php?village=1&amp;screen=report&amp;mode=public">Öffentlich</a></td></tr><tr><td class="menu-column-item"><a href="/game.php?village=1&amp;screen=report&amp;mode=filter">Filter</a></td></tr><tr><td class="bottom"><div class="corner"></div><div class="decoration"></div></td></tr></table>
+										</td>
+
+                                        <!-- mail -->
+                                                                                    <td class="menu-item">
+                                                <a href="/game.php?village=1&amp;screen=mail">
+                                                    <span id="new_mail" class="icon header new_mail_faded"></span>
+                                                    Nachrichten
+                                                    <span id="menu_mail_count" class="badge badge-mail"></span>
+                                                </a>
+                                                <table cellspacing="0" class="menu_column"><tr><td class="menu-column-item"><a href="/game.php?village=1&amp;screen=mail&amp;mode=in">Nachrichten<span class="badge badge-mail"> </span></a></td></tr><tr><td class="menu-column-item"><a href="/game.php?village=1&amp;screen=mail&amp;mode=mass_out">Rundschreiben</a></td></tr><tr><td class="menu-column-item"><a href="/game.php?village=1&amp;screen=mail&amp;mode=new">Nachricht schreiben</a></td></tr><tr><td class="bottom"><div class="corner"></div><div class="decoration"></div></td></tr></table>
+                                            </td>
+
+																					<td>
+																									<a id="manager_icon_farm" class="manager_icon tooltip-delayed" style="background-image:url('https://dsde.innogamescdn.com/asset/c02e1dd8/graphic/icons/farm_assistent.webp')" href="/game.php?village=1&amp;screen=am_farm" title="Farm-Assistent">&nbsp;</a>
+																																					<a class="manager_icon tooltip-delayed" style="background-image:url('https://dsde.innogamescdn.com/asset/c02e1dd8/graphic/icons/account_manager.webp')" href="/game.php?village=1&amp;screen=accountmanager" title="Account-Manager">&nbsp;</a>
+																							</td>
+
+										<!-- ranking -->
+										<td class="menu-item lpad"> </td>
+																				<td class="menu-item" id="topdisplay">
+											<div class="bg">
+												<a href="/game.php?village=1&amp;screen=ranking">Rangliste</a>
+												<div class="rank">(<span id="rank_rank">1</span>.|<span id="rank_points">579</span> P)</div>
+												<table cellspacing="0" class="menu_column"><tr><td class="menu-column-item"><a href="/game.php?village=1&amp;screen=ranking&amp;mode=ally">Stämme</a></td></tr><tr><td class="menu-column-item"><a href="/game.php?village=1&amp;screen=ranking&amp;mode=player">Spieler</a></td></tr><tr><td class="menu-column-item"><a href="/game.php?village=1&amp;screen=ranking&amp;mode=dominance">Weltendominanz</a></td></tr><tr><td class="menu-column-item"><a href="/game.php?village=1&amp;screen=ranking&amp;mode=con_ally">Kontinent Stämme</a></td></tr><tr><td class="menu-column-item"><a href="/game.php?village=1&amp;screen=ranking&amp;mode=con_player">Kontinent Spieler</a></td></tr><tr><td class="menu-column-item"><a href="/game.php?village=1&amp;screen=ranking&amp;mode=kill_ally">Besiegte Gegner (Stamm)</a></td></tr><tr><td class="menu-column-item"><a href="/game.php?village=1&amp;screen=ranking&amp;mode=kill_player">Besiegte Gegner</a></td></tr><tr><td class="menu-column-item"><a href="/game.php?village=1&amp;screen=ranking&amp;mode=awards">Erfolge</a></td></tr><tr><td class="menu-column-item"><a href="/game.php?village=1&amp;screen=ranking&amp;mode=in_a_day">An einem Tag</a></td></tr><tr><td class="menu-column-item"><a href="/game.php?village=1&amp;screen=ranking&amp;mode=wars">Stammeskriege</a></td></tr><tr><td class="bottom"><div class="corner"></div><div class="decoration"></div></td></tr></table>
+											</div>
+										</td>
+																				<td class="menu-item rpad"> </td>
+
+                                        <!-- tribe -->
+                                                                                    <td class="menu-item">
+                                                <a href="/game.php?village=1&amp;screen=ally">
+                                                    &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;                                                    Stamm
+                                                    <span id="menu_counter_ally" class="badge badge-ally-forum"></span>
+                                                </a>
+                                                <div class="buttonicon">
+                                                    <a href="/game.php?village=1&amp;screen=ally"  style="display:inline"><span id="tribe_forum_indicator" class="icon header no_new_post"></span></a>
+                                                </div>
+                                                                                            </td>
+
+										<!-- profile -->
+										<td class="menu-item">
+											<a href="/game.php?village=1&amp;screen=info_player">
+												<span class="icon header profile"></span>
+												Profil
+												<span id="menu_counter_profile" class="badge">(1)</span>
+											</a>
+											<table cellspacing="0" class="menu_column"><tr><td class="menu-column-item"><a href="/game.php?village=1&amp;screen=info_player">bot</a></td></tr><tr><td class="menu-column-item"><a href="/game.php?village=1&amp;screen=relic_system">Schatzkammer</a></td></tr><tr><td class="menu-column-item"><a href="/game.php?village=1&amp;screen=inventory">Inventar<span class="badge badge-inventory"> </span></a></td></tr><tr><td class="menu-column-item"><a href="/game.php?village=1&amp;screen=info_player&amp;mode=awards">Erfolge</a></td></tr><tr><td class="menu-column-item"><a href="/game.php?village=1&amp;screen=info_player&amp;mode=stats_own">Statistik</a></td></tr><tr><td class="menu-column-item"><a href="/game.php?village=1&amp;screen=buddies">Freunde<span class="badge badge-buddy"> </span></a></td></tr><tr><td class="menu-column-item"><a href="/game.php?village=1&amp;screen=info_player&amp;mode=daily_bonus">Täglicher Bonus<span class="badge badge-daily-bonus"> (1)</span></a></td></tr><tr><td class="menu-column-item"><a href="/game.php?village=1&amp;screen=mentor">Mentorenprogramm</a></td></tr><tr><td class="menu-column-item"><a href="/game.php?village=1&amp;screen=info_player&amp;mode=block">Ignorierliste</a></td></tr><tr><td class="bottom"><div class="corner"></div><div class="decoration"></div></td></tr></table>
+										</td>
+
+										<!-- premium -->
+										<td class="menu-item">
+											<a href="/game.php?village=1&amp;screen=premium">
+												<span class="coinbag coinbag-header"></span>&nbsp;<span id="premium_points">0</span>
+												<span id="premium_points_buy"></span>
+											</a>
+											<table cellspacing="0" class="menu_column"><tr><td class="menu-column-item"><a href="/game.php?village=1&amp;screen=premium&amp;mode=use">Premium-Features</a></td></tr><tr><td class="menu-column-item"><a href="/game.php?village=1&amp;screen=premium&amp;mode=premium" class="premium-buy">Kauf</a></td></tr><tr><td class="menu-column-item"><a href="/game.php?village=1&amp;screen=premium&amp;mode=cosmetics">Aussehen</a></td></tr><tr><td class="menu-column-item"><a href="/game.php?village=1&amp;screen=premium&amp;mode=transfer">Übertragen</a></td></tr><tr><td class="menu-column-item"><a href="/game.php?village=1&amp;screen=premium&amp;mode=log">Punkte-Protokoll</a></td></tr><tr><td class="menu-column-item"><a href="/game.php?village=1&amp;screen=premium&amp;mode=feature_log">Feature-Protokoll</a></td></tr><tr><td class="bottom"><div class="corner"></div><div class="decoration"></div></td></tr></table>
+										</td>
+
+										<!-- settings -->
+										<td class="menu-item">
+											<a href="/game.php?village=1&amp;screen=settings">
+												<span class="icon header settings"></span>
+												Einstellungen
+											</a>
+											<table cellspacing="0" class="menu_column"><tr><td class="menu-column-item"><a href="/game.php?village=1&amp;screen=settings&amp;mode=settings">Spieloptionen</a></td></tr><tr><td class="menu-column-item"><a href="/game.php?village=1&amp;screen=settings&amp;mode=account">Account</a></td></tr><tr><td class="menu-column-item"><a href="/game.php?village=1&amp;screen=settings&amp;mode=linked">Verknüpfte Accounts</a></td></tr><tr><td class="menu-column-item"><a href="/game.php?village=1&amp;screen=settings&amp;mode=move">Neu anfangen</a></td></tr><tr><td class="menu-column-item"><a href="/game.php?village=1&amp;screen=settings&amp;mode=transfer">Casual-Transfer</a></td></tr><tr><td class="menu-column-item"><a href="/game.php?village=1&amp;screen=settings&amp;mode=quickbar">Schnellleiste</a></td></tr><tr><td class="menu-column-item"><a href="/game.php?village=1&amp;screen=settings&amp;mode=share">Geteilte Internetverbindung</a></td></tr><tr><td class="menu-column-item"><a href="/game.php?village=1&amp;screen=settings&amp;mode=vacation">Urlaubsvertretung</a></td></tr><tr><td class="menu-column-item"><a href="/game.php?village=1&amp;screen=settings&amp;mode=logins">Logins</a></td></tr><tr><td class="menu-column-item"><a href="/game.php?village=1&amp;screen=settings&amp;mode=poll">Umfragen</a></td></tr><tr><td class="menu-column-item"><a href="/game.php?village=1&amp;screen=settings&amp;mode=ref&amp;source=settings_menu">Spieler einladen</a></td></tr><tr><td class="menu-column-item"><a href="/game.php?village=1&amp;screen=settings&amp;mode=push">Push-Benachrichtigungen</a></td></tr><tr><td class="menu-column-item"><a href="/game.php?village=1&amp;screen=settings&amp;mode=notify">E-Mail-Benachrichtigungen</a></td></tr><tr><td class="menu-column-item"><a href="/game.php?village=1&amp;screen=settings&amp;mode=command_sharing">Befehlsfreigabe</a></td></tr><tr><td class="menu-column-item"><a href="/game.php?village=1&amp;screen=settings&amp;mode=village_notes_sharing">Dorfnotizen teilen</a></td></tr><tr><td class="menu-column-item"><a href="/game.php?village=1&amp;screen=settings&amp;mode=ticket" target="_blank">Supportanfrage</a></td></tr><tr><td class="menu-column-item"><a href="/game.php?village=1&amp;screen=settings&amp;mode=ticket&amp;data_usage=1" target="_blank">Datennutzungsoptionen</a></td></tr><tr><td class="bottom"><div class="corner"></div><div class="decoration"></div></td></tr></table>
+										</td>
+
+										<td class="menu-side"><img src="https://dsde.innogamescdn.com/asset/c02e1dd8/graphic/loading.gif" id="loading_content" style="display: none" alt="" class="" /></td>
+									</tr>
+								</table>
+							</td>
+						</tr>
+					</table>
+
+						</div>
+			</td>
+			<td class="topbar right fixed"> </td>
+
+		</tr>
+		<tr class="shadedBG">
+
+			<td class="bg_left">
+				<div class="bg_left"> </div>
+			</td>
+
+			<td class="maincell" style="width: 850px;">
+				<div style="position:fixed;">
+					<div class="questlog" id="questlog_new">
+													<div class="quest" id="new_quest" onclick="Questlines.showDialog(0, 'main-tab')"></div>
+																							</div>
+				</div>
+
+
+
+			<br class="newStyleOnly" />
+
+			<hr class="oldStyleOnly" />
+
+			<table id="header_info" align="center" width="100%" cellspacing="0">
+				<colgroup>
+					<col width="1%" />
+					<col width="96%" />
+					<col width="1%" />
+					<col width="1%" />
+					<col width="1%" />
+				</colgroup>
+				<tr>
+					<td class="topAlign">
+						<table class="header-border">
+	                        <tr>
+	                            <td>
+									<table class="box menu nowrap">
+	                                    <tr id="menu_row2">
+																																																							<td style="white-space:nowrap;" id="menu_row2_village" class="firstcell box-item icon-box nowrap">
+																									<a class="nowrap tooltip-delayed" title="Dorfübersicht<br/> :: Tastaturkürzel: &lt;b&gt;v&lt;/b&gt;" href="/game.php?village=1&amp;screen=overview"><span class="icon header village"></span>Bot's Village</a>
+																							</td>
+																						<td class="box-item" style="padding-right: 6px"><b class="nowrap">(500|500) K55</b></td>
+												                                    </tr>
+	                                </table>
+	                            </td>
+	                        </tr>
+							<tr class="newStyleOnly">
+								<td class="shadow">
+									<div class="leftshadow"> </div>
+									<div class="rightshadow"> </div>
+								</td>
+							</tr>
+	                    </table>
+			</td>
+
+				<td align="right" class="topAlign"> </td><!-- flexible gap -->
+
+				<td align="right" class="topAlign">
+
+                </td>
+
+                                <td align="right" class="topAlign">
+					<table align="right" class="header-border menu_block_right">
+						<tr>
+							<td>
+								<table class="box smallPadding" cellspacing="0" style="empty-cells:show;">
+									<tr style="height: 20px;">
+										<td class="box-item icon-box firstcell">
+											<a href="/game.php?village=1&amp;screen=wood" title="Holz - 458 pro Stunde"><span class="icon header wood"> </span></a>
+										</td>
+                                        <td class="box-item" style="position: relative">
+						<span id="wood" title="Holz - 458 pro Stunde" class="res">2815</span>
+                                        </td>
+                                        <td class="box-item icon-box">
+						<a href="/game.php?village=1&amp;screen=stone" title="Lehm - 338 pro Stunde"><span class="icon header stone"> </span></a>
+                                        </td>
+                                        <td class="box-item">
+						<span id="stone" title="Lehm - 338 pro Stunde" class="res">1971</span>
+                                        </td>
+                                        <td class="box-item icon-box">
+						<a href="/game.php?village=1&amp;screen=iron" title="Eisen - 215 pro Stunde"><span class="icon header iron" > </span></a>
+                                        </td>
+										<td class="box-item">
+											<span id="iron" title="Eisen - 215 pro Stunde" class="res">43</span>
+										</td>
+                                        <td class="box-item icon-box">
+						<a href="/game.php?village=1&amp;screen=storage" title="Speicherkapazität"><span class="icon header ressources"> </span></a>
+                                        </td>
+                                        <td class="box-item">
+						<span id="storage" title="Speicherkapazität">4247</span>
+                                        </td>
+																					<td class="box-item icon-box"><a href="/game.php?village=1&amp;screen=farm" title="Bauernhof"><span class="icon header population"> </span></a></td>
+											<td class="box-item" align="center" style="margin:0;padding:0;" title="Bauernhof">
+												<span id="pop_current_label" class="warn_90">1342</span>/<span id="pop_max_label">1376</span>
+											</td>
+										                                    </tr>
+								</table>
+							</td>
+						</tr>
+						<tr class="newStyleOnly">
+							<td class="shadow">
+								<div class="leftshadow"> </div>
+								<div class="rightshadow"> </div>
+							</td>
+						</tr>
+					</table>
+				</td>
+
+										<td align="right" class="topAlign">
+											<table class="header-border menu_block_right" style="border-collapse: collapse;">
+							<tr>
+								<td>
+									<table class="box" cellspacing="0">
+										<tr>
+											<!-- inventory -->
+																							<td class="box-item icon-box firstcell" style="white-space:nowrap; text-align:center;">
+													<a title="Inventar" href="/game.php?village=1&amp;screen=inventory" style="vertical-align:middle;">
+														<span class="icon header inventory" style="margin:0;"></span>
+													</a>
+												</td>
+
+																							<td class="box-item icon-box" style="white-space:nowrap;">
+													<a title="Flaggen" href="/game.php?village=1&amp;screen=flags" style="vertical-align:middle;">
+														<span class="icon header flags"></span>													</a>
+												</td>
+																																		<td class="box-item icon-box">
+													<a title="Paladin" href="/game.php?village=1&amp;screen=statue"><span class="icon header knight"></span></a></td>
+																																		<td class="box-item icon-box">
+													<a title="Reliquien" href="/game.php?village=1&amp;screen=relic_system"><img src="https://dsde.innogamescdn.com/asset/c02e1dd8/graphic/relic_system/relic_icon.webp" title="" alt="" class="" /></a>
+												</td>
+																																</tr>
+									</table>
+								</td>
+							</tr>
+							<tr class="newStyleOnly">
+								<td class="shadow">
+									<div class="leftshadow"> </div>
+									<div class="rightshadow"> </div>
+								</td>
+							</tr>
+						</table>
+					                </td>
+
+						<td class="topAlign  " id="header_commands">
+					<table class="header-border menu_block_right">
+						<tr>
+							<td>
+								<table class="box smallPadding no-gap" cellspacing="0">
+									<tr>
+
+										<td id="incomings_cell" style="text-align: center; padding: 0 4px" class="box-item firstcell nowrap">
+																						<img src="https://dsde.innogamescdn.com/asset/c02e1dd8/graphic/unit/att.webp" title="Eingehende Angriffe" style="vertical-align: -2px" alt="" class="" />
+											<span id="incomings_amount">0</span>
+																					</td>
+
+										<td id="supports_cell" style="text-align: center; padding: 0 4px" class="box-item separate nowrap">
+											<a href="">
+												<img src="https://dsde.innogamescdn.com/asset/c02e1dd8/graphic/command/support.webp" title="Eingehende Unterstützung" style="vertical-align: -2px" alt="" class="" />
+												<span id="supports_amount"></span>
+											</a>
+										</td>
+									</tr>
+								</table>
+							</td>
+						</tr>
+						<tr class="newStyleOnly">
+							<td class="shadow">
+								<div class="leftshadow"> </div>
+								<div class="rightshadow"> </div>
+							</td>
+						</tr>
+					</table>
+				</td>
+							</tr>
+		</table>
+
+
+
+		<div id="script_warning" class="info_box" style="display: none;" >
+            <div class="content">
+                Die aktivierten Scripte sind mit der derzeitigen Version möglicherweise nicht kompatibel.<br />
+                Falls es zu Problemen kommen sollte, deaktiviere oder aktualisiere die Scripte.<br />
+                Falls dennoch Probleme auftreten, kontaktiere bitte den Autor des Scripts. <ul id="script_list"></ul>
+            </div>
+		</div>
+
+
+
+
+		<!-- *********************** CONTENT BELOW ************************** -->
+		<table align="center" id="contentContainer" width="100%">
+	        <tr>
+	            <td>
+					<table class="content-border" width="100%" cellspacing="0">
+	                    <tr>
+	                        <td id="inner-border">
+								<table class="main" align="left">
+	                                <tr>
+										<td id="content_value">
+
+                                            <h2>Berichte</h2>
+
+
+<table class="no_spacing" width="100%"><tr><td valign="top">
+<table class="vis modemenu" width="100">
+	<tr><td  class="selected" style="min-width: 80px"><a href="/game.php?village=1&amp;screen=report&amp;mode=all">Alle </a></td></tr>
+	<tr><td  style="min-width: 80px"><a href="/game.php?village=1&amp;screen=report&amp;mode=attack">Angriffe </a></td></tr>
+	<tr><td  style="min-width: 80px"><a href="/game.php?village=1&amp;screen=report&amp;mode=defense">Verteidigung </a></td></tr>
+	<tr><td  style="min-width: 80px"><a href="/game.php?village=1&amp;screen=report&amp;mode=support">Unterstützung </a></td></tr>
+	<tr><td  style="min-width: 80px"><a href="/game.php?village=1&amp;screen=report&amp;mode=trade">Handel </a></td></tr>
+	<tr><td  style="min-width: 80px"><a href="/game.php?village=1&amp;screen=report&amp;mode=event">Events </a></td></tr>
+	<tr><td  style="min-width: 80px"><a href="/game.php?village=1&amp;screen=report&amp;mode=other">Sonstiges </a></td></tr>
+	<tr><td  style="min-width: 80px"><a href="/game.php?village=1&amp;screen=report&amp;mode=forwarded">Weitergeleitet </a></td></tr>
+	<tr><td  style="min-width: 80px"><a href="/game.php?village=1&amp;screen=report&amp;mode=public">Öffentlich </a></td></tr>
+	<tr><td  style="min-width: 80px"><a href="/game.php?village=1&amp;screen=report&amp;mode=filter">Filter </a></td></tr>
+</table>
+</td><td valign="top" width="100%" >
+<script type="text/javascript">
+//<![CDATA[
+	$(function(){
+		JToggler.init('#report_list input[type="checkbox"]');
+	});
+//]]>
+</script>
+<table class="vis" width="100%">
+
+
+	<tr>
+		<td align="center" colspan="4">
+			<strong> &gt;1&lt; </strong><a class='paged-nav-item' href="/game.php?village=1&amp;screen=report&amp;mode=all&from=12"> [2] </a><a class='paged-nav-item' href="/game.php?village=1&amp;screen=report&amp;mode=all&from=24"> [3] </a><a class='paged-nav-item' href="/game.php?village=1&amp;screen=report&amp;mode=all&from=36"> [4] </a><a class='paged-nav-item' href="/game.php?village=1&amp;screen=report&amp;mode=all&from=48"> [5] </a><a class='paged-nav-item' href="/game.php?village=1&amp;screen=report&amp;mode=all&from=60"> [6] </a><a class='paged-nav-item' href="/game.php?village=1&amp;screen=report&amp;mode=all&from=72"> [7] </a><a class='paged-nav-item' href="/game.php?village=1&amp;screen=report&amp;mode=all&from=84"> [8] </a><a class='paged-nav-item' href="/game.php?village=1&amp;screen=report&amp;mode=all&from=96"> [9] </a><a class='paged-nav-item' href="/game.php?village=1&amp;screen=report&amp;mode=all&from=108"> [10] </a><a class='paged-nav-item' href="/game.php?village=1&amp;screen=report&amp;mode=all&from=120"> [11] </a><a class='paged-nav-item' href="/game.php?village=1&amp;screen=report&amp;mode=all&from=132"> [12] </a><a class='paged-nav-item' href="/game.php?village=1&amp;screen=report&amp;mode=all&from=144"> [13] </a><a class='paged-nav-item' href="/game.php?village=1&amp;screen=report&amp;mode=all&from=156"> [14] </a><a class='paged-nav-item' href="/game.php?village=1&amp;screen=report&amp;mode=all&from=168"> [15] </a><a class='paged-nav-item' href="/game.php?village=1&amp;screen=report&amp;mode=all&from=180"> [16] </a>
+		</td>
+	</tr>
+
+
+</table>
+
+<div class="report-preview">
+    <div class="report-preview-content"></div>
+</div>
+
+<form action="/game.php?village=1&amp;screen=report&amp;mode=process_reports&amp;refmode=all" method="post">
+	<table id="report_list" class="vis" width="100%">
+		<tr>
+			<th><input name="all" type="checkbox" class="selectAll" id="select_all_top" onclick="selectAll(this.form, this.checked)" /></th>
+			<th>Betreff</th>
+			<th>Empfangen</th>
+					</tr>
+			<tr class=" report-7540590">
+			<td>
+				<input name="id_7540590" type="checkbox" />
+			</td>
+			<td style="overflow: hidden">
+				<div class="nowrap float_right" style="margin-top: 2px">
+									</div>
+
+
+									<img src="https://dsde.innogamescdn.com/asset/c02e1dd8/graphic/icons/report_scavenging.webp" style="vertical-align: -2px" alt="" class="" />
+								<span class="quickedit report-title" data-id="7540590">
+					<span class="quickedit-content">
+						<a href="/game.php?village=1&amp;screen=report&amp;mode=all&amp;group_id=0&amp;view=7540590" class="report-link" data-id="7540590">
+														<span class="quickedit-label">
+															bot (Bot's Village) plündert
+														</span>
+						</a>
+											</span>
+				</span>
+				<span class="report-unread">
+					(Neu)
+				</span>
+			</td>
+			<td class="nowrap">03.11.25 01:37</td>
+					</tr>
+			<tr class="unread report-7527757">
+			<td>
+				<input name="id_7527757" type="checkbox" />
+			</td>
+			<td style="overflow: hidden">
+				<div class="nowrap float_right" style="margin-top: 2px">
+											<img src="https://dsde.innogamescdn.com/asset/c02e1dd8/graphic/command/attack_small.webp" title="Kleiner Angriff (1-1000 Truppen)" alt="" class="" />
+									</div>
+
+				<img src="https://dsde.innogamescdn.com/asset/c02e1dd8/graphic/dots/yellow.webp" title="Verluste" alt="" class="tooltip" />
+								<span class="quickedit report-title" data-id="7527757">
+					<span class="quickedit-content">
+						<a href="/game.php?village=1&amp;screen=report&amp;mode=all&amp;group_id=0&amp;view=7527757" class="report-link" data-id="7527757">
+														<span class="quickedit-label">
+															bot (Bot's Village (500|500) K55) greift Barbarendorf (500|501) K55 an
+														</span>
+						</a>
+											</span>
+				</span>
+				<span class="report-unread">
+					(Neu)
+				</span>
+			</td>
+			<td class="nowrap">03.11.25 01:07</td>
+					</tr>
+			<tr class="unread report-7504404">
+			<td>
+				<input name="id_7504404" type="checkbox" />
+			</td>
+			<td style="overflow: hidden">
+				<div class="nowrap float_right" style="margin-top: 2px">
+									</div>
+
+
+									<img src="https://dsde.innogamescdn.com/asset/c02e1dd8/graphic/icons/report_scavenging.webp" style="vertical-align: -2px" alt="" class="" />
+								<span class="quickedit report-title" data-id="7504404">
+					<span class="quickedit-content">
+						<a href="/game.php?village=1&amp;screen=report&amp;mode=all&amp;group_id=0&amp;view=7504404" class="report-link" data-id="7504404">
+														<span class="quickedit-label">
+															bot (Bot's Village) plündert
+														</span>
+						</a>
+											</span>
+				</span>
+				<span class="report-unread">
+					(Neu)
+				</span>
+			</td>
+			<td class="nowrap">03.11.25 00:23</td>
+					</tr>
+			<tr class="unread report-7487843">
+			<td>
+				<input name="id_7487843" type="checkbox" />
+			</td>
+			<td style="overflow: hidden">
+				<div class="nowrap float_right" style="margin-top: 2px">
+											<img src="https://dsde.innogamescdn.com/asset/c02e1dd8/graphic/command/attack_small.webp" title="Kleiner Angriff (1-1000 Truppen)" alt="" class="" />
+									</div>
+
+				<img src="https://dsde.innogamescdn.com/asset/c02e1dd8/graphic/dots/yellow.webp" title="Verluste" alt="" class="tooltip" />
+								<span class="quickedit report-title" data-id="7487843">
+					<span class="quickedit-content">
+						<a href="/game.php?village=1&amp;screen=report&amp;mode=all&amp;group_id=0&amp;view=7487843" class="report-link" data-id="7487843">
+														<span class="quickedit-label">
+															bot (Bot's Village (500|500) K55) greift Barbarendorf (500|501) K55 an
+														</span>
+						</a>
+											</span>
+				</span>
+				<span class="report-unread">
+					(Neu)
+				</span>
+			</td>
+			<td class="nowrap">02.11.25 23:56</td>
+					</tr>
+			<tr class="unread report-7460907">
+			<td>
+				<input name="id_7460907" type="checkbox" />
+			</td>
+			<td style="overflow: hidden">
+				<div class="nowrap float_right" style="margin-top: 2px">
+									</div>
+
+
+									<img src="https://dsde.innogamescdn.com/asset/c02e1dd8/graphic/icons/report_scavenging.webp" style="vertical-align: -2px" alt="" class="" />
+								<span class="quickedit report-title" data-id="7460907">
+					<span class="quickedit-content">
+						<a href="/game.php?village=1&amp;screen=report&amp;mode=all&amp;group_id=0&amp;view=7460907" class="report-link" data-id="7460907">
+														<span class="quickedit-label">
+															bot (Bot's Village) plündert
+														</span>
+						</a>
+											</span>
+				</span>
+				<span class="report-unread">
+					(Neu)
+				</span>
+			</td>
+			<td class="nowrap">02.11.25 23:16</td>
+					</tr>
+			<tr class="unread report-7460699">
+			<td>
+				<input name="id_7460699" type="checkbox" />
+			</td>
+			<td style="overflow: hidden">
+				<div class="nowrap float_right" style="margin-top: 2px">
+									</div>
+
+
+								<span class="quickedit report-title" data-id="7460699">
+					<span class="quickedit-content">
+						<a href="/game.php?village=1&amp;screen=report&amp;mode=all&amp;group_id=0&amp;view=7460699" class="report-link" data-id="7460699">
+														<span class="quickedit-label">
+															Dein Paladin, Paul, hat ein Skill-Book gefunden
+														</span>
+						</a>
+											</span>
+				</span>
+				<span class="report-unread">
+					(Neu)
+				</span>
+			</td>
+			<td class="nowrap">02.11.25 23:15</td>
+					</tr>
+			<tr class="unread report-7451992">
+			<td>
+				<input name="id_7451992" type="checkbox" />
+			</td>
+			<td style="overflow: hidden">
+				<div class="nowrap float_right" style="margin-top: 2px">
+									</div>
+
+
+									<img src="https://dsde.innogamescdn.com/asset/c02e1dd8/graphic/icons/report_scavenging.webp" style="vertical-align: -2px" alt="" class="" />
+								<span class="quickedit report-title" data-id="7451992">
+					<span class="quickedit-content">
+						<a href="/game.php?village=1&amp;screen=report&amp;mode=all&amp;group_id=0&amp;view=7451992" class="report-link" data-id="7451992">
+														<span class="quickedit-label">
+															bot (Bot's Village) plündert
+														</span>
+						</a>
+											</span>
+				</span>
+				<span class="report-unread">
+					(Neu)
+				</span>
+			</td>
+			<td class="nowrap">02.11.25 23:03</td>
+					</tr>
+			<tr class="unread report-7443513">
+			<td>
+				<input name="id_7443513" type="checkbox" />
+			</td>
+			<td style="overflow: hidden">
+				<div class="nowrap float_right" style="margin-top: 2px">
+											<img src="https://dsde.innogamescdn.com/asset/c02e1dd8/graphic/command/attack_small.webp" title="Kleiner Angriff (1-1000 Truppen)" alt="" class="" />
+											<img src="https://dsde.innogamescdn.com/asset/c02e1dd8/graphic/command/spy.webp" title="Enthält Späher" alt="" class="" />
+									</div>
+
+				<img src="https://dsde.innogamescdn.com/asset/c02e1dd8/graphic/dots/blue.webp" title="Erspäht" alt="" class="tooltip" />
+								<span class="quickedit report-title" data-id="7443513">
+					<span class="quickedit-content">
+						<a href="/game.php?village=1&amp;screen=report&amp;mode=all&amp;group_id=0&amp;view=7443513" class="report-link" data-id="7443513">
+														<span class="quickedit-label">
+															bot (Bot's Village (500|500) K55) späht Barbarendorf (500|499) K55
+														</span>
+						</a>
+											</span>
+				</span>
+				<span class="report-unread">
+					(Neu)
+				</span>
+			</td>
+			<td class="nowrap">02.11.25 22:51</td>
+					</tr>
+			<tr class="unread report-7429274">
+			<td>
+				<input name="id_7429274" type="checkbox" />
+			</td>
+			<td style="overflow: hidden">
+				<div class="nowrap float_right" style="margin-top: 2px">
+											<img src="https://dsde.innogamescdn.com/asset/c02e1dd8/graphic/command/attack_small.webp" title="Kleiner Angriff (1-1000 Truppen)" alt="" class="" />
+									</div>
+
+				<img src="https://dsde.innogamescdn.com/asset/c02e1dd8/graphic/dots/yellow.webp" title="Verluste" alt="" class="tooltip" />
+								<span class="quickedit report-title" data-id="7429274">
+					<span class="quickedit-content">
+						<a href="/game.php?village=1&amp;screen=report&amp;mode=all&amp;group_id=0&amp;view=7429274" class="report-link" data-id="7429274">
+														<span class="quickedit-label">
+															bot (Bot's Village (500|500) K55) greift Barbarendorf (500|501) K55 an
+														</span>
+						</a>
+											</span>
+				</span>
+				<span class="report-unread">
+					(Neu)
+				</span>
+			</td>
+			<td class="nowrap">02.11.25 22:32</td>
+					</tr>
+			<tr class="unread report-7419682">
+			<td>
+				<input name="id_7419682" type="checkbox" />
+			</td>
+			<td style="overflow: hidden">
+				<div class="nowrap float_right" style="margin-top: 2px">
+									</div>
+
+
+									<img src="https://dsde.innogamescdn.com/asset/c02e1dd8/graphic/icons/report_scavenging.webp" style="vertical-align: -2px" alt="" class="" />
+								<span class="quickedit report-title" data-id="7419682">
+					<span class="quickedit-content">
+						<a href="/game.php?village=1&amp;screen=report&amp;mode=all&amp;group_id=0&amp;view=7419682" class="report-link" data-id="7419682">
+														<span class="quickedit-label">
+															bot (Bot's Village) plündert
+														</span>
+						</a>
+											</span>
+				</span>
+				<span class="report-unread">
+					(Neu)
+				</span>
+			</td>
+			<td class="nowrap">02.11.25 22:19</td>
+					</tr>
+			<tr class="unread report-7414580">
+			<td>
+				<input name="id_7414580" type="checkbox" />
+			</td>
+			<td style="overflow: hidden">
+				<div class="nowrap float_right" style="margin-top: 2px">
+									</div>
+
+
+									<img src="https://dsde.innogamescdn.com/asset/c02e1dd8/graphic/icons/report_scavenging.webp" style="vertical-align: -2px" alt="" class="" />
+								<span class="quickedit report-title" data-id="7414580">
+					<span class="quickedit-content">
+						<a href="/game.php?village=1&amp;screen=report&amp;mode=all&amp;group_id=0&amp;view=7414580" class="report-link" data-id="7414580">
+														<span class="quickedit-label">
+															bot (Bot's Village) plündert
+														</span>
+						</a>
+											</span>
+				</span>
+				<span class="report-unread">
+					(Neu)
+				</span>
+			</td>
+			<td class="nowrap">02.11.25 22:12</td>
+					</tr>
+			<tr class="unread report-7386298">
+			<td>
+				<input name="id_7386298" type="checkbox" />
+			</td>
+			<td style="overflow: hidden">
+				<div class="nowrap float_right" style="margin-top: 2px">
+									</div>
+
+
+									<img src="https://dsde.innogamescdn.com/asset/c02e1dd8/graphic/icons/report_scavenging.webp" style="vertical-align: -2px" alt="" class="" />
+								<span class="quickedit report-title" data-id="7386298">
+					<span class="quickedit-content">
+						<a href="/game.php?village=1&amp;screen=report&amp;mode=all&amp;group_id=0&amp;view=7386298" class="report-link" data-id="7386298">
+														<span class="quickedit-label">
+															bot (Bot's Village) plündert
+														</span>
+						</a>
+											</span>
+				</span>
+				<span class="report-unread">
+					(Neu)
+				</span>
+			</td>
+			<td class="nowrap">02.11.25 21:35</td>
+					</tr>
+
+			<tr>
+			<th colspan="2">
+				<input name="all" type="checkbox" class="selectAll" id="select_all" onclick="selectAll(this.form, this.checked)" /> <label for="select_all">alle auswählen</label></th>
+							<th></th>
+									</tr>
+		</table>
+
+	<table class="vis" align="left" style="float: left;">
+		<tr>
+			<td>
+				<input type="hidden" value="0" name="from" />
+				<input type="hidden" value="182" name="num_reports" />
+				<input type="hidden" value="0" name="current_group_id" />
+				<input type="hidden" name="h" value="1"/>
+				<input class="btn btn-cancel" type="submit" value="Löschen" name="del"/>
+						</td>
+				</tr>
+	</table>
+</form>
+
+
+<div style="clear:both;"> </div>
+
+
+
+<script>
+	$(function(){
+		$('.quickedit').QuickEdit( { url: TribalWars.buildURL('POST', 'report', { ajaxaction: 'edit_subject', report_id: '__ID__' } ) } );
+	});
+</script>
+</td></tr></table>
+						</td>
+									</tr>
+								</table>
+							</td>
+						</tr>
+					</table>
+				</td>
+			</tr>
+		</table>
+
+		<p class="server_info">
+			Serverzeit: <span id="serverTime">2:00:37</span> <span id="serverDate">03/11/2025</span>
+			<span id="dev_console" style="display: none"><b>|</b> <a href="?screen=74:72:69:62:61:6c:77:61:72:73">developer console</a></span>
+					</p>
+
+	</td>
+	<td class="bg_right">
+	</td>
+</tr>
+
+    <tr>
+        <td class="bg_leftborder"></td>
+        <td></td>
+        <td class="bg_rightborder"></td>
+    </tr>
+    <tr class="newStyleOnly">
+        <td class="bg_bottomleft">&nbsp;</td>
+        <td class="bg_bottomcenter">&nbsp;</td>
+        <td class="bg_bottomright">&nbsp;</td>
+    </tr>
+            </table><!-- .main_layout -->
+
+
+
+            <div id="world_selection_clicktrap" class="evt-world-selection-toggle"></div>
+        <div id="world_selection_popup">
+            <div class="servers-list-top"></div>
+            <div id="servers-list-block"></div>
+            <div class="servers-list-bottom"></div>
+        </div>
+        <div class="chat-open-buffer"></div>
+    <div id="bottom">
+        <div id="chat-wrapper">
+        </div>
+
+        <div id="footer">
+            <a href="#" id="unsupported-browser">
+                <img src="https://dsde.innogamescdn.com/asset/c02e1dd8/graphic/error.webp" title="" alt="" class="" /> Nicht unterstützter Browser
+            </a>
+            <div id="linkContainer">
+                                    <a href="#" class="world_button_active evt-world-selection-toggle">Welt 247</a>
+                                <a href="/game.php?village=1&amp;screen=extforum" class="footer-link" target="_blank">Community-Forum</a>
+                &nbsp;-&nbsp;
+                <a href="https://help.die-staemme.de" class="footer-link" target="_blank">Hilfe</a>
+                                                    &nbsp;-&nbsp;
+                    <a href="/game.php?village=1&amp;screen=settings&amp;mode=ticket" class="footer-link" target="_blank">Support</a>
+                                                    &nbsp;-&nbsp;
+                    <a href="/game.php?village=1&amp;screen=settings&amp;mode=ref&amp;source=bottom_menu" class="footer-link">Spieler einladen</a>
+                                                    &nbsp;-&nbsp;
+                    <a href="/game.php?village=1&amp;screen=memo" class="footer-link">Notizblock</a>
+                                                    &nbsp;-&nbsp;
+                    <a href="/game.php?village=1&amp;screen=&amp;action=logout&amp;h=1" target="_top" class="footer-link">Ausloggen</a>
+                                &nbsp;-&nbsp;
+                <a href="https://www.instagram.com/tribalwars" class="footer-link" target="_blank">Instagram</a>
+                &nbsp;-&nbsp;
+                <a href="https://www.facebook.com/TribalWars" class="footer-link" target="_blank">Facebook</a>
+                &nbsp;-&nbsp;
+                <a href="https://innogam.es/DS-Discord" class="footer-link" target="_blank">Discord</a>
+            </div>
+        </div>
+    </div>
+
+<script>
+    $(document).ready(function () {
+        Timing.init(1762131637.9791);
+        TribalWars.initTab('dedad2410c');
+
+                WorldSwitch.init();
+        WorldSwitch.worldsURL = '/game.php?village=1&screen=api&ajax=world_switch';
+
+                HotKeys.init();
+
+                Connection.connect('de247.die-staemme.de', 8082, true);
+
+
+
+
+
+
+
+
+
+        DialogQueue.consume();
+
+        $('#gift-calendar-dialog-icon, .gift-calendar-open-popup').on('click', function () {
+            GiftCalendar.showDialog();
+        });
+
+                    GiftCalendar.setNewLabel(true);
+
+        const cosmeticNameExecutor = new CosmeticNameExecutionContainer()
+        cosmeticNameExecutor.start()
+    });
+</script>
+
+<div id="side-notification-container"></div>
+<!-- emoji images by Twitter Twemoji -->
+</body>
+</html>

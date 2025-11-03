@@ -21,6 +21,7 @@ class BuildingManager:
     max_lookahead = 2
 
     queue: list[str] = []
+    target_levels: dict = {}
     waits: list[float] = []
     waits_building: list[str] = []
 
@@ -34,8 +35,13 @@ class BuildingManager:
     max_queue_len = 2
     resman = None
     raw_template = None
+    mode = "linear" # Can be 'linear' or 'dynamic'
 
     can_build_three_min = False
+
+    # For dynamic mode
+    troop_queue_status = {}
+    farming_income_rate = 0
 
     def __init__(self, wrapper, village_id):
         """
@@ -58,17 +64,13 @@ class BuildingManager:
 
         return extracted_buildings
 
-    # --- PERFORMANCE (POINT 2) ---
     def start_update(self, overview_game_data, overview_html, build=False, set_village_name=None):
         """
         Start a building manager run
-        Uses cached game_data and overview_html passed from Village.run
         """
-        # Building data can only be extracted from main screen, not overview
         main_data = self.wrapper.get_action(village_id=self.village_id, action="main")
         main_data_text = main_data.text
 
-        # Prefer passed-in overview_game_data, but fall back to parsed data if missing
         self.game_state = overview_game_data or Extractor.game_state(main_data_text) or (
             Extractor.game_state(overview_html) if overview_html else None
         ) or (
@@ -76,10 +78,9 @@ class BuildingManager:
         )
 
         if not self.game_state or "village" not in self.game_state:
-            # Cannot proceed without a valid game state; avoid crashing and log once
             if not self.logger:
                 self.logger = logging.getLogger("Builder")
-            self.logger.error("Game state could not be determined (None or missing 'village'); skipping builder update")
+            self.logger.error("Game state could not be determined; skipping builder update")
             return False
 
         vname = self.game_state["village"].get("name", str(self.village_id))
@@ -88,7 +89,6 @@ class BuildingManager:
             self.logger = logging.getLogger(fr"Builder: {vname}")
 
         if self.complete_actions(main_data_text):
-            # If actions were completed, we must refetch state
             return self.start_update(
                 overview_game_data=Extractor.game_state(self.wrapper.last_response),
                 overview_html=self.wrapper.last_response.text,
@@ -105,7 +105,6 @@ class BuildingManager:
         if self.resman:
             self.resman.update(self.game_state)
             if "building" in self.resman.requested:
-                # new run, remove request
                 self.resman.requested["building"] = {}
         if set_village_name and vname != set_village_name:
             self.wrapper.post_url(
@@ -130,51 +129,27 @@ class BuildingManager:
         if not build:
             return False
 
-        if existing_queue != 0 and existing_queue != len(self.waits):
-            if existing_queue > 1:
-                self.logger.warning(
-                    "Building queue out of sync, waiting until %d manual actions are finished!",
-                    existing_queue
-                )
-                return True
-            else:
-                self.logger.info(
-                    "Just 1 manual action left, trying to queue next building"
-                )
-
-        if existing_queue == 1:
-            r = self.max_queue_len - 1
-        else:
-            r = self.max_queue_len - len(self.waits)
+        r = self.max_queue_len - len(self.waits)
         for x in range(r):
             result = self.get_next_building_action()
             if not result:
-                self.logger.info(
-                    "No build more operations where executed (%d current, %d left)",
-                    len(self.waits), len(self.queue)
-                )
+                self.logger.info("No more build operations were executed.")
                 return False
-        # Check for instant build after putting something in the queue
 
-        # --- PERFORMANCE (POINT 2) ---
-        # Refetch main screen data *only* if we actually built something
         main_data = self.wrapper.get_action(village_id=self.village_id, action="main")
         if self.complete_actions(main_data.text):
             self.can_build_three_min = True
-            # Recurse with new data
             return self.start_update(
                 overview_game_data=Extractor.game_state(self.wrapper.last_response),
                 overview_html=self.wrapper.last_response.text,
                 build=build,
                 set_village_name=set_village_name
             )
-        # --- END PERFORMANCE ---
         return True
 
     def complete_actions(self, text):
         """
         Automatically finish a building if the world allows it
-        TODO: add premium options to lower build costs
         """
         res = re.search(
             r'(?s)(\d+),\s*\'BuildInstantFree.+?data-available-from="(\d+)"', text
@@ -188,10 +163,6 @@ class BuildingManager:
         return False
 
     def put_wait(self, wait_time):
-        """
-        Puts an item in the active building queue
-        Blocking entries until the building is completed
-        """
         self.is_queued()
         if len(self.waits) == 0:
             f_time = time.time() + wait_time
@@ -205,9 +176,6 @@ class BuildingManager:
             return f_time
 
     def is_queued(self):
-        """
-        Checks if a building is already queued
-        """
         if len(self.waits) == 0:
             return False
         for w in list(self.waits):
@@ -216,26 +184,6 @@ class BuildingManager:
         return len(self.waits) >= self.max_queue_len
 
     def has_enough(self, build_item):
-        """
-        Checks if there are enough resources to queue a building
-        """
-        if (
-                build_item["iron"] > self.resman.storage
-                or build_item["wood"] > self.resman.storage
-                or build_item["stone"] > self.resman.storage
-        ):
-            build_data = "storage:%d" % (int(self.levels["storage"]) + 1)
-            if (
-                    len(self.queue)
-                    and "storage"
-                    not in [x.split(":")[0] for x in self.queue[0: self.max_lookahead]]
-                    and int(self.levels["storage"]) != 30
-            ):
-                self.queue.insert(0, build_data)
-                self.logger.info(
-                    "Adding storage in front of queue because queue item exceeds storage capacity"
-                )
-
         r = True
         if build_item["wood"] > self.game_state["village"]["wood"]:
             req = build_item["wood"] - self.game_state["village"]["wood"]
@@ -263,111 +211,99 @@ class BuildingManager:
         return r
 
     def get_level(self, building):
-        """
-        Gets a building level
-        """
-        if building not in self.levels:
-            return 0
-        return self.levels[building]
+        return self.levels.get(building, 0)
 
     def readable_ts(self, seconds):
-        """
-        Makes stuff more human
-        """
         seconds -= time.time()
         seconds = seconds % (24 * 3600)
         hour = seconds // 3600
         seconds %= 3600
         minutes = seconds // 60
         seconds %= 60
-
         return "%d:%02d:%02d" % (hour, minutes, seconds)
 
-    def get_next_building_action(self, index=0):
-        """
-        Calculates the next best possible building action
-        """
-        if index >= len(self.queue) or index >= self.max_lookahead:
-            self.logger.debug("Not building anything because insufficient resources or index out of range")
+    def _build(self, building_name):
+        if building_name not in self.costs: return False
+        check = self.costs[building_name]
+        if check["can_build"] and self.has_enough(check) and "build_link" in check:
+            queue = self.put_wait(check["build_time"])
+            self.logger.info(
+                "Building %s %d -> %d (finishes: %s)"
+                % (
+                    building_name,
+                    self.get_level(building_name),
+                    self.get_level(building_name) + 1,
+                    self.readable_ts(queue),
+                )
+            )
+            self.levels[building_name] += 1
+            response = self.wrapper.get_url(check["build_link"].replace("amp;", ""))
+            self.game_state = Extractor.game_state(response)
+            self.costs = Extractor.building_data(response)
+            if self.costs is None:
+                self.logger.error("Failed to extract building data after building action")
+                return False
+            self.costs = self.create_update_links(self.costs)
+            return True
+        return False
+
+    def get_next_building_action(self):
+        if self.is_queued():
             return False
 
-        queue_check = self.is_queued()
-        if queue_check:
-            self.logger.debug("Not building because of queued items: %s", self.waits)
+        if self.mode == 'linear':
+            return self._get_next_linear_action()
+        elif self.mode == 'dynamic':
+            return self._get_next_dynamic_action()
+        return False
+
+    def _get_next_linear_action(self, index=0):
+        if index >= len(self.queue):
             return False
 
-        if self.resman and self.resman.in_need_of("pop"):
-            build_data = "farm:%d" % (int(self.levels["farm"]) + 1)
-            if (
-                    len(self.queue)
-                    and "farm"
-                    not in [x.split(":")[0] for x in self.queue[0: self.max_lookahead]]
-                    and int(self.levels["farm"]) != 30
-            ):
-                self.queue.insert(0, build_data)
-                self.logger.info("Adding farm in front of queue because low on pop")
-                return self.get_next_building_action(0)
+        entry, min_lvl = self.queue[index].split(":")
+        min_lvl = int(min_lvl)
 
-        if len(self.queue):
-            entry = self.queue[index]
-            entry, min_lvl = entry.split(":")
-            min_lvl = int(min_lvl)
-            if min_lvl <= self.levels[entry]:
-                self.queue.pop(index)
-                return self.get_next_building_action(index)
-            if entry not in self.costs:
-                self.logger.debug("Ignoring %s because not yet available", entry)
-                return self.get_next_building_action(index + 1)
-            check = self.costs[entry]
-            if "max_level" in check and min_lvl > check["max_level"]:
-                self.logger.debug(
-                    "Removing entry %s because max_level exceeded", entry
-                )
-                self.queue.pop(index)
-                return self.get_next_building_action(index)
-            if check["can_build"] and self.has_enough(check) and "build_link" in check:
-                queue = self.put_wait(check["build_time"])
-                self.logger.info(
-                    "Building %s %d -> %d (finishes: %s)"
-                    % (
-                        entry,
-                        self.levels[entry],
-                        self.levels[entry] + 1,
-                        self.readable_ts(queue),
-                    )
-                )
-                self.wrapper.reporter.report(
-                    self.village_id,
-                    "TWB_BUILD",
-                    "Building %s %d -> %d (finishes: %s)"
-                    % (
-                        entry,
-                        self.levels[entry],
-                        self.levels[entry] + 1,
-                        self.readable_ts(queue),
-                    ),
-                    )
-                self.levels[entry] += 1
-                response = self.wrapper.get_url(check["build_link"].replace("amp;", ""))
-                if self.can_build_three_min:
-                    # Wait some random time
-                    time.sleep(random.randint(3, 7) / 10)
-                    result = self.complete_actions(text=response.text)
-                    if result:
-                        # Remove first item from the queue
-                        self.queue.pop(0)
-                        index -= 1
-                    # Building was completed, queueing another
-                self.game_state = Extractor.game_state(response)
-                self.costs = Extractor.building_data(response)
-                if self.costs is None:
-                    self.logger.error("Failed to extract building data after building action")
-                    return False
-                # Trigger function again because game state is changed
-                self.costs = self.create_update_links(self.costs)
-                if self.resman and "building" in self.resman.requested:
-                    # Build something, remove request
-                    self.resman.requested["building"] = {}
-                return True
-            else:
-                return self.get_next_building_action(index + 1)
+        if min_lvl <= self.get_level(entry):
+            self.queue.pop(index)
+            return self._get_next_linear_action(index)
+
+        if entry not in self.costs or not self.costs[entry]["can_build"]:
+            return self._get_next_linear_action(index + 1)
+
+        return self._build(entry)
+
+    def _get_next_dynamic_action(self):
+        # Priority 1: Maintain 24/7 Troop Queues
+        if self.troop_queue_status.get('stable_queue_time', 9999) < 3600 and self.get_level('stable') < self.target_levels.get('stable', 30):
+            if self._build('stable'): return True
+        if self.troop_queue_status.get('barracks_queue_time', 9999) < 3600 and self.get_level('barracks') < self.target_levels.get('barracks', 30):
+            if self._build('barracks'): return True
+
+        # Priority 2: Academy Prerequisites & Goals
+        for building in ['main', 'smith', 'market', 'snob', 'garage']:
+            if self.get_level(building) < self.target_levels.get(building, 0):
+                if self._build(building): return True
+
+        # Priority 3: JIT Provisioning (Farm/Warehouse)
+        coin_cost = 83000
+        noble_cost = 140000
+        next_major_cost = max(coin_cost, noble_cost)
+        if self.get_level('storage') < self.target_levels.get('storage', 30) and self.resman.storage < (next_major_cost * 1.1):
+            if self._build('storage'): return True
+
+        current_pop = self.game_state["village"]["pop"]
+        if self.get_level('farm') < self.target_levels.get('farm', 30) and self.game_state["village"]["pop_max"] < (current_pop + 500):
+             if self._build('farm'): return True
+
+        # Priority 4: Resource Pits (Resource Sink)
+        if self.resman.actual['wood'] > self.resman.storage * 0.95 or \
+           self.resman.actual['stone'] > self.resman.storage * 0.95 or \
+           self.resman.actual['iron'] > self.resman.storage * 0.95:
+            pits = ['wood', 'stone', 'iron']
+            pits.sort(key=lambda p: self.get_level(p))
+            for pit in pits:
+                if self.get_level(pit) < self.target_levels.get(pit, 30):
+                    if self._build(pit): return True
+
+        return False
