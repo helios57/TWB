@@ -683,13 +683,14 @@ class Village:
         self.setup_defence_manager(data=data)
         self.run_quest_actions(config=config)
 
-        self.run_builder()
         self.units_get_template()
         self.set_unit_wanted_levels()
 
         # --- PERFORMANCE (POINT 2) ---
         # Moved update_totals to run after templates are set and before recruiting
         self.units.update_totals(self.game_data, self.overview_html)
+
+        self.run_builder()
         # --- END PERFORMANCE ---
 
         self.run_unit_upgrades()
