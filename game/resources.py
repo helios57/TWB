@@ -658,28 +658,36 @@ class ResourceManager:
 
     def get_plenty_off(self):
         """
-        Checks of there is overcapacity in a village
+        Checks for overcapacity in a village and returns a sorted list of surplus resources.
         """
-        most_of = 0
-        most = None
-        for sub in self.actual:
-            f = 1
-            for sr in self.requested:
-                if sub in self.requested[sr] and self.requested[sr][sub] > 0:
-                    f = 0
-            if not f:
-                continue
-            if sub == "pop":
-                continue
-            # self.logger.debug(f"We have {self.actual[sub]} {sub}. Enough? {self.actual[sub]} > {int(self.storage / self.ratio)}")
-            if self.actual[sub] > int(self.storage / self.ratio):
-                if self.actual[sub] > most_of:
-                    most = sub
-                    most_of = self.actual[sub]
-        if most:
-            self.logger.debug(f"We have plenty of {most}")
+        surplus_resources = []
+        # Ensure we only check for tradable resources
+        for resource in ['wood', 'stone', 'iron']:
+            is_requested = False
+            for source in self.requested:
+                if self.requested[source].get(resource, 0) > 0:
+                    is_requested = True
+                    break
 
-        return most
+            if is_requested:
+                continue
+
+            threshold = int(self.storage / self.ratio)
+            current_amount = self.actual.get(resource, 0)
+
+            if current_amount > threshold:
+                surplus_amount = current_amount - threshold
+                surplus_resources.append({"resource": resource, "amount": surplus_amount})
+
+        # Sort by the amount of surplus, descending, and return just the resource names
+        sorted_surplus = sorted(surplus_resources, key=lambda x: x['amount'], reverse=True)
+
+        resource_names = [item['resource'] for item in sorted_surplus]
+
+        if resource_names:
+            self.logger.debug(f"Surplus resources available, in order: {resource_names}")
+
+        return resource_names
 
     def in_need_of(self, obj_type):
         """
@@ -795,61 +803,71 @@ class ResourceManager:
         if drop_existing:
             self.drop_existing_trades()
 
-        plenty = self.get_plenty_off()
-        if plenty and not self.in_need_of(plenty):
+        surplus_resources = self.get_plenty_off()
+        if not surplus_resources:
+            return
+
+        for plenty in surplus_resources:
+            if self.in_need_of(plenty):
+                continue
+
             need = self.get_needs()
-            if need:
-                # check incoming resources
-                url = f"game.php?village={self.village_id}&screen=market&mode=other_offer"
-                res = self.wrapper.get_url(url=url)
-                p = re.compile(
-                    r"Aankomend:\s.+\"icon header (.+?)\".+?<\/span>(.+) ", re.M
+            if not need:
+                continue
+
+            # check incoming resources
+            url = f"game.php?village={self.village_id}&screen=market&mode=other_offer"
+            res = self.wrapper.get_url(url=url)
+            p = re.compile(
+                r"Aankomend:\s.+\"icon header (.+?)\".+?<\/span>(.+) ", re.M
+            )
+            incoming = p.findall(res.text)
+            resource_incoming = {}
+            if incoming:
+                resource_incoming[incoming[0][0].strip()] = int(
+                    "".join([s for s in incoming[0][1] if s.isdigit()])
                 )
-                incoming = p.findall(res.text)
-                resource_incoming = {}
-                if incoming:
-                    resource_incoming[incoming[0][0].strip()] = int(
-                        "".join([s for s in incoming[0][1] if s.isdigit()])
-                    )
-                    self.logger.info(
-                        f"There are resources incoming! %s", resource_incoming
-                    )
-
-                item, how_many = need
-                how_many = round(how_many, -1)
-                if item in resource_incoming and resource_incoming[item] >= how_many:
-                    self.logger.info(
-                        f"Needed {item} already incoming! ({resource_incoming[item]} >= {how_many})"
-                    )
-                    return
-                if how_many < 250:
-                    return
-
-                self.logger.debug("Checking current market offers")
-                if self.check_other_offers(item, how_many, plenty):
-                    self.logger.debug("Took market offer!")
-                    return
-
-                if how_many > self.max_trade_amount:
-                    how_many = self.max_trade_amount
-                    self.logger.debug(
-                        "Lowering trade amount of %d to %d because of limitation", how_many, self.max_trade_amount
-                    )
-                biased = int(how_many * self.trade_bias)
-                if self.actual[plenty] < biased:
-                    self.logger.debug("Cannot trade because insufficient resources")
-                    return
                 self.logger.info(
-                    "Adding market trade of %d %s -> %d %s", how_many, item, biased, plenty
-                )
-                self.wrapper.reporter.report(
-                    self.village_id,
-                    "TWB_MARKET",
-                    "Adding market trade of %d %s -> %d %s"
-                    % (how_many, item, biased, plenty),
+                    f"There are resources incoming! %s", resource_incoming
                 )
 
-                self.trade(plenty, biased, item, how_many)
+            item, how_many = need
+            how_many = round(how_many, -1)
+            if item in resource_incoming and resource_incoming[item] >= how_many:
+                self.logger.info(
+                    f"Needed {item} already incoming! ({resource_incoming[item]} >= {how_many})"
+                )
+                return
+            if how_many < 250:
+                continue
+
+            self.logger.debug("Checking current market offers")
+            if self.check_other_offers(item, how_many, plenty):
+                self.logger.debug("Took market offer!")
+                return # Exit after one successful trade
+
+            if how_many > self.max_trade_amount:
+                how_many = self.max_trade_amount
+                self.logger.debug(
+                    "Lowering trade amount of %d to %d because of limitation", how_many, self.max_trade_amount
+                )
+            biased = int(how_many * self.trade_bias)
+            if self.actual.get(plenty, 0) < biased:
+                self.logger.debug(f"Cannot trade {biased} of {plenty}, only {self.actual.get(plenty, 0)} available. Trying next surplus resource.")
+                continue
+
+            self.logger.info(
+                "Adding market trade of %d %s -> %d %s", how_many, item, biased, plenty
+            )
+            self.wrapper.reporter.report(
+                self.village_id,
+                "TWB_MARKET",
+                "Adding market trade of %d %s -> %d %s"
+                % (how_many, item, biased, plenty),
+            )
+
+            if self.trade(plenty, biased, item, how_many):
+                return # Exit after one successful trade
 
     def check_other_offers(self, item, how_many, sell):
         """

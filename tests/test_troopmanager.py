@@ -33,5 +33,75 @@ class TestTroopManager(unittest.TestCase):
         self.assertNotIn("Research Axe to level 1", actions)
         self.wrapper.get_action.assert_called_once_with(village_id=123, action="smith")
 
+    @patch('core.extractors.Extractor.smith_data')
+    def test_attempt_upgrade_skips_completed_research(self, mock_smith_data):
+        """
+        Tests that attempt_upgrade does not try to research a unit
+        that is already at the desired level.
+        """
+        # Arrange
+        self.troop_manager.wanted_levels = {"axe": 1}
+        mock_smith_data.return_value = {
+            "available": {
+                "axe": {"level": "1", "can_research": False}
+            }
+        }
+        self.wrapper.get_action.return_value = "mocked_html"
+
+        # Act
+        result = self.troop_manager.attempt_upgrade()
+
+        # Assert
+        self.assertFalse(result) # No upgrade should have been started
+        self.troop_manager.logger.debug.assert_any_call("Unit axe is already at or above the desired level (1/1).")
+
+    @patch('core.extractors.Extractor.smith_data')
+    def test_attempt_upgrade_respects_research_failed_flag(self, mock_smith_data):
+        """
+        Tests that attempt_upgrade sets the _research_failed_resources flag
+        when research fails due to lack of resources.
+        """
+        # Arrange
+        self.troop_manager.wanted_levels = {"light": 1}
+        self.troop_manager.game_data = {'village': {'wood': 10, 'stone': 10, 'iron': 10}}
+        mock_smith_data.return_value = {
+            "available": {
+                "light": {
+                    "level": "0",
+                    "can_research": True,
+                    "research_error": "Not enough resources",
+                    "wood": 100, "stone": 100, "iron": 100
+                }
+            }
+        }
+        self.wrapper.get_action.return_value = "mocked_html"
+
+        # Act
+        self.troop_manager.attempt_upgrade()
+
+        # Assert
+        self.assertTrue(self.troop_manager._research_failed_resources)
+        self.troop_manager.logger.debug.assert_any_call("Skipping research of %s because of research error (not enough resources)", "light")
+
+    @patch('game.troopmanager.TroopManager.attempt_research')
+    @patch('core.extractors.Extractor.recruit_data')
+    def test_recruit_respects_research_failed_flag(self, mock_recruit_data, mock_attempt_research):
+        """
+        Tests that recruit does not attempt to research a unit if the
+        _research_failed_resources flag is set.
+        """
+        # Arrange
+        self.troop_manager._research_failed_resources = True
+        mock_recruit_data.return_value = {} # Simulate unit not being in recruit_data
+        self.wrapper.get_action.return_value.text = "mocked_html"
+
+
+        # Act
+        self.troop_manager.recruit(unit_type="axe", amount=10)
+
+        # Assert
+        mock_attempt_research.assert_not_called()
+        self.troop_manager.logger.warning.assert_any_call("Recruitment of 10 axe failed because it is not researched")
+
 if __name__ == '__main__':
     unittest.main()

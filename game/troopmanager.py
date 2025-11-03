@@ -62,6 +62,7 @@ class TroopManager:
     resman = None
     template = None
     _smith_data = None
+    _research_failed_resources = False
 
     def __init__(self, wrapper=None, village_id=None):
         """
@@ -90,6 +91,8 @@ class TroopManager:
             if "research" in self.resman.requested:
                 # new run, remove request
                 self.resman.requested["research"] = {}
+
+        self._research_failed_resources = False
 
         if not self.logger:
             village_name = self.game_data["village"]["name"]
@@ -283,11 +286,11 @@ class TroopManager:
             current_level = int(smith_data["available"][unit_type]["level"])
             data = smith_data["available"][unit_type]
 
-            if (
-                    current_level < wanted_level
-                    and "can_research" in data
-                    and data["can_research"]
-            ):
+            if current_level >= wanted_level:
+                self.logger.debug(f"Unit {unit_type} is already at or above the desired level ({current_level}/{wanted_level}).")
+                continue
+
+            if "can_research" in data and data["can_research"]:
                 if "research_error" in data and data["research_error"]:
                     # Add needed resources to res manager?
                     r = True
@@ -306,6 +309,7 @@ class TroopManager:
                     if not r:
                         self.logger.debug("Skipping research of %s because of research error (not enough resources)", unit_type)
                         self.logger.debug("Research needs resources")
+                        self._research_failed_resources = True
                     else:
                         self.logger.debug(
                             "Skipping research of %s because of research error", unit_type
@@ -362,6 +366,7 @@ class TroopManager:
                     self.logger.debug(
                         "Ignoring research of %s because of resource error (not enough resources) %s", unit_type, str(data["research_error"])
                     )
+                    self._research_failed_resources = True
                     self.logger.debug("Research needs resources")
                 else:
                     self.logger.debug(
@@ -413,6 +418,11 @@ class TroopManager:
 
             # Check if it's locked and has unlock costs specified
             if option.get('is_locked') and option.get('unlock_costs'):
+                # New check for the last gather option
+                if option_id == 4 and self.game_data and self.game_data['village']['storage_max'] < 12000:
+                    self.logger.info("Skipping unlock of final gather option: warehouse capacity is less than 12000.")
+                    continue
+
                 costs = option['unlock_costs']
                 can_afford = True
 
@@ -715,7 +725,8 @@ class TroopManager:
                 "Recruitment of %d %s failed because it is not researched"
                 % (amount, unit_type)
             )
-            self.attempt_research(unit_type)
+            if not self._research_failed_resources:
+                self.attempt_research(unit_type)
             return False
 
         resources = self.recruit_data[unit_type]
