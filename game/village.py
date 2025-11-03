@@ -459,7 +459,7 @@ class Village:
         """
         self.current_unit_entry = self.units.get_template_action(self.builder.levels)
 
-        if self.current_unit_entry and self.units.wanted != self.current_unit_entry["build"]:
+        if self.current_unit_entry and 'build' in self.current_unit_entry and self.units.wanted != self.current_unit_entry["build"]:
             # update wanted units if template has changed
             self.logger.info(
                 "%s as wanted units for current village", str(self.current_unit_entry["build"])

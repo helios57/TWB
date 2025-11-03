@@ -128,6 +128,27 @@ class TestVillage(unittest.TestCase):
             '123', 'units', 'noble_rush_final_units'
         )
 
+    def test_set_unit_wanted_levels_handles_missing_build_key(self):
+        """
+        Tests that set_unit_wanted_levels does not crash when a troop template
+        entry is missing the 'build' key.
+        """
+        # Arrange
+        # This template entry is intentionally missing the 'build' key
+        self.village.units.get_template_action.return_value = {
+            "building": "stable",
+            "level": 1
+        }
+        self.village.builder.levels = {'stable': 1}
+        self.village.units.wanted = {}
+
+        # Act & Assert
+        try:
+            self.village.set_unit_wanted_levels()
+            # If we get here, the test has passed because no KeyError was raised.
+        except KeyError:
+            self.fail("set_unit_wanted_levels raised a KeyError unexpectedly.")
+
 
 if __name__ == '__main__':
     unittest.main()
