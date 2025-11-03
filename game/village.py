@@ -308,12 +308,18 @@ class Village:
             category="builder", template=self.build_config
         )
 
+        # Handle both string and list template data
+        if isinstance(new_template_data, list):
+            template_lines = new_template_data
+        else:
+            template_lines = new_template_data.splitlines()
+
         if "final" in self.build_config:
              self.builder.mode = "dynamic"
-             self.builder.target_levels = {line.split(':')[0]: int(line.split(':')[1]) for line in new_template_data.splitlines() if ':' in line and not line.startswith('#')}
+             self.builder.target_levels = {line.split(':')[0]: int(line.split(':')[1]) for line in template_lines if ':' in line and not line.startswith('#')}
         else:
              self.builder.mode = "linear"
-             self.builder.queue = [line for line in new_template_data.splitlines() if ':' in line and not line.startswith('#')]
+             self.builder.queue = [line for line in template_lines if ':' in line and not line.startswith('#')]
 
         self.builder.raw_template = new_template_data
 
@@ -794,6 +800,7 @@ class Village:
             "troops": self.units.total_troops,
             "under_attack": self.def_man.under_attack,
             "last_run": int(time.time()),
+            "planned_actions": (self.builder.get_planned_actions() or []) + (self.units.get_planned_actions(self.disabled_units) or []),
         }
         if self.attack and self.attack.last_farm_bag_state:
             current = self.attack.last_farm_bag_state.get("current")

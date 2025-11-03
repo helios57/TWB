@@ -17,6 +17,9 @@ class DataReader:
             "cache",
             cache_location
         )
+        if not os.path.exists(c_path):
+            os.makedirs(c_path)
+
         for existing in os.listdir(c_path):
             existing = str(existing)
             if not existing.endswith(".json"):

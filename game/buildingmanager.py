@@ -274,36 +274,151 @@ class BuildingManager:
         return self._build(entry)
 
     def _get_next_dynamic_action(self):
-        # Priority 1: Maintain 24/7 Troop Queues
-        if self.troop_queue_status.get('stable_queue_time', 9999) < 3600 and self.get_level('stable') < self.target_levels.get('stable', 30):
-            if self._build('stable'): return True
-        if self.troop_queue_status.get('barracks_queue_time', 9999) < 3600 and self.get_level('barracks') < self.target_levels.get('barracks', 30):
-            if self._build('barracks'): return True
+        # Define Academy prerequisites for clarity
+        academy_prereqs = {"main": 20, "smith": 20, "market": 10}
 
-        # Priority 2: Academy Prerequisites & Goals
-        for building in ['main', 'smith', 'market', 'snob', 'garage']:
-            if self.get_level(building) < self.target_levels.get(building, 0):
-                if self._build(building): return True
+        # --- Priority 1: Maintain 24/7 Troop Queues ---
+        # If troop queues are running low, prioritize upgrading the relevant building.
+        if self.troop_queue_status.get("stable_queue_time", 9999) < 3600:
+            if self.get_level("stable") < self.target_levels.get("stable", 30):
+                if self._build("stable"):
+                    return True
+        if self.troop_queue_status.get("barracks_queue_time", 9999) < 3600:
+            if self.get_level("barracks") < self.target_levels.get("barracks", 30):
+                if self._build("barracks"):
+                    return True
 
-        # Priority 3: JIT Provisioning (Farm/Warehouse)
-        coin_cost = 83000
-        noble_cost = 140000
+        # --- Priority 2: Strategic Goals (Academy Rush) ---
+        # First, ensure all prerequisites for the academy are met.
+        for building, required_level in academy_prereqs.items():
+            if self.get_level(building) < required_level:
+                if self._build(building):
+                    return True
+
+        # Once prerequisites are met, build the academy itself.
+        if all(self.get_level(b) >= lv for b, lv in academy_prereqs.items()):
+            if self.get_level("snob") < self.target_levels.get("snob", 1):
+                if self._build("snob"):
+                    return True
+
+        # --- Priority 3: Just-in-Time Provisioning (Warehouse & Farm) ---
+        # Check if the warehouse needs upgrading for the next big cost (e.g., nobleman).
+        # Costs are approximations; a more advanced version could pull these from game data.
+        coin_cost = 84000  # Sum of resources for a coin
+        noble_cost = 120000  # Sum of resources for a nobleman
         next_major_cost = max(coin_cost, noble_cost)
-        if self.get_level('storage') < self.target_levels.get('storage', 30) and self.resman.storage < (next_major_cost * 1.1):
-            if self._build('storage'): return True
 
-        current_pop = self.game_state["village"]["pop"]
-        if self.get_level('farm') < self.target_levels.get('farm', 30) and self.game_state["village"]["pop_max"] < (current_pop + 500):
-             if self._build('farm'): return True
+        if self.resman and self.resman.storage < (next_major_cost * 1.1):
+            if self.get_level("storage") < self.target_levels.get("storage", 30):
+                if self._build("storage"):
+                    return True
 
-        # Priority 4: Resource Pits (Resource Sink)
-        if self.resman.actual['wood'] > self.resman.storage * 0.95 or \
-           self.resman.actual['stone'] > self.resman.storage * 0.95 or \
-           self.resman.actual['iron'] > self.resman.storage * 0.95:
-            pits = ['wood', 'stone', 'iron']
+        # Check if the farm needs upgrading to support more population.
+        if self.game_state:
+            current_pop = self.game_state["village"]["pop"]
+            max_pop = self.game_state["village"]["pop_max"]
+            if max_pop - current_pop < 250:  # Upgrade if headroom is less than 250
+                if self.get_level("farm") < self.target_levels.get("farm", 30):
+                    if self._build("farm"):
+                        return True
+
+        # --- Priority 4: Resource Pits (as a resource sink) ---
+        # If resources are about to overflow, upgrade the lowest-level pit.
+        if self.resman and (
+            self.resman.actual["wood"] > self.resman.storage * 0.95
+            or self.resman.actual["stone"] > self.resman.storage * 0.95
+            or self.resman.actual["iron"] > self.resman.storage * 0.95
+        ):
+            pits = ["wood", "stone", "iron"]
+            # Sort pits by their current level to find the lowest one
             pits.sort(key=lambda p: self.get_level(p))
             for pit in pits:
                 if self.get_level(pit) < self.target_levels.get(pit, 30):
-                    if self._build(pit): return True
+                    if self._build(pit):
+                        return True
+
+        # If no other actions are taken, build towards any remaining target levels.
+        for building, target_level in self.target_levels.items():
+            if self.get_level(building) < target_level:
+                if self._build(building):
+                    return True
 
         return False
+
+    def get_planned_actions(self):
+        """
+        Returns a list of the next planned building actions.
+        This is a "dry run" and does not execute any actions.
+        """
+        if self.mode == "linear":
+            return self._get_planned_linear_actions()
+        elif self.mode == "dynamic":
+            return self._get_planned_dynamic_actions()
+        return []
+
+    def _get_planned_linear_actions(self):
+        actions = []
+        # Show the next 3 items in the queue
+        for item in self.queue[:3]:
+            entry, min_lvl = item.split(":")
+            actions.append(f"Build {entry.title()} to level {min_lvl}")
+        return actions
+
+    def _get_planned_dynamic_actions(self):
+        actions = []
+
+        def _add_action(building, target_level, reason):
+            current_level = self.get_level(building)
+            if current_level < target_level:
+                actions.append(
+                    f"Build {building.title()} to level {current_level + 1} (Reason: {reason})"
+                )
+                return True
+            return False
+
+        # Define Academy prerequisites
+        academy_prereqs = {"main": 20, "smith": 20, "market": 10}
+
+        # --- Priority 1: Troop Queues ---
+        if self.troop_queue_status.get("stable_queue_time", 9999) < 3600:
+            if _add_action("stable", self.target_levels.get("stable", 30), "Stable queue running low"): return actions
+        if self.troop_queue_status.get("barracks_queue_time", 9999) < 3600:
+            if _add_action("barracks", self.target_levels.get("barracks", 30), "Barracks queue running low"): return actions
+
+        # --- Priority 2: Strategic Goals (Academy Rush) ---
+        for building, required_level in academy_prereqs.items():
+            if self.get_level(building) < required_level:
+                 if _add_action(building, required_level, "Academy prerequisite"): return actions
+
+        if all(self.get_level(b) >= lv for b, lv in academy_prereqs.items()):
+            if _add_action("snob", self.target_levels.get("snob", 1), "Build Academy"): return actions
+
+        # --- Priority 3: JIT Provisioning ---
+        coin_cost = 84000
+        noble_cost = 120000
+        next_major_cost = max(coin_cost, noble_cost)
+        if self.resman and self.resman.storage < (next_major_cost * 1.1):
+            if _add_action("storage", self.target_levels.get("storage", 30), "Warehouse too small for Nobleman"): return actions
+
+        if self.game_state:
+            current_pop = self.game_state["village"]["pop"]
+            max_pop = self.game_state["village"]["pop_max"]
+            if max_pop - current_pop < 250:
+                if _add_action("farm", self.target_levels.get("farm", 30), "Low population headroom"): return actions
+
+        # --- Priority 4: Resource Sink ---
+        if self.resman and (
+            self.resman.actual["wood"] > self.resman.storage * 0.95
+            or self.resman.actual["stone"] > self.resman.storage * 0.95
+            or self.resman.actual["iron"] > self.resman.storage * 0.95
+        ):
+            pits = ["wood", "stone", "iron"]
+            pits.sort(key=lambda p: self.get_level(p))
+            if _add_action(pits[0], self.target_levels.get(pits[0], 30), "Resource storage full"): return actions
+
+        # --- Fallback: General Goals ---
+        for building, target_level in sorted(self.target_levels.items(), key=lambda item: self.get_level(item[0])):
+            if self.get_level(building) < target_level:
+                if _add_action(building, target_level, "Working towards final village plan"): return actions
+
+        return actions

@@ -839,3 +839,35 @@ class TroopManager:
             "stable_queue_time": max(0, self.wait_for[self.village_id].get("stable", 0) - now),
             "garage_queue_time": max(0, self.wait_for[self.village_id].get("garage", 0) - now),
         }
+
+    def get_planned_actions(self, disabled_units=None):
+        """
+        Returns a list of the next planned troop-related actions.
+        This is a "dry run" and does not execute any actions.
+        """
+        if disabled_units is None:
+            disabled_units = []
+        actions = []
+
+        # Planned Recruitment
+        for building, units in self.wanted.items():
+            if not units:
+                continue
+            for unit, wanted_amount in units.items():
+                if unit in disabled_units:
+                    continue
+                current_amount = self.total_troops.get(unit, 0)
+                if wanted_amount > current_amount:
+                    amount_to_recruit = wanted_amount - current_amount
+                    actions.append(
+                        f"Recruit {amount_to_recruit} {unit.title()} (Target: {wanted_amount})"
+                    )
+
+        # Planned Upgrades
+        # Note: This doesn't know the current level without a web request,
+        # so it just shows the final goal from the template.
+        if self.wanted_levels:
+            for unit, wanted_level in self.wanted_levels.items():
+                actions.append(f"Research {unit.title()} to level {wanted_level}")
+
+        return actions

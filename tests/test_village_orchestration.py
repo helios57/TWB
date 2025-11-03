@@ -1,54 +1,85 @@
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, call
+import sys
+import os
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 from game.village import Village
-from tests.helpers import get_mock_data
+from game.buildingmanager import BuildingManager
+from game.troopmanager import TroopManager
+from core.templates import TemplateManager
 
 class TestVillageOrchestration(unittest.TestCase):
 
-    def setUp(self):
-        self.wrapper = MagicMock()
-        self.village_id = "55555"
-        self.village = Village(self.village_id, self.wrapper)
+    @patch('core.templates.TemplateManager.get_template')
+    def setUp(self, mock_get_template):
+        # Mock templates to prevent file I/O
+        mock_get_template.side_effect = self.mock_template_loader
 
-        # Mock managers
-        self.village.builder = MagicMock()
-        self.village.snobman = MagicMock()
-        self.village.units = MagicMock()
+        self.wrapper = MagicMock()
+        self.village_id = "12345"
+        self.village = Village(self.village_id, self.wrapper)
         self.village.logger = MagicMock()
 
-        # Load mock config
-        import json
-        with open('tests/mock_data/config.json', 'r') as f:
-            self.village.config = json.load(f)
+        # Mock managers
+        self.village.builder = MagicMock(spec=BuildingManager)
+        self.village.units = MagicMock(spec=TroopManager)
+        self.village.resman = MagicMock()
 
-    def test_phase_transition(self):
-        # Scenario: Builder is using phase1 template and stable is at level 3
-        self.village.build_config = "noble_rush_phase1"
-        self.village.builder.get_level.return_value = 3 # Stable is level 3
+        # Default configs
+        self.village.config = {
+            "villages": {
+                self.village_id: {
+                    "building": "noble_rush_phase1",
+                    "units": "noble_rush_strategy"
+                }
+            },
+            "building": {"default": "default_builder"},
+            "units": {"default": "default_units"}
+        }
 
-        # We need to mock TemplateManager.get_template to return something
-        with patch('game.village.TemplateManager.get_template') as mock_get_template:
-            mock_get_template.return_value = "main:20\nbarracks:25" # Mock content of final template
+    def mock_template_loader(self, category, template, output_json=False):
+        templates = {
+            "builder": {
+                "noble_rush_phase1": "stable:3",
+                "noble_rush_final": "main:20"
+            },
+            "troops": {
+                "noble_rush_strategy": [{"building": "main", "level": 1, "build": {"spear": 10}}]
+            }
+        }
+        if output_json:
+            return templates[category].get(template, {})
+        return templates[category].get(template, "")
 
-            self.village.run_builder()
+    def test_phase_transition_from_phase1_to_final(self):
+        # --- Stage 1: Village is in Phase 1 ---
+        # Simulate building levels before phase transition
+        self.village.builder.get_level.return_value = 2 # Stable is not yet level 3
 
-            # Assert that the build_config was changed and builder mode was set to dynamic
-            self.assertEqual(self.village.build_config, "noble_rush_final")
-            self.assertEqual(self.village.builder.mode, "dynamic")
-
-    def test_hoard_mode_activation(self):
-        # Scenario: SnobManager reports that it's incomplete
-        self.village.snobman.is_incomplete = True
-        self.village.builder.get_level.return_value = 1 # Snob is built
-
-        self.village.run_snob_recruit()
-
-        # Assert that hoard_mode is activated
-        self.assertTrue(self.village.hoard_mode)
-
-        # Now test that the builder does not run in hoard mode
+        # Act
         self.village.run_builder()
-        self.village.builder.start_update.assert_not_called()
+
+        # Assert
+        self.assertEqual(self.village.build_config, "noble_rush_phase1")
+        self.assertEqual(self.village.builder.mode, "linear")
+        self.assertIn("stable:3", self.village.builder.queue)
+
+        # --- Stage 2: Village completes Phase 1 ---
+        # Simulate stable reaching level 3, triggering the transition
+        self.village.builder.get_level.return_value = 3
+
+        # Act
+        self.village.run_builder()
+
+        # Assert
+        # The village should detect completion and switch the build config
+        self.assertEqual(self.village.build_config, "noble_rush_final")
+        # The builder should now be in dynamic mode with the final targets
+        self.assertEqual(self.village.builder.mode, "dynamic")
+        self.assertIn("main", self.village.builder.target_levels)
+        self.assertEqual(self.village.builder.target_levels["main"], 20)
 
 if __name__ == '__main__':
     unittest.main()

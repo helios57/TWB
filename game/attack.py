@@ -88,6 +88,23 @@ class AttackManager:
         for target in self.targets[0:self.max_farms]:
             self.send_farm(target)
 
+    def get_template_for_target(self, target_id):
+        """
+        Selects the appropriate farming template based on the last haul status.
+        """
+        last_haul_status = self.repman.get_last_haul_status(target_id)
+
+        # Default to the 'not_full' condition if no status is available
+        if last_haul_status is None:
+            last_haul_status = "not_full"
+
+        for t in self.template:
+            if t.get("condition") == last_haul_status:
+                return t
+
+        # Fallback to the first template if no condition matches
+        return self.template[0] if self.template else None
+
     def send_farm(self, target):
         """
         Send a farming run based on dynamic templates.
@@ -99,24 +116,7 @@ class AttackManager:
             self.logger.debug(f"Skipping {target_id}: farm bag limit reached.")
             return 0
 
-        # Determine which farm template to use (A/B/C logic)
-        last_haul_status = self.repman.get_last_haul_status(target_id)
-        chosen_template = None
-
-        for t in self.template:
-            condition = t.get("condition")
-            if condition == "not_full_haul" and last_haul_status == "not_full":
-                chosen_template = t
-                break
-            elif condition == "full_haul_small_res" and last_haul_status == "full_small":
-                chosen_template = t
-                break
-            elif condition == "large_res" and last_haul_status == "large":
-                chosen_template = t
-                break
-
-        if not chosen_template: # Fallback to A_Farm if no status
-             chosen_template = next((t for t in self.template if t.get("condition") == "not_full_haul"), None)
+        chosen_template = self.get_template_for_target(target_id)
 
         if not chosen_template:
             self.logger.warning(f"No suitable farm template found for target {target_id}")
