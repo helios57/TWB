@@ -49,6 +49,7 @@ class BuildingManager:
         """
         self.wrapper = wrapper
         self.village_id = village_id
+        self.last_status = None
 
     def create_update_links(self, extracted_buildings):
         """
@@ -125,8 +126,10 @@ class BuildingManager:
             self.logger.info(
                 "No build operation was executed: queue full, %d left", len(self.queue)
             )
+            self.last_status = "Building queue is full."
             return False
         if not build:
+            self.last_status = "Building is disabled."
             return False
 
         r = self.max_queue_len - len(self.waits)
@@ -134,6 +137,7 @@ class BuildingManager:
             result = self.get_next_building_action()
             if not result:
                 self.logger.info("No more build operations were executed.")
+                self.last_status = "Nothing to build."
                 return False
 
         main_data = self.wrapper.get_action(village_id=self.village_id, action="main")
@@ -208,6 +212,7 @@ class BuildingManager:
             r = False
         if not r:
             self.logger.debug(f"Requested resources: {self.resman.requested}")
+            self.last_status = f"Waiting for resources to build {build_item['name'].title()}..."
         return r
 
     def get_level(self, building):
@@ -226,6 +231,7 @@ class BuildingManager:
         if building_name not in self.costs: return False
         check = self.costs[building_name]
         if check["can_build"] and self.has_enough(check) and "build_link" in check:
+            self.last_status = f"Building {building_name.title()}..."
             queue = self.put_wait(check["build_time"])
             self.logger.info(
                 "Building %s %d -> %d (finishes: %s)"
