@@ -101,6 +101,35 @@ class TestVillage(unittest.TestCase):
         self.assertEqual(len(self.village.attack.template), 1, "Should have found one farm template.")
         self.assertEqual(self.village.attack.template, mock_farm_template, "The correct farm template was not loaded.")
 
+    def test_set_farm_options_uses_fallback_when_no_templates_unlocked(self):
+        """
+        Tests that a default fallback farm template is used when no farm templates
+        are available from any unlocked entries in the troop template.
+        """
+        # Arrange
+        mock_troop_template = [
+            {
+                "building": "stable",
+                "level": 5, # High level to ensure it's locked
+                "build": {"stable": {"spy": 10}},
+                "farm": [{"name": "A_Farm", "units": {"light": 1}}]
+            }
+        ]
+
+        # Simulate that stable is only level 1, so the template entry is locked
+        self.village.builder.levels = {'stable': 1}
+        self.village.units.template = mock_troop_template
+
+        # Act
+        self.village.set_farm_options()
+
+        # Assert
+        self.assertIsNotNone(self.village.attack.template, "Attack template should not be None.")
+        self.assertTrue(len(self.village.attack.template) > 0, "Fallback template should not be empty.")
+        self.assertIn("condition", self.village.attack.template[0], "Fallback template is missing 'condition' key.")
+        self.assertEqual(self.village.attack.template[0]["condition"], "default", "Fallback template should be the default one.")
+        self.village.logger.warning.assert_called_with("No farm templates available from unlocked entries, using fallback.")
+
 
 if __name__ == '__main__':
     unittest.main()

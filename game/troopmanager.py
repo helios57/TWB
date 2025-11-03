@@ -29,6 +29,7 @@ class TroopManager:
     total_troops = {}
 
     _research_wait = 0
+    _research_failed_resources = False
 
     wrapper = None
     village_id = None
@@ -83,6 +84,7 @@ class TroopManager:
         """
         # Use cached game_data
         self.game_data = overview_game_data
+        self._research_failed_resources = False
         # --- END PERFORMANCE ---
 
         if self.resman:
@@ -361,6 +363,7 @@ class TroopManager:
                     self.logger.debug(
                         "Ignoring research of %s because of resource error (not enough resources) %s", unit_type, str(data["research_error"])
                     )
+                    self._research_failed_resources = True
                     self.logger.debug("Research needs resources")
                 else:
                     self.logger.debug(
@@ -708,6 +711,10 @@ class TroopManager:
 
         if amount > self.max_batch_size:
             amount = self.max_batch_size
+
+        if self._research_failed_resources:
+            self.logger.debug("Skipping recruitment, waiting for research resources")
+            return False
 
         if unit_type not in self.recruit_data:
             self.logger.warning(

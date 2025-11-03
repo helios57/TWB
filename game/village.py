@@ -604,8 +604,14 @@ class Village:
         if farm_templates:
             self.attack.template = farm_templates
         else:
-            self.logger.warning("No farm templates available from unlocked entries")
-            self.attack.template = []
+            self.logger.warning("No farm templates available from unlocked entries, using fallback.")
+            self.attack.template = [
+                {
+                    "condition": "default",
+                    "units": {"spear": 5, "light": 2},
+                    "note": "Default fallback farm",
+                }
+            ]
 
     def run_farming(self):
         """
