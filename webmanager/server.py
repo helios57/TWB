@@ -188,8 +188,18 @@ def get_config():
 def get_village_config():
     data = sync()
     vid = request.args.get("id", None)
-    return render_template('village.html', data=data, config=pre_process_village_config(village_id=vid),
-                           current_select=vid, helpfile=help_file)
+
+    current_village_data = None
+    if vid and vid in data['bot']:
+        # The village data including planned_actions is in the 'bot' part of the sync data
+        current_village_data = data['bot'][vid]
+
+    return render_template('village.html',
+                           data=data,
+                           config=pre_process_village_config(village_id=vid),
+                           current_select=vid,
+                           current_village_data=current_village_data,
+                           helpfile=help_file)
 
 
 @app.route('/map', methods=['GET'])
@@ -249,7 +259,8 @@ def config_set():
     return jsonify(sync())
 
 
-if len(sys.argv) > 1:
-    app.run(host="localhost", port=sys.argv[1])
-else:
-    app.run()
+if __name__ == "__main__":
+    if len(sys.argv) > 1:
+        app.run(host="localhost", port=sys.argv[1])
+    else:
+        app.run()

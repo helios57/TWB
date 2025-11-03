@@ -1,70 +1,58 @@
 import unittest
 from unittest.mock import MagicMock, patch
+import sys
+import os
+
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 from game.attack import AttackManager
-from game.reports import ReportManager
 
 class TestFarmingLogic(unittest.TestCase):
 
     def setUp(self):
         self.wrapper = MagicMock()
-        self.village_id = "21739"
-
-        # Mock TroopManager
+        self.village_id = "12345"
         self.troop_manager = MagicMock()
-        self.troop_manager.troops = {'light': '100', 'spy': '10'}
+        self.map_instance = MagicMock()
+        self.report_manager = MagicMock()
 
-        # Mock ReportManager
-        self.report_manager = ReportManager(self.wrapper, self.village_id)
-        self.report_manager.logger = MagicMock()
+        self.manager = AttackManager(self.wrapper, self.village_id, self.troop_manager, self.map_instance)
+        self.manager.repman = self.report_manager
+        self.manager.logger = MagicMock()
 
-        # Setup AttackManager
-        self.attack_manager = AttackManager(self.wrapper, self.village_id, self.troop_manager)
-        self.attack_manager.repman = self.report_manager
-        self.attack_manager.logger = MagicMock()
-        self.attack_manager.attacked = MagicMock()
-        self.attack_manager.can_attack = MagicMock(return_value=True)
-        self.attack_manager.template = [
-            {"name": "A_Farm", "condition": "not_full_haul", "units": {"light": 1}},
-            {"name": "B_Farm", "condition": "full_haul_small_res", "units": {"light": 4, "spy": 1}},
-            {"name": "C_Farm", "condition": "large_res", "units": {"light": 0}, "calculate": "total_res / 80"}
+    def test_abc_farming_template_selection(self):
+        # Setup the multi-template config from the strategy doc
+        self.manager.template = [
+            {"name": "A - Light Farm", "active": True, "units": {"light": 5}, "condition": "not_full"},
+            {"name": "B - Medium Farm", "active": True, "units": {"light": 20}, "condition": "full_but_small"},
+            {"name": "C - Heavy Farm", "active": True, "units": {"light": 100, "spy": 1}, "condition": "large_scouted"}
         ]
 
-    def test_a_farm_selection(self):
-        # Scenario: Last haul was not full
-        target_id = "123"
-        self.report_manager.get_last_haul_status = MagicMock(return_value="not_full")
-        self.attack_manager.attack = MagicMock(return_value=True)
-        self.attack_manager.can_attack = MagicMock(return_value=True)
+        target_village_id = "54321"
 
-        self.attack_manager.send_farm((_mock_target(target_id), 0))
+        # --- Scenario 1: Last haul was "not_full" -> Should select Template A ---
+        self.report_manager.get_last_haul_status.return_value = "not_full"
+        selected_template = self.manager.get_template_for_target(target_village_id)
+        self.assertIsNotNone(selected_template)
+        self.assertEqual(selected_template["name"], "A - Light Farm")
 
-        self.attack_manager.attack.assert_called_with(target_id, troops={'light': 1})
+        # --- Scenario 2: Last haul was "full_but_small" -> Should select Template B ---
+        self.report_manager.get_last_haul_status.return_value = "full_but_small"
+        selected_template = self.manager.get_template_for_target(target_village_id)
+        self.assertIsNotNone(selected_template)
+        self.assertEqual(selected_template["name"], "B - Medium Farm")
 
-    def test_b_farm_selection(self):
-        # Scenario: Last haul was full, but scouted resources are low
-        target_id = "124"
-        self.report_manager.get_last_haul_status = MagicMock(return_value="full_small")
-        self.attack_manager.attack = MagicMock(return_value=True)
-        self.attack_manager.can_attack = MagicMock(return_value=True)
+        # --- Scenario 3: Last haul was "large_scouted" -> Should select Template C ---
+        self.report_manager.get_last_haul_status.return_value = "large_scouted"
+        selected_template = self.manager.get_template_for_target(target_village_id)
+        self.assertIsNotNone(selected_template)
+        self.assertEqual(selected_template["name"], "C - Heavy Farm")
 
-        self.attack_manager.send_farm((_mock_target(target_id), 0))
-
-        self.attack_manager.attack.assert_called_with(target_id, troops={'light': 4, 'spy': 1})
-
-    def test_c_farm_selection_and_calculation(self):
-        # Scenario: Large amount of scouted resources
-        target_id = "125"
-        self.report_manager.get_last_haul_status = MagicMock(return_value="large")
-        self.report_manager.get_scouted_resources = MagicMock(return_value=1200) # Should result in 15 LC
-        self.attack_manager.attack = MagicMock(return_value=True)
-        self.attack_manager.can_attack = MagicMock(return_value=True)
-
-        self.attack_manager.send_farm((_mock_target(target_id), 0))
-
-        self.attack_manager.attack.assert_called_with(target_id, troops={'light': 15})
-
-def _mock_target(vid):
-    return {"id": vid}
+        # --- Scenario 4: No report available (new farm) -> Should default to Template A ---
+        self.report_manager.get_last_haul_status.return_value = None
+        selected_template = self.manager.get_template_for_target(target_village_id)
+        self.assertIsNotNone(selected_template)
+        self.assertEqual(selected_template["name"], "A - Light Farm")
 
 if __name__ == '__main__':
     unittest.main()
