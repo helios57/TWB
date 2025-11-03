@@ -1,0 +1,33 @@
+{
+    "next_template": {
+        "template_name": "noble_rush_final_units",
+        "condition": {
+            "building": "stable",
+            "level": 3
+        }
+    },
+    "template_data": [
+        {
+            "building": "barracks",
+            "level": 1,
+            "upgrades": {
+                "axe": 1,
+                "light": 1
+            },
+            "build": {
+                "barracks": {
+                    "spear": 50,
+                    "axe": 50
+                },
+                "stable": {
+                    "spy": 5
+                }
+            },
+            "farm": [
+                {
+                    "light": 5
+                }
+            ]
+        }
+    ]
+}

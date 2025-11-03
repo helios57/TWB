@@ -1,0 +1,45 @@
+{
+    "template_data": [
+        {
+            "building": "stable",
+            "level": 5,
+            "upgrades": {
+                "light": 3
+            },
+            "build": {
+                "stable": {
+                    "light": 2000
+                }
+            },
+            "farm": [
+                {
+                    "light": 5
+                }
+            ]
+        },
+        {
+            "building": "barracks",
+            "level": 25,
+            "upgrades": {
+                "axe": 3,
+                "ram": 3
+            },
+            "build": {
+                "barracks": {
+                    "axe": 3000
+                },
+                "stable": {
+                    "light": 1500
+                },
+                "garage": {
+                    "ram": 300
+                }
+            },
+            "farm": [
+                {
+                    "light": 10
+                }
+            ]
+        }
+    ]
+}

@@ -32,6 +32,7 @@ import traceback
 import coloredlogs
 import requests
 
+from core.configmanager import ConfigManager
 from core.notification import Notification
 from core.updater import check_update
 from core.filemanager import FileManager
@@ -396,8 +397,9 @@ class TWB:
             )
             return
         self.wrapper.headers["user-agent"] = config["bot"]["user_agent"]
+        config_manager = ConfigManager()
         for vid in config["villages"]:
-            v = Village(wrapper=self.wrapper, village_id=vid)
+            v = Village(wrapper=self.wrapper, village_id=vid, config_manager=config_manager)
             self.villages.append(copy.deepcopy(v))
         # setup additional builder
         rm = None

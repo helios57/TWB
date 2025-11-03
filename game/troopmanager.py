@@ -29,7 +29,6 @@ class TroopManager:
     total_troops = {}
 
     _research_wait = 0
-    _research_failed_resources = False
 
     wrapper = None
     village_id = None
@@ -62,6 +61,7 @@ class TroopManager:
 
     resman = None
     template = None
+    _smith_data = None
 
     def __init__(self, wrapper=None, village_id=None):
         """
@@ -84,7 +84,6 @@ class TroopManager:
         """
         # Use cached game_data
         self.game_data = overview_game_data
-        self._research_failed_resources = False
         # --- END PERFORMANCE ---
 
         if self.resman:
@@ -363,7 +362,6 @@ class TroopManager:
                     self.logger.debug(
                         "Ignoring research of %s because of resource error (not enough resources) %s", unit_type, str(data["research_error"])
                     )
-                    self._research_failed_resources = True
                     self.logger.debug("Research needs resources")
                 else:
                     self.logger.debug(
@@ -712,10 +710,6 @@ class TroopManager:
         if amount > self.max_batch_size:
             amount = self.max_batch_size
 
-        if self._research_failed_resources:
-            self.logger.debug("Skipping recruitment, waiting for research resources")
-            return False
-
         if unit_type not in self.recruit_data:
             self.logger.warning(
                 "Recruitment of %d %s failed because it is not researched"
@@ -871,10 +865,24 @@ class TroopManager:
                     )
 
         # Planned Upgrades
-        # Note: This doesn't know the current level without a web request,
-        # so it just shows the final goal from the template.
         if self.wanted_levels:
-            for unit, wanted_level in self.wanted_levels.items():
-                actions.append(f"Research {unit.title()} to level {wanted_level}")
+            # Fetch smith data once to get current levels
+            if self._smith_data is None:
+                try:
+                    result = self.wrapper.get_action(village_id=self.village_id, action="smith")
+                    self._smith_data = Extractor.smith_data(result)
+                except Exception as e:
+                    self.logger.warning(f"Could not fetch smith data for planned actions: {e}")
+                    self._smith_data = {} # Avoid re-fetching on failure
 
+            for unit, wanted_level in self.wanted_levels.items():
+                current_level = 0
+                if self._smith_data and unit in self._smith_data.get("available", {}):
+                    current_level = int(self._smith_data["available"][unit].get("level", 0))
+
+                if wanted_level > current_level:
+                    actions.append(f"Research {unit.title()} to level {wanted_level}")
+
+        # Reset cached data for next cycle
+        self._smith_data = None
         return actions

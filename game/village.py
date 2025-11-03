@@ -4,6 +4,7 @@ import time
 from codecs import decode
 from datetime import datetime
 
+from core.configmanager import ConfigManager
 from core.extractors import Extractor
 from core.filemanager import FileManager
 from core.templates import TemplateManager
@@ -49,9 +50,17 @@ class Village:
 
     twp = TwStats()
 
-    def __init__(self, village_id=None, wrapper=None):
+    def __init__(self, village_id=None, wrapper=None, config_manager=None):
         self.village_id = village_id
         self.wrapper = wrapper
+        if config_manager:
+            self.config_manager = config_manager
+        else:
+            try:
+                self.config_manager = ConfigManager()
+            except FileNotFoundError:
+                # This can happen in tests, where config.json might not exist.
+                self.config_manager = None
         self.current_unit_entry = None
         self.status = "Initializing..."
 
@@ -261,12 +270,20 @@ class Village:
                 section="units", parameter="default", default="basic"
             )
         try:
-            self.units.template = TemplateManager.get_template(
+            template_content = TemplateManager.get_template(
                 category="troops", template=unit_config, output_json=True
             )
+            if isinstance(template_content, dict) and "template_data" in template_content:
+                self.units.template = template_content["template_data"]
+                self.unit_template_full = template_content
+            else:
+                # Legacy support
+                self.units.template = template_content
+                self.unit_template_full = {"template_data": template_content}
+
         except Exception as e:
             self.logger.error(
-                "Looks like the unit template file %s is either missing or corrupted", unit_config
+                "Looks like the unit template file %s is either missing or corrupted: %s", unit_config, e
             )
             raise InvalidUnitTemplateException
 
@@ -297,13 +314,6 @@ class Village:
             self.build_config = self.get_config(
                 section="building", parameter="default", default="purple_predator"
             )
-
-        # Logic to switch between phase1 and final templates
-        if self.build_config == "noble_rush_phase1" and self.builder.get_level('stable') >= 3:
-             self.logger.info("Phase 1 complete, switching to final build plan.")
-             self.build_config = "noble_rush_final"
-             # This assumes the user will have a config entry for the final plan
-             # A more robust solution might involve a "next_phase" key in the template
 
         new_template_data = TemplateManager.get_template(
             category="builder", template=self.build_config
@@ -604,14 +614,8 @@ class Village:
         if farm_templates:
             self.attack.template = farm_templates
         else:
-            self.logger.warning("No farm templates available from unlocked entries, using fallback.")
-            self.attack.template = [
-                {
-                    "condition": "default",
-                    "units": {"spear": 5, "light": 2},
-                    "note": "Default fallback farm",
-                }
-            ]
+            self.logger.warning("No farm templates available from unlocked entries")
+            self.attack.template = []
 
     def run_farming(self):
         """
@@ -767,6 +771,7 @@ class Village:
 
         # Now that builder.levels is available, we can set the wanted unit levels
         self.set_unit_wanted_levels()
+        self._check_and_handle_template_switch()
 
         # Update total troop counts before making recruitment decisions
         self.units.update_totals(self.game_data, self.overview_html)
@@ -949,3 +954,42 @@ class Village:
         else:
             village_entry["farm_bag"] = None
         FileManager.save_json_file(village_entry, f"cache/managed/{self.village_id}.json")
+
+    def _check_and_handle_template_switch(self):
+        """
+        Checks both unit and building templates for a 'next_template' directive
+        and updates the village config if the condition is met.
+        """
+        # Check Unit Template
+        if hasattr(self, 'unit_template_full') and 'next_template' in self.unit_template_full:
+            self._evaluate_and_switch('units', self.unit_template_full['next_template'])
+
+        # Check Building Template (assuming it's loaded and structured similarly)
+        # Note: Building templates need to be adapted to the same JSON structure.
+        # For now, this part is speculative until builder templates are updated.
+        if hasattr(self, 'build_template_full') and 'next_template' in self.build_template_full:
+            self._evaluate_and_switch('building', self.build_template_full['next_template'])
+
+    def _evaluate_and_switch(self, config_key, switch_info):
+        """
+        Evaluates a template switch condition and executes it if met.
+        """
+        condition = switch_info.get('condition', {})
+        target_building = condition.get('building')
+        target_level = condition.get('level')
+        new_template = switch_info.get('template_name')
+
+        if not all([target_building, target_level, new_template]):
+            self.logger.debug(f"Invalid 'next_template' definition for {config_key}.")
+            return
+
+        current_level = self.builder.get_level(target_building)
+        if current_level >= target_level:
+            self.logger.info(
+                f"Condition met for '{config_key}' template switch: "
+                f"{target_building} level is {current_level} (>= {target_level}). "
+                f"Switching to '{new_template}'."
+            )
+            self.config_manager.update_village_config(
+                self.village_id, config_key, new_template
+            )
