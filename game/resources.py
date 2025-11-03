@@ -6,6 +6,7 @@ import re
 import time
 
 from core.extractors import Extractor
+from game.reports import ReportCache
 
 
 class PremiumExchange:
@@ -235,11 +236,71 @@ class ResourceManager:
 
     def calculate_income(self, game_state):
         """
-        Calculates the resource income per hour for the village.
+        Calculates the resource income per hour for the village, broken down by source.
+        This includes income from mines and an estimated hourly income from farming.
         """
-        self.income['wood'] = game_state['village'].get('wood_prod', 0)
-        self.income['stone'] = game_state['village'].get('stone_prod', 0)
-        self.income['iron'] = game_state['village'].get('iron_prod', 0)
+        # --- Mine Income ---
+        mine_income = {
+            'wood': game_state['village'].get('wood_prod', 0),
+            'clay': game_state['village'].get('stone_prod', 0),
+            'iron': game_state['village'].get('iron_prod', 0)
+        }
+
+        # --- Farming Income Calculation ---
+        all_reports = ReportCache.cache_grab()
+        total_loot = {'wood': 0, 'clay': 0, 'iron': 0}
+        now = int(time.time())
+        # Use a 24-hour window for income calculation
+        time_window_start = now - (24 * 3600)
+
+        # Filter for relevant reports (attack, from this village, within time window)
+        relevant_reports = []
+        for report_id, report_data in all_reports.items():
+            if (report_data.get('type') == 'attack' and
+                    str(report_data.get('origin')) == str(self.village_id)):
+                report_time = report_data.get('extra', {}).get('when', 0)
+                if report_time >= time_window_start:
+                    relevant_reports.append(report_data)
+
+        farming_income = {'wood': 0, 'clay': 0, 'iron': 0}
+        if relevant_reports:
+            # Find the earliest report time to calculate the actual duration for averaging
+            first_report_time = min(r.get('extra', {}).get('when', now) for r in relevant_reports)
+            duration_seconds = now - first_report_time
+            # Avoid division by zero; minimum duration is 1 hour
+            duration_hours = max(1.0, duration_seconds / 3600.0)
+
+            for report in relevant_reports:
+                loot = report.get('extra', {}).get('loot', {})
+                if loot:
+                    total_loot['wood'] += int(loot.get('wood', 0))
+                    total_loot['clay'] += int(loot.get('stone', 0))
+                    total_loot['iron'] += int(loot.get('iron', 0))
+
+            # Calculate average hourly income
+            farming_income['wood'] = int(total_loot['wood'] / duration_hours)
+            farming_income['clay'] = int(total_loot['clay'] / duration_hours)
+            farming_income['iron'] = int(total_loot['iron'] / duration_hours)
+
+            if self.logger:
+                self.logger.debug(
+                    f"Calculated farming income from {len(relevant_reports)} reports over the last {duration_hours:.2f} hours."
+                )
+        elif self.logger:
+            self.logger.debug("No recent farming reports found to calculate income.")
+
+        # --- Total Income ---
+        total_income = {
+            'wood': mine_income['wood'] + farming_income['wood'],
+            'clay': mine_income['clay'] + farming_income['clay'],
+            'iron': mine_income['iron'] + farming_income['iron']
+        }
+
+        self.income = {
+            'mines': mine_income,
+            'farming': farming_income,
+            'total': total_income
+        }
 
     def update(self, game_state):
         """

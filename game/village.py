@@ -772,6 +772,45 @@ class Village:
             self.village_id, data_type="village.config", data=json.dumps(vdata)
         )
 
+    def calculate_resource_forecast(self):
+        """
+        Calculates the total resource cost of all planned actions.
+        """
+        forecast = {'wood': 0, 'clay': 0, 'iron': 0}
+        if not self.builder or not self.units:
+            return forecast
+
+        # Building costs
+        if self.builder.costs:
+            planned_buildings = self.builder.get_planned_actions()
+            for action in planned_buildings:
+                # Expected format: "Build Main to level 2"
+                parts = action.split()
+                if len(parts) >= 2 and parts[0] == "Build":
+                    building_name = parts[1].lower()
+                    if building_name in self.builder.costs:
+                        cost = self.builder.costs[building_name]
+                        forecast['wood'] += cost.get('wood', 0)
+                        forecast['clay'] += cost.get('stone', 0)
+                        forecast['iron'] += cost.get('iron', 0)
+
+        # Recruitment costs
+        if self.units.recruit_data:
+            planned_recruits = self.units.get_planned_actions(self.disabled_units)
+            for action in planned_recruits:
+                # Expected format: "Recruit 10 Spear (Target: 100)"
+                parts = action.split()
+                if len(parts) >= 3 and parts[0] == "Recruit":
+                    amount = int(parts[1])
+                    unit_name = parts[2].lower()
+                    if unit_name in self.units.recruit_data:
+                        cost = self.units.recruit_data[unit_name]
+                        forecast['wood'] += cost.get('wood', 0) * amount
+                        forecast['clay'] += cost.get('stone', 0) * amount
+                        forecast['iron'] += cost.get('iron', 0) * amount
+
+        return forecast
+
     def get_quests(self):
         result = Extractor.get_quests(self.wrapper.last_response)
         if result:
@@ -837,6 +876,7 @@ class Village:
             "status": self.status,
             "planned_actions": (self.builder.get_planned_actions() or []) + (self.units.get_planned_actions(self.disabled_units) or []) if self.builder and self.units else [],
             "income": self.resman.income if self.resman else {},
+            "forecast": self.calculate_resource_forecast(),
         }
         if self.attack and self.attack.last_farm_bag_state:
             current = self.attack.last_farm_bag_state.get("current")
