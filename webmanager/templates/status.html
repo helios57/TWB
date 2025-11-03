@@ -78,6 +78,24 @@
                                     </tbody>
                                 </table>
 
+                                <h6>Resource Income (per hour)</h6>
+                                <table class="table table-sm">
+                                    <tbody>
+                                        <tr>
+                                            <td>Wood:</td>
+                                            <td>{{ village_data.income.wood|int }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Clay:</td>
+                                            <td>{{ village_data.income.stone|int }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Iron:</td>
+                                            <td>{{ village_data.income.iron|int }}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+
                                 <h6>Building Levels</h6>
                                 <table class="table table-sm">
                                     <tbody>
@@ -168,6 +186,12 @@
                     resources_table.find('td:contains("Iron:")').next().text(village_data.resources.iron);
                     resources_table.find('td:contains("Population:")').next().text(village_data.resources.pop + ' / ' + village_data.resources.max_pop);
                     resources_table.find('td:contains("Storage:")').next().text(village_data.resources.storage);
+
+                    // Update Resource Income
+                    let income_table = card.find('h6:contains("Resource Income")').next();
+                    income_table.find('td:contains("Wood:")').next().text(village_data.income.wood);
+                    income_table.find('td:contains("Clay:")').next().text(village_data.income.stone);
+                    income_table.find('td:contains("Iron:")').next().text(village_data.income.iron);
 
                     // Update Building Levels
                     let building_levels_table_body = card.find('h6:contains("Building Levels")').next().find('tbody');
