@@ -311,8 +311,11 @@ class Village:
         # Handle both string and list template data
         if isinstance(new_template_data, list):
             template_lines = new_template_data
-        else:
+        elif isinstance(new_template_data, str):
             template_lines = new_template_data.splitlines()
+        else:
+            self.logger.error(f"Building template '{self.build_config}' not found or is empty.")
+            return
 
         if "final" in self.build_config:
              self.builder.mode = "dynamic"
@@ -683,16 +686,19 @@ class Village:
         self.setup_defence_manager(data=data)
         self.run_quest_actions(config=config)
 
+        # The TroopManager needs to be initialized to get troop queue times
         self.units_get_template()
+
+        # The BuildingManager needs to be run to populate building levels
+        self.run_builder()
+
+        # Now that builder.levels is available, we can set the wanted unit levels
         self.set_unit_wanted_levels()
 
-        # --- PERFORMANCE (POINT 2) ---
-        # Moved update_totals to run after templates are set and before recruiting
+        # Update total troop counts before making recruitment decisions
         self.units.update_totals(self.game_data, self.overview_html)
 
-        self.run_builder()
-        # --- END PERFORMANCE ---
-
+        # Run upgrades before recruiting to ensure units are researched
         self.run_unit_upgrades()
         self.run_snob_recruit()
         self.do_recruit()
