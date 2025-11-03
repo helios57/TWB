@@ -689,6 +689,7 @@ class Village:
 
         self.status = "Updating resources and reports..."
         self.update_pre_run()
+        self.resman.calculate_income(self.game_data)
 
         self.status = "Checking for incoming attacks..."
         self.setup_defence_manager(data=data)
@@ -835,6 +836,7 @@ class Village:
             "last_run": int(time.time()),
             "status": self.status,
             "planned_actions": (self.builder.get_planned_actions() or []) + (self.units.get_planned_actions(self.disabled_units) or []) if self.builder and self.units else [],
+            "income": self.resman.income if self.resman else {},
         }
         if self.attack and self.attack.last_farm_bag_state:
             current = self.attack.last_farm_bag_state.get("current")

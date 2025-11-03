@@ -223,6 +223,7 @@ class ResourceManager:
     village_id = None
     do_premium_trade = False
     last_troop_recruit_time = 0
+    income = {}
 
     def __init__(self, wrapper=None, village_id=None):
         """
@@ -231,6 +232,14 @@ class ResourceManager:
         """
         self.wrapper = wrapper
         self.village_id = village_id
+
+    def calculate_income(self, game_state):
+        """
+        Calculates the resource income per hour for the village.
+        """
+        self.income['wood'] = game_state['village'].get('wood_prod', 0)
+        self.income['stone'] = game_state['village'].get('stone_prod', 0)
+        self.income['iron'] = game_state['village'].get('iron_prod', 0)
 
     def update(self, game_state):
         """
