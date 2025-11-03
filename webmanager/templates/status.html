@@ -1,0 +1,211 @@
+{% extends "main.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-12">
+        <h4>Bot Status</h4>
+        <p>A detailed overview of the bot's current status and planned actions.</p>
+        <hr>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-lg-12">
+        <h5>Global Information</h5>
+        <table class="table table-striped">
+            <tbody>
+                <tr>
+                    <td><strong>Bot Status:</strong></td>
+                    <td>
+                        {% if data.status %}
+                            <span class="badge badge-success">Active</span>
+                        {% else %}
+                            <span class="badge badge-warning">Inactive</span>
+                            <small class="form-text text-muted">Ignore this if you are running twb.py yourself.</small>
+                        {% endif %}
+                    </td>
+                </tr>
+                <tr>
+                    <td><strong>Current Session:</strong></td>
+                    <td>{{ session.endpoint }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="row mt-4">
+    <div class="col-lg-12">
+        <h5>Village Details</h5>
+        {% if data.bot %}
+            {% for village_id, village_data in data.bot.items() %}
+                <div class="card mb-3">
+                    <div class="card-header">
+                        <strong>{{ village_data.name }}</strong> (ID: {{ village_id }})
+                        <small class="float-right">Last run: {{ village_data.last_run|int|timestamp_to_datetime }}</small>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-12">
+                                <p><strong>Status:</strong> <span class="badge badge-info">{{ village_data.status }}</span></p>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h6>Resources</h6>
+                                <table class="table table-sm">
+                                    <tbody>
+                                        <tr>
+                                            <td>Wood:</td>
+                                            <td>{{ village_data.resources.wood }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Clay:</td>
+                                            <td>{{ village_data.resources.clay }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Iron:</td>
+                                            <td>{{ village_data.resources.iron }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Population:</td>
+                                            <td>{{ village_data.resources.pop }} / {{ village_data.resources.max_pop }}</td>
+                                        </tr>
+                                        <tr>
+                                            <td>Storage:</td>
+                                            <td>{{ village_data.resources.storage }}</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+
+                                <h6>Building Levels</h6>
+                                <table class="table table-sm">
+                                    <tbody>
+                                        {% for building, level in village_data.building_levels.items() %}
+                                            <tr>
+                                                <td>{{ building|capitalize }}</td>
+                                                <td>{{ level }}</td>
+                                            </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div class="col-md-6">
+                                <h6>Troops</h6>
+                                <table class="table table-sm">
+                                    <tbody>
+                                        {% for unit, count in village_data.troops.items() %}
+                                            {% if count > 0 %}
+                                                <tr>
+                                                    <td>{{ unit|capitalize }}</td>
+                                                    <td>{{ count }}</td>
+                                                </tr>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+
+                                <h6>Planned Actions</h6>
+                                {% if village_data.planned_actions %}
+                                    <ul class="list-group">
+                                        {% for action in village_data.planned_actions %}
+                                            <li class="list-group-item">{{ action }}</li>
+                                        {% endfor %}
+                                    </ul>
+                                {% else %}
+                                    <p>No planned actions.</p>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="alert alert-info" role="alert">
+                No village data available. Ensure the bot is running and has completed at least one cycle.
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    $(document).ready(function() {
+        function fetch_data() {
+            $.ajax({
+                url: "/api/get",
+                type: "GET",
+                success: function(data) {
+                    update_page(data);
+                },
+                complete: function() {
+                    setTimeout(fetch_data, 5000);
+                }
+            });
+        }
+
+        function update_page(data) {
+            // Update global status
+            if (data.status) {
+                $('td:contains("Bot Status:")').next().html('<span class="badge badge-success">Active</span>');
+            } else {
+                $('td:contains("Bot Status:")').next().html('<span class="badge badge-warning">Inactive</span><small class="form-text text-muted">Ignore this if you are running twb.py yourself.</small>');
+            }
+
+            // Update village details
+            for (const [village_id, village_data] of Object.entries(data.bot)) {
+                let card = $(`.card:contains(${village_id})`);
+                if (card.length) {
+                    card.find('strong:first').text(village_data.name);
+                    card.find('small.float-right').text('Last run: ' + new Date(village_data.last_run * 1000).toLocaleString());
+                    card.find('.badge-info').text(village_data.status);
+
+                    // Update resources
+                    let resources_table = card.find('h6:contains("Resources")').next();
+                    resources_table.find('td:contains("Wood:")').next().text(village_data.resources.wood);
+                    resources_table.find('td:contains("Clay:")').next().text(village_data.resources.clay);
+                    resources_table.find('td:contains("Iron:")').next().text(village_data.resources.iron);
+                    resources_table.find('td:contains("Population:")').next().text(village_data.resources.pop + ' / ' + village_data.resources.max_pop);
+                    resources_table.find('td:contains("Storage:")').next().text(village_data.resources.storage);
+
+                    // Update Building Levels
+                    let building_levels_table_body = card.find('h6:contains("Building Levels")').next().find('tbody');
+                    building_levels_table_body.empty();
+                    if (village_data.building_levels) {
+                        for (const [building, level] of Object.entries(village_data.building_levels)) {
+                            let capitalized_building = building.charAt(0).toUpperCase() + building.slice(1);
+                            building_levels_table_body.append(`<tr><td>${capitalized_building}</td><td>${level}</td></tr>`);
+                        }
+                    }
+
+                    // Update Troops
+                    let troops_table_body = card.find('h6:contains("Troops")').next().find('tbody');
+                    troops_table_body.empty();
+                    if (village_data.troops) {
+                        for (const [unit, count] of Object.entries(village_data.troops)) {
+                            if (count > 0) {
+                                let capitalized_unit = unit.charAt(0).toUpperCase() + unit.slice(1);
+                                troops_table_body.append(`<tr><td>${capitalized_unit}</td><td>${count}</td></tr>`);
+                            }
+                        }
+                    }
+
+                    // Update planned actions
+                    let actions_list = card.find('h6:contains("Planned Actions")').next();
+                    actions_list.empty();
+                    if (village_data.planned_actions && village_data.planned_actions.length > 0) {
+                        village_data.planned_actions.forEach(action => {
+                            actions_list.append('<li class="list-group-item">' + action + '</li>');
+                        });
+                    } else {
+                        actions_list.append('<p>No planned actions.</p>');
+                    }
+                }
+            }
+        }
+
+        setTimeout(fetch_data, 5000);
+    });
+</script>
+{% endblock %}

@@ -53,6 +53,7 @@ class Village:
         self.village_id = village_id
         self.wrapper = wrapper
         self.current_unit_entry = None
+        self.status = "Initializing..."
 
     def get_config(self, section, parameter, default=None):
         if section not in self.config:
@@ -660,12 +661,15 @@ class Village:
             section="bot", parameter="delay_factor", default=1.0
         )
 
+        self.status = "Reading game state..."
         data = self.village_init()
 
         if not self.game_data:
             self.logger.error(
                 "Error reading game data for village %s", self.village_id
             )
+            self.status = "Error: Could not read game state."
+            self.set_cache_vars()
             raise VillageInitException
 
         self.set_world_config()
@@ -677,20 +681,32 @@ class Village:
         if not self.get_village_config(
                 self.village_id, parameter="managed", default=False
         ):
+            self.status = "Idle: Village not managed."
+            self.set_cache_vars()
             return False
         if not self.game_data:
             raise InvalidGameStateException
 
+        self.status = "Updating resources and reports..."
         self.update_pre_run()
 
+        self.status = "Checking for incoming attacks..."
         self.setup_defence_manager(data=data)
+        if self.def_man.under_attack:
+            self.status = "Under Attack!"
+        else:
+            self.status = "Idle"
+
         self.run_quest_actions(config=config)
 
         # The TroopManager needs to be initialized to get troop queue times
         self.units_get_template()
 
         # The BuildingManager needs to be run to populate building levels
+        self.status = "Managing building queue..."
         self.run_builder()
+        if self.builder.last_status:
+            self.status = self.builder.last_status
 
         # Now that builder.levels is available, we can set the wanted unit levels
         self.set_unit_wanted_levels()
@@ -699,9 +715,13 @@ class Village:
         self.units.update_totals(self.game_data, self.overview_html)
 
         # Run upgrades before recruiting to ensure units are researched
+        self.status = "Upgrading units..."
         self.run_unit_upgrades()
+        self.status = "Recruiting snobs..."
         self.run_snob_recruit()
+        self.status = "Recruiting units..."
         self.do_recruit()
+        self.status = "Balancing resources..."
         self.manage_local_resources()
 
         # --- CONFIGURABLE GATHER/FARM PRIORITY ---
@@ -711,16 +731,22 @@ class Village:
 
         if prioritize_gathering:
             self.logger.debug("Prioritizing gathering over farming.")
+            self.status = "Gathering resources..."
             self.do_gather()
+            self.status = "Farming..."
             self.run_farming()
         else:
             self.logger.debug("Prioritizing farming over gathering (default).")
+            self.status = "Farming..."
             self.run_farming()
+            self.status = "Gathering resources..."
             self.do_gather()
         # --- END CONFIGURABLE PRIORITY ---
 
+        self.status = "Managing market..."
         self.go_manage_market()
 
+        self.status = "Idle"
         self.set_cache_vars()
         self.logger.info("Village cycle done, returning to overview")
         self.wrapper.reporter.report(
@@ -797,17 +823,18 @@ class Village:
 
     def set_cache_vars(self):
         village_entry = {
-            "name": self.game_data["village"]["name"],
+            "name": self.game_data["village"]["name"] if self.game_data else self.village_set_name,
             "public": self.area.in_cache(self.village_id) if self.area else None,
-            "resources": self.resman.actual,
-            "required_resources": self.resman.requested,
-            "available_troops": self.units.troops,
-            "building_levels": self.builder.levels,
-            "building_queue": self.builder.queue,
-            "troops": self.units.total_troops,
-            "under_attack": self.def_man.under_attack,
+            "resources": self.resman.actual if self.resman else {},
+            "required_resources": self.resman.requested if self.resman else {},
+            "available_troops": self.units.troops if self.units else {},
+            "building_levels": self.builder.levels if self.builder else {},
+            "building_queue": self.builder.queue if self.builder else [],
+            "troops": self.units.total_troops if self.units else {},
+            "under_attack": self.def_man.under_attack if self.def_man else False,
             "last_run": int(time.time()),
-            "planned_actions": (self.builder.get_planned_actions() or []) + (self.units.get_planned_actions(self.disabled_units) or []),
+            "status": self.status,
+            "planned_actions": (self.builder.get_planned_actions() or []) + (self.units.get_planned_actions(self.disabled_units) or []) if self.builder and self.units else [],
         }
         if self.attack and self.attack.last_farm_bag_state:
             current = self.attack.last_farm_bag_state.get("current")
