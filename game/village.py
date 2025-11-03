@@ -372,6 +372,56 @@ class Village:
             else:
                 self.hoard_mode = False
 
+    def do_recruit(self):
+        """
+        Recruits new units
+        """
+        if self.hoard_mode:
+            self.logger.info("Hoard mode is active, skipping recruitment.")
+            return
+
+        if self.get_config(section="units", parameter="recruit", default=False):
+            self.units.can_fix_queue = self.get_config(
+                section="units", parameter="remove_manual_queued", default=False
+            )
+            self.units.randomize_unit_queue = self.get_config(
+                section="units", parameter="randomize_unit_queue", default=True
+            )
+            # prioritize_building: will only recruit when builder has sufficient funds for queue items
+            if (
+                    self.get_village_config(
+                        self.village_id, parameter="prioritize_building", default=False
+                    )
+                    and not self.resman.can_recruit()
+            ):
+                self.logger.info(
+                    "Not recruiting because builder has insufficient funds"
+                )
+                for x in list(self.resman.requested.keys()):
+                    if "recruitment_" in x:
+                        self.resman.requested.pop(f"{x}", None)
+            elif (
+                    self.get_village_config(
+                        self.village_id, parameter="prioritize_snob", default=False
+                    )
+                    and self.snobman
+                    and self.snobman.can_snob
+                    and self.snobman.is_incomplete
+            ):
+                self.logger.info("Not recruiting because snob has insufficient funds")
+                for x in list(self.resman.requested.keys()):
+                    if "recruitment_" in x:
+                        self.resman.requested.pop(f"{x}", None)
+            else:
+                # do a build run for every
+                for building in self.units.wanted:
+                    if not self.builder.get_level(building):
+                        self.logger.debug(
+                            "Recruit of %s will be ignored because building is not (yet) available", building
+                        )
+                        continue
+                    self.units.start_update(building, self.disabled_units)
+
     def check_forced_peace(self):
         """
         Checks if farming is disabled for the current time

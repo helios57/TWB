@@ -481,6 +481,8 @@ class ResourceCoordinator:
         resource: str,
     ) -> List[VillageState]:
         candidates: List[Tuple[float, VillageState]] = []
+        is_new_village = destination.village_id != self.primary_village_id
+
         for source in states.values():
             if source.village_id == destination.village_id:
                 continue
@@ -496,8 +498,15 @@ class ResourceCoordinator:
                 continue
             if self._exportable_amount(source, resource) < self.settings["min_chunk"]:
                 continue
+
+            # --- FEEDER LOGIC ---
+            # Prioritize the capital (primary village) as the source for new villages.
+            priority = 0
+            if is_new_village and source.village_id == self.primary_village_id:
+                priority = -1  # Negative priority to sort it first
+
             distance = self._distance_squared(source.coords, destination.coords)
-            candidates.append((distance, source))
+            candidates.append(((priority, distance), source))
 
         candidates.sort(key=lambda item: item[0])
         return [source for _, source in candidates]

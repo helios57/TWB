@@ -23,36 +23,42 @@ class TestFarmingLogic(unittest.TestCase):
     def test_abc_farming_template_selection(self):
         # Setup the multi-template config from the strategy doc
         self.manager.template = [
-            {"name": "A - Light Farm", "active": True, "units": {"light": 5}, "condition": "not_full"},
-            {"name": "B - Medium Farm", "active": True, "units": {"light": 20}, "condition": "full_but_small"},
-            {"name": "C - Heavy Farm", "active": True, "units": {"light": 100, "spy": 1}, "condition": "large_scouted"}
+            {"name": "A - Default", "units": {"light": 1}, "condition": "default"},
+            {"name": "B - Medium", "units": {"light": 4, "spy": 1}, "condition": "last_haul_full_scouted_lt_1000"},
+            {"name": "C - Heavy", "units": {"light": 50}, "condition": "scouted_gt_1000", "calculate": "total_res_div_80"}
         ]
 
         target_village_id = "54321"
 
-        # --- Scenario 1: Last haul was "not_full" -> Should select Template A ---
+        # --- Scenario A: Last haul was NOT full -> Should select Template A (Default) ---
         self.report_manager.get_last_haul_status.return_value = "not_full"
+        self.report_manager.get_scouted_resources.return_value = 500
         selected_template = self.manager.get_template_for_target(target_village_id)
-        self.assertIsNotNone(selected_template)
-        self.assertEqual(selected_template["name"], "A - Light Farm")
+        self.assertEqual(selected_template["name"], "A - Default")
 
-        # --- Scenario 2: Last haul was "full_but_small" -> Should select Template B ---
-        self.report_manager.get_last_haul_status.return_value = "full_but_small"
+        # --- Scenario B: Last haul WAS full AND scouted resources < 1000 -> Should select Template B ---
+        self.report_manager.get_last_haul_status.return_value = "full"
+        self.report_manager.get_scouted_resources.return_value = 800
         selected_template = self.manager.get_template_for_target(target_village_id)
-        self.assertIsNotNone(selected_template)
-        self.assertEqual(selected_template["name"], "B - Medium Farm")
+        self.assertEqual(selected_template["name"], "B - Medium")
 
-        # --- Scenario 3: Last haul was "large_scouted" -> Should select Template C ---
-        self.report_manager.get_last_haul_status.return_value = "large_scouted"
+        # --- Scenario C: Scouted resources > 1000 -> Should select Template C ---
+        self.report_manager.get_last_haul_status.return_value = "full"
+        self.report_manager.get_scouted_resources.return_value = 2500
         selected_template = self.manager.get_template_for_target(target_village_id)
-        self.assertIsNotNone(selected_template)
-        self.assertEqual(selected_template["name"], "C - Heavy Farm")
+        self.assertEqual(selected_template["name"], "C - Heavy")
 
-        # --- Scenario 4: No report available (new farm) -> Should default to Template A ---
+        # --- Scenario: No report available (new farm) -> Should default to Template A ---
         self.report_manager.get_last_haul_status.return_value = None
+        self.report_manager.get_scouted_resources.return_value = 0
         selected_template = self.manager.get_template_for_target(target_village_id)
-        self.assertIsNotNone(selected_template)
-        self.assertEqual(selected_template["name"], "A - Light Farm")
+        self.assertEqual(selected_template["name"], "A - Default")
+
+        # --- Scenario: Last haul was full, but scouted > 1000 -> C should take precedence over B ---
+        self.report_manager.get_last_haul_status.return_value = "full"
+        self.report_manager.get_scouted_resources.return_value = 1500
+        selected_template = self.manager.get_template_for_target(target_village_id)
+        self.assertEqual(selected_template["name"], "C - Heavy")
 
 if __name__ == '__main__':
     unittest.main()

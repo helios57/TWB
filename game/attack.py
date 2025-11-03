@@ -5,6 +5,7 @@ Sounds dangerous but it just sends farms
 
 import json
 import logging
+import random
 import time
 import math
 from datetime import datetime
@@ -88,26 +89,67 @@ class AttackManager:
         for target in self.targets[0:self.max_farms]:
             self.send_farm(target)
 
+    def send_noble_train(self, target_id, clear_template, noble_template):
+        """
+        Sends a sequence of attacks to conquer a village.
+        """
+        self.logger.info(f"Executing Noble Train attack on village {target_id}.")
+
+        # Send 4 clearing waves
+        for i in range(4):
+            self.logger.info(f"Sending clearing wave {i+1}/4...")
+            if not self.has_troops_available(clear_template):
+                self.logger.error("Not enough troops for clearing wave. Aborting Noble Train.")
+                return False
+            self.attack(target_id, troops=clear_template)
+            # Small delay to ensure requests are sent sequentially
+            time.sleep(random.uniform(0.5, 1.5))
+
+        # Send the final noble wave
+        self.logger.info("Sending noble wave...")
+        if not self.has_troops_available(noble_template):
+            self.logger.error("Not enough troops for noble wave. Aborting Noble Train.")
+            return False
+
+        result = self.attack(target_id, troops=noble_template)
+
+        if result:
+            self.logger.info("Noble Train successfully dispatched.")
+            return True
+        else:
+            self.logger.error("Failed to dispatch Noble Train.")
+            return False
+
     def get_template_for_target(self, target_id):
         """
-        Selects the appropriate farming template based on the last haul status.
+        Selects the appropriate farming template based on the A/B/C logic.
         """
-        last_haul_status = self.repman.get_last_haul_status(target_id)
+        last_haul_full = self.repman.get_last_haul_status(target_id) == "full"
+        scouted_resources = self.repman.get_scouted_resources(target_id)
 
-        # Default to the 'not_full' condition if no status is available
-        if last_haul_status is None:
-            last_haul_status = "not_full"
+        # Condition C: Big haul for recently scouted, resource-rich villages
+        if scouted_resources > 1000:
+            for t in self.template:
+                if t.get("condition") == "scouted_gt_1000":
+                    return t
 
+        # Condition B: Small probe with scouts for profitable but not recently scouted villages
+        if last_haul_full and scouted_resources < 1000:
+            for t in self.template:
+                if t.get("condition") == "last_haul_full_scouted_lt_1000":
+                    return t
+
+        # Condition A (Default): Smallest probe for empty or unknown villages
         for t in self.template:
-            if t.get("condition") == last_haul_status:
+            if t.get("condition") == "default":
                 return t
 
-        # Fallback to the first template if no condition matches
+        # Fallback to the first template if no conditions are met (legacy support)
         return self.template[0] if self.template else None
 
     def send_farm(self, target):
         """
-        Send a farming run based on dynamic templates.
+        Send a farming run based on the A/B/C dynamic templates.
         """
         target_info, _ = target
         target_id = target_info["id"]
@@ -125,39 +167,62 @@ class AttackManager:
         troops_to_send = dict(chosen_template["units"])
 
         # Dynamic calculation for C_Farm
-        if chosen_template.get("calculate"):
+        if chosen_template.get("calculate") == "total_res_div_80":
             total_resources = self.repman.get_scouted_resources(target_id)
             if total_resources > 0:
-                # Assuming calculator is 'total_res / 80' for LC
-                num_lc = math.ceil(total_resources / 80)
-                troops_to_send['light'] = num_lc
-            else: # Don't attack if we have no scout info for a C-type farm
+                # Calculate Light Cavalry needed, ensuring it doesn't exceed available troops
+                num_lc_needed = math.ceil(total_resources / 80)
+                available_lc = int(self.troopmanager.troops.get('light', 0))
+
+                # Send what is available, up to what is needed
+                troops_to_send['light'] = min(num_lc_needed, available_lc)
+
+                # If we can't send any LC, don't attack
+                if troops_to_send['light'] == 0:
+                    return 0
+            else:
+                # Don't attack if we have no scout info for a C-type farm
+                self.logger.debug(f"Skipping C-type farm on {target_id} due to no scout info.")
+                # Optional: Send a scout instead
+                self.scout(target_id)
                 return 0
 
-        missing = self.enough_in_village(troops_to_send)
-        if not missing:
-            cached = self.can_attack(vid=target_id, clear=False)
-            if cached:
-                attack_result = self.attack(target_id, troops=troops_to_send)
-                if attack_result in ["forced_peace", "farm_bag_full", None]:
-                    return 0
+        # Partial sending: If not enough troops for the template, send what's available.
+        final_troops_to_send = {}
+        is_missing_units = False
+        for unit, required in troops_to_send.items():
+            available = int(self.troopmanager.troops.get(unit, 0))
+            if available < required:
+                is_missing_units = True
+            final_troops_to_send[unit] = min(available, required)
 
-                self.logger.info(
-                    "Attacking %s -> %s (%s)", self.village_id, target_id, str(troops_to_send)
-                )
+        if is_missing_units:
+            self.logger.debug(f"Partial farm to {target_id}: Not enough units for full template. Sending available troops.")
 
-                if attack_result:
-                    for u in troops_to_send:
-                        self.troopmanager.troops[u] = str(
-                            int(self.troopmanager.troops[u]) - troops_to_send[u]
-                        )
-                    self.attacked(target_id, scout=True, safe=True)
-                    return 1
-                else:
-                    self._unknown_ignored.append(target_id)
-        else:
-            self.logger.debug(f"Not enough units to farm {target_id}: {missing}")
+        # Check if there are any troops to send at all
+        if not any(final_troops_to_send.values()):
+            self.logger.debug(f"Not enough units to farm {target_id}: All required units are zero.")
             return -1
+
+        cached = self.can_attack(vid=target_id, clear=False)
+        if cached:
+            attack_result = self.attack(target_id, troops=final_troops_to_send)
+            if attack_result in ["forced_peace", "farm_bag_full", None]:
+                return 0
+
+            self.logger.info(
+                "Attacking %s -> %s (%s)", self.village_id, target_id, str(final_troops_to_send)
+            )
+
+            if attack_result:
+                for u, sent_amount in final_troops_to_send.items():
+                    self.troopmanager.troops[u] = str(
+                        int(self.troopmanager.troops[u]) - sent_amount
+                    )
+                self.attacked(target_id, scout=True, safe=True)
+                return 1
+            else:
+                self._unknown_ignored.append(target_id)
         return 0
 
     def get_targets(self):

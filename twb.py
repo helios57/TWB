@@ -268,12 +268,32 @@ class TWB:
             )
 
         if config["bot"].get("add_new_villages", False):
-            for found_vid in self.found_villages:
-                if found_vid not in config["villages"]:
-                    print(
-                        f"Village {found_vid} was found but no config entry was found. Adding automatically"
-                    )
-                    config = self.add_village(village_id=found_vid)
+            # --- MULTI-VILLAGE EXPANSION ---
+            # Determine which villages are the 'capital' and which are new.
+            capital_id = next(iter(config["villages"]))  # Assume first village is capital
+            existing_villages = set(config["villages"].keys())
+            newly_conquered_villages = [v for v in self.found_villages if v not in existing_villages]
+
+            # Assign templates to newly conquered villages based on the expansion strategy
+            if newly_conquered_villages:
+                # Alternate between defense and offense templates for new villages
+                num_existing_offense = sum(1 for v_id, v_data in config["villages"].items() if v_data.get("building") == "offense_village_template")
+                num_existing_defense = sum(1 for v_id, v_data in config["villages"].items() if v_data.get("building") == "defense_village_template")
+
+                for village_id in newly_conquered_villages:
+                    if num_existing_defense <= num_existing_offense:
+                        # Prioritize defense if counts are equal or defense is lower
+                        template_name = "defense_village_template"
+                        num_existing_defense += 1
+                    else:
+                        template_name = "offense_village_template"
+                        num_existing_offense += 1
+
+                    logging.info(f"New village {village_id} detected. Assigning '{template_name}'.")
+                    new_village_template = copy.deepcopy(config.get("village_template", {}))
+                    new_village_template["building"] = template_name
+                    config = self.add_village(village_id=village_id, template=new_village_template)
+            # --- END MULTI-VILLAGE ---
 
         return overview_page, config
 

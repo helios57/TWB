@@ -285,69 +285,96 @@ class BuildingManager:
 
         # --- Priority 1: Maintain 24/7 Troop Queues ---
         # If troop queues are running low, prioritize upgrading the relevant building.
+        # This now correctly checks against target levels.
         if self.troop_queue_status.get("stable_queue_time", 9999) < 3600:
-            if self.get_level("stable") < self.target_levels.get("stable", 30):
+            if self.get_level("stable") < self.target_levels.get("stable", 0):
                 if self._build("stable"):
                     return True
         if self.troop_queue_status.get("barracks_queue_time", 9999) < 3600:
-            if self.get_level("barracks") < self.target_levels.get("barracks", 30):
+            if self.get_level("barracks") < self.target_levels.get("barracks", 0):
                 if self._build("barracks"):
                     return True
 
         # --- Priority 2: Strategic Goals (Academy Rush) ---
-        # First, ensure all prerequisites for the academy are met.
+        # This logic remains the same: meet prerequisites, then build the academy.
         for building, required_level in academy_prereqs.items():
             if self.get_level(building) < required_level:
-                if self._build(building):
-                    return True
+                # Check if this prerequisite is even in our target plan
+                if building in self.target_levels and self.get_level(building) < self.target_levels[building]:
+                    if self._build(building):
+                        return True
 
-        # Once prerequisites are met, build the academy itself.
         if all(self.get_level(b) >= lv for b, lv in academy_prereqs.items()):
-            if self.get_level("snob") < self.target_levels.get("snob", 1):
+            if "snob" in self.target_levels and self.get_level("snob") < self.target_levels["snob"]:
                 if self._build("snob"):
                     return True
 
         # --- Priority 3: Just-in-Time Provisioning (Warehouse & Farm) ---
-        # Check if the warehouse needs upgrading for the next big cost (e.g., nobleman).
-        # Costs are approximations; a more advanced version could pull these from game data.
-        coin_cost = 84000  # Sum of resources for a coin
-        noble_cost = 120000  # Sum of resources for a nobleman
-        next_major_cost = max(coin_cost, noble_cost)
+        # Dynamically determine the next major cost instead of hardcoding.
+        next_major_cost = 0
+        for b, target_lvl in self.target_levels.items():
+            current_lvl = self.get_level(b)
+            if current_lvl < target_lvl and b in self.costs:
+                cost_sum = sum(self.costs[b][res] for res in ['wood', 'stone', 'iron'])
+                if cost_sum > next_major_cost:
+                    next_major_cost = cost_sum
 
-        if self.resman and self.resman.storage < (next_major_cost * 1.1):
-            if self.get_level("storage") < self.target_levels.get("storage", 30):
+        # Add nobleman costs if academy is a goal
+        if "snob" in self.target_levels:
+            noble_cost = 140000
+            coin_cost = 83000
+            next_major_cost = max(next_major_cost, noble_cost, coin_cost)
+
+        if self.resman and self.resman.storage < next_major_cost:
+            if "storage" in self.target_levels and self.get_level("storage") < self.target_levels["storage"]:
                 if self._build("storage"):
                     return True
 
-        # Check if the farm needs upgrading to support more population.
+        # Check if the farm needs upgrading based on current and queued population.
         if self.game_state:
             current_pop = self.game_state["village"]["pop"]
             max_pop = self.game_state["village"]["pop_max"]
-            if max_pop - current_pop < 250:  # Upgrade if headroom is less than 250
-                if self.get_level("farm") < self.target_levels.get("farm", 30):
+            # Estimate population from building queue
+            queued_pop = 0
+            # A simple estimate; a more accurate one would inspect the actual queue
+            if len(self.waits) > 0:
+                 queued_pop = 5 * len(self.waits)
+
+            if (max_pop - (current_pop + queued_pop)) < 100:
+                if "farm" in self.target_levels and self.get_level("farm") < self.target_levels["farm"]:
                     if self._build("farm"):
                         return True
 
         # --- Priority 4: Resource Pits (as a resource sink) ---
         # If resources are about to overflow, upgrade the lowest-level pit.
         if self.resman and (
-            self.resman.actual["wood"] > self.resman.storage * 0.95
-            or self.resman.actual["stone"] > self.resman.storage * 0.95
-            or self.resman.actual["iron"] > self.resman.storage * 0.95
+            self.resman.actual["wood"] > self.resman.storage * 0.98
+            or self.resman.actual["stone"] > self.resman.storage * 0.98
+            or self.resman.actual["iron"] > self.resman.storage * 0.98
         ):
             pits = ["wood", "stone", "iron"]
-            # Sort pits by their current level to find the lowest one
             pits.sort(key=lambda p: self.get_level(p))
             for pit in pits:
-                if self.get_level(pit) < self.target_levels.get(pit, 30):
+                if pit in self.target_levels and self.get_level(pit) < self.target_levels[pit]:
                     if self._build(pit):
                         return True
 
-        # If no other actions are taken, build towards any remaining target levels.
+        # --- Priority 5 (Fallback): General Progress ---
+        # Build the cheapest building that is below its target level.
+        cheapest_building = None
+        min_cost = float('inf')
+
         for building, target_level in self.target_levels.items():
-            if self.get_level(building) < target_level:
-                if self._build(building):
-                    return True
+            if self.get_level(building) < target_level and building in self.costs:
+                if self.costs[building].get("can_build", False):
+                    cost = sum(self.costs[building][res] for res in ['wood', 'stone', 'iron'])
+                    if cost < min_cost:
+                        min_cost = cost
+                        cheapest_building = building
+
+        if cheapest_building:
+            if self._build(cheapest_building):
+                return True
 
         return False
 
