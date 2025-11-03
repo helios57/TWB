@@ -4,6 +4,7 @@ import sys
 sys.path.insert(0, "../")
 
 from flask import Flask, jsonify, send_from_directory, request, render_template
+from datetime import datetime
 
 try:
     from webmanager.helpfile import help_file, buildings
@@ -16,6 +17,10 @@ bm = BotManager()
 
 app = Flask(__name__)
 app.config["DEBUG"] = True
+
+@app.template_filter('timestamp_to_datetime')
+def timestamp_to_datetime(s):
+    return datetime.fromtimestamp(s).strftime('%Y-%m-%d %H:%M:%S')
 
 
 def pre_process_bool(key, value, village_id=None):
@@ -233,10 +238,16 @@ def get_building_templates():
                            buildings=buildings)
 
 
+@app.route('/reports', methods=['GET'])
+def get_reports():
+    session = DataReader.get_session()
+    return render_template('reports.html', data=sync(), session=session)
+
+
 @app.route('/', methods=['GET'])
 def get_home():
     session = DataReader.get_session()
-    return render_template('bot.html', data=sync(), session=session)
+    return render_template('status.html', data=sync(), session=session)
 
 
 @app.route('/app/js', methods=['GET'])
