@@ -142,5 +142,95 @@ class TestTroopManager(unittest.TestCase):
         self.assertEqual(self.troop_manager.wanted_levels, expected_upgrades)
 
 
+class TestAutomatedHoarding(unittest.TestCase):
+    def setUp(self):
+        self.wrapper = MagicMock()
+        self.village_id = 123
+        # Mock the village object that the TroopManager will interact with
+        self.mock_village = MagicMock()
+        self.mock_village._priority_research_unaffordable = False
+        self.troop_manager = TroopManager(self.wrapper, self.village_id, village=self.mock_village)
+        self.troop_manager.logger = MagicMock()
+        self.troop_manager.resman = MagicMock()
+
+    @patch('core.extractors.Extractor.smith_data')
+    def test_hoard_mode_triggered_for_unaffordable_critical_unit(self, mock_smith_data):
+        """
+        Verify that when research for a critical unit (light cavalry) is unaffordable,
+        the TroopManager signals the village to enter hoard mode.
+        """
+        # Arrange
+        self.troop_manager.wanted_levels = {"light": 1}
+        self.troop_manager.game_data = {'village': {'wood': 10, 'stone': 10, 'iron': 10}}
+        mock_smith_data.return_value = {
+            "available": {
+                "light": {
+                    "level": "0", "can_research": True, "research_error": "Not enough resources",
+                    "wood": 100, "stone": 100, "iron": 100
+                }
+            }
+        }
+        self.wrapper.get_action.return_value.text = "mocked_html"
+
+        # Act
+        self.troop_manager.attempt_research("light", smith_data=mock_smith_data.return_value)
+
+        # Assert
+        self.assertTrue(self.mock_village._priority_research_unaffordable)
+        self.troop_manager.logger.info.assert_any_call("Critical unit 'light' is unaffordable. Signaling village to hoard resources.")
+
+    @patch('core.extractors.Extractor.smith_data')
+    def test_hoard_mode_not_triggered_for_unaffordable_non_critical_unit(self, mock_smith_data):
+        """
+        Verify that when research for a non-critical unit (spy) is unaffordable,
+        hoard mode is NOT triggered.
+        """
+        # Arrange
+        self.troop_manager.wanted_levels = {"spy": 1}
+        self.troop_manager.game_data = {'village': {'wood': 10, 'stone': 10, 'iron': 10}}
+        mock_smith_data.return_value = {
+            "available": {
+                "spy": {
+                    "level": "0", "can_research": True, "research_error": "Not enough resources",
+                    "wood": 100, "stone": 100, "iron": 100
+                }
+            }
+        }
+        self.wrapper.get_action.return_value.text = "mocked_html"
+
+        # Act
+        self.troop_manager.attempt_research("spy", smith_data=mock_smith_data.return_value)
+
+        # Assert
+        self.assertFalse(self.mock_village._priority_research_unaffordable)
+        self.troop_manager.logger.info.assert_not_called()
+
+    @patch('core.extractors.Extractor.smith_data')
+    def test_hoard_mode_not_triggered_for_affordable_critical_unit(self, mock_smith_data):
+        """
+        Verify that if a critical unit is affordable, hoard mode is NOT triggered.
+        """
+        # Arrange
+        self.troop_manager.wanted_levels = {"axe": 1}
+        # Provide enough resources
+        self.troop_manager.game_data = {'village': {'wood': 200, 'stone': 200, 'iron': 200}}
+        mock_smith_data.return_value = {
+            "available": {
+                "axe": {
+                    "level": "0", "can_research": True, "research_error": None,
+                    "wood": 100, "stone": 100, "iron": 100
+                }
+            }
+        }
+        self.wrapper.get_action.return_value.text = "mocked_html"
+        self.wrapper.get_api_action.return_value = {"success": True} # Simulate successful API call
+
+        # Act
+        self.troop_manager.attempt_research("axe", smith_data=mock_smith_data.return_value)
+
+        # Assert
+        self.assertFalse(self.mock_village._priority_research_unaffordable)
+
+
 if __name__ == '__main__':
     unittest.main()

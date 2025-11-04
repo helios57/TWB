@@ -176,6 +176,93 @@ class TestVillage(unittest.TestCase):
             '123', 'building', 'noble_rush_stage_2'
         )
 
+    def test_automatic_unit_template_switching(self):
+        """
+        Tests that the bot automatically switches to the next unit template
+        when the condition in the 'next_template' section is met.
+        """
+        # Arrange
+        mock_config_manager = MagicMock()
+        self.village.config_manager = mock_config_manager
+        self.village.unit_template_full = {
+            "next_template": {
+                "template_name": "noble_rush_final_units",
+                "condition": {"building": "stable", "level": 3}
+            },
+            "template_data": []
+        }
+        self.village.builder.get_level.return_value = 3 # Stable is level 3
+
+        # Act
+        self.village._check_and_handle_template_switch()
+
+        # Assert
+        mock_config_manager.update_village_config.assert_called_once_with(
+            '123', 'units', 'noble_rush_final_units'
+        )
+
+    def test_research_hoard_mode_integration(self):
+        """
+        Integration test to ensure that when priority research is unaffordable,
+        the village.run() method correctly activates hoard_mode and skips recruitment.
+        """
+        # --- Arrange ---
+        # Mock the config to enable the feature
+        mock_config = {
+            "villages": {"123": {"managed": True}},
+            "units": {"recruit": True, "upgrade": True},
+            "building": {"manage_buildings": True},
+            "world": {}, "bot": {}, "farms": {}, "market": {}
+        }
+
+        # Mock dependencies that are called within the run loop
+        self.village.village_init = MagicMock(return_value="mock_data")
+        self.village.game_data = {"village": {"name": "Test Village", "id": "123"}}
+        self.village.resman = MagicMock()
+        self.village.resman.actual = {}
+        self.village.builder.levels = {}
+        self.village.units.total_troops = {}
+        self.village.def_man = MagicMock()
+        self.village.def_man.under_attack = False
+        self.village.update_pre_run = MagicMock()
+        self.village.setup_defence_manager = MagicMock()
+        self.village.run_quest_actions = MagicMock()
+        self.village.units_get_template = MagicMock()
+        self.village.run_builder = MagicMock()
+        self.village.builder.last_status = ""
+        self.village.set_unit_wanted_levels = MagicMock()
+        self.village._check_and_handle_template_switch = MagicMock()
+        self.village.units.update_totals = MagicMock()
+        self.village.run_snob_recruit = MagicMock()
+        # self.village.do_recruit = MagicMock() # Let the real method run
+        self.village.manage_local_resources = MagicMock()
+        self.village.run_farming = MagicMock()
+        self.village.do_gather = MagicMock()
+        self.village.go_manage_market = MagicMock()
+        self.village.set_cache_vars = MagicMock()
+
+        # THIS IS THE KEY PART OF THE TEST
+        # Simulate that the TroopManager finds 'axe' is unaffordable
+        # and sets the flag on the village instance.
+        def mock_attempt_upgrade():
+            self.village._priority_research_unaffordable = True
+        self.village.run_unit_upgrades = MagicMock(side_effect=mock_attempt_upgrade)
+
+
+        # --- Act ---
+        # Run the entire village cycle
+        self.village.run(config=mock_config)
+
+
+        # --- Assert ---
+        # Verify hoard mode was activated
+        self.assertTrue(self.village.hoard_mode, "Hoard mode should be activated")
+        self.village.logger.info.assert_any_call("Activating hoard mode to save for priority research.")
+
+        # Verify that because hoard mode was active, the recruitment logic was correctly skipped
+        self.village.logger.info.assert_any_call("Hoard mode is active, skipping recruitment.")
+        # Ensure the actual unit recruitment function was never called
+        self.village.units.start_update.assert_not_called()
 
 if __name__ == '__main__':
     unittest.main()

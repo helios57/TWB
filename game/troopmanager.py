@@ -63,13 +63,15 @@ class TroopManager:
     template = None
     _smith_data = None
     _research_failed_resources = False
+    village = None
 
-    def __init__(self, wrapper=None, village_id=None):
+    def __init__(self, wrapper=None, village_id=None, village=None):
         """
         Create the troop manager
         """
         self.wrapper = wrapper
         self.village_id = village_id
+        self.village = village
         self.wait_for = {}
         self.wait_for[village_id] = {"barracks": 0, "stable": 0, "garage": 0}
         if not self.resman:
@@ -388,6 +390,11 @@ class TroopManager:
                         "Ignoring research of %s because of resource error (not enough resources) %s", unit_type, str(data["research_error"])
                     )
                     self._research_failed_resources = True
+                    # If the unaffordable unit is critical for the Noble Rush, trigger hoard mode.
+                    critical_units = ['axe', 'light']
+                    if self.village and unit_type in critical_units:
+                        self.village._priority_research_unaffordable = True
+                        self.logger.info(f"Critical unit '{unit_type}' is unaffordable. Signaling village to hoard resources.")
                     self.logger.debug("Research needs resources")
                 else:
                     self.logger.debug(
