@@ -43,12 +43,17 @@ class ScavengeOptimizer:
         """
         scored = []
         for option_id, data in options.items():
-            if not isinstance(data, dict) or data.get('is_locked') or data.get('scavenging_squad') is not None:
+            # Defensively check if data is a dictionary before proceeding
+            if not isinstance(data, dict):
+                continue
+            if data.get('is_locked') or data.get('scavenging_squad') is not None:
                 continue
 
-            # Total potential loot is the sum of resources
-            total_loot = sum(data['loot'].values())
-            duration_hours = data['duration_in_seconds'] / 3600
+            # Total potential loot is the sum of resources, use .get() for safety
+            total_loot = sum(data.get('loot', {}).values())
+            if total_loot == 0:
+                continue
+            duration_hours = data.get('duration_in_seconds', 0) / 3600
 
             # Score is loot per hour
             score = total_loot / duration_hours if duration_hours > 0 else 0

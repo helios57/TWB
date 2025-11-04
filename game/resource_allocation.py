@@ -27,7 +27,7 @@ class ResourceAllocationSolver:
 
         # 1. Generate optimal plan for each strategy
         farming_plan = self.farm_optimizer.create_optimal_plan(available_troops, farm_targets)
-        scavenging_plan = self.scavenge_optimizer.create_optimal_plan(available_troops, scavenge_options)
+        scavenging_plan = self.scavenge_optimizer.create_optimal_plan(available_troops, scavenge_options or {})
 
         # 2. Calculate the total estimated loot for each plan
         farm_loot = self.farm_optimizer._calculate_plan_loot(farming_plan)
@@ -50,7 +50,7 @@ class ResourceAllocationSolver:
         income from either farming or scavenging.
         """
         farm_incomes = self.farm_optimizer.calculate_marginal_income(available_troops, farm_targets)
-        scavenge_incomes = self.scavenge_optimizer.calculate_marginal_income(available_troops, scavenge_options)
+        scavenge_incomes = self.scavenge_optimizer.calculate_marginal_income(available_troops, scavenge_options or {})
 
         unified_incomes = {}
         all_units = set(farm_incomes.keys()) | set(scavenge_incomes.keys())

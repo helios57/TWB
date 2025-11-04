@@ -58,14 +58,17 @@ class TestScavengeOptimizer(unittest.TestCase):
         """
         invalid_options = {
             '1': {'is_locked': False, 'scavenging_squad': None, 'loot': {'wood': 1000, 'stone': 1000, 'iron': 1000}, 'duration_in_seconds': 3600},
-            'invalid': 123,
+            'invalid_int': 123,
             '2': {'is_locked': False, 'scavenging_squad': None, 'loot': {'wood': 2000, 'stone': 2000, 'iron': 2000}, 'duration_in_seconds': 14400},
+            'missing_loot': {'is_locked': False, 'scavenging_squad': None, 'duration_in_seconds': 3600},
+            'missing_duration': {'is_locked': False, 'scavenging_squad': None, 'loot': {'wood': 500}},
         }
 
         scored = self.optimizer._score_options(invalid_options)
-        self.assertEqual(len(scored), 2)
+        self.assertEqual(len(scored), 3)
         self.assertEqual(scored[0]['option_data']['id'], '1')
         self.assertEqual(scored[1]['option_data']['id'], '2')
+        self.assertEqual(scored[2]['option_data']['id'], 'missing_duration')
 
 
 if __name__ == '__main__':
