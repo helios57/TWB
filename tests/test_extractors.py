@@ -54,5 +54,27 @@ class ExtractorDailyRewardTests(unittest.TestCase):
         self.assertIsNone(reward)
 
 
+class ExtractorUnitsInVillageTests(unittest.TestCase):
+    def test_units_in_village_returns_integers(self):
+        """
+        Tests that the `units_in_village` method correctly returns integer values for unit counts.
+        """
+        html = """
+        <table id="units_home">
+            <tr></tr>
+            <tr>
+                <td class='unit-item unit-item-spear'>10</td>
+                <td class='unit-item unit-item-sword'>20</td>
+            </tr>
+        </table>
+        """
+
+        units = Extractor.units_in_village(html)
+
+        self.assertEqual(units, [('spear', 10), ('sword', 20)])
+        for name, count in units:
+            self.assertIsInstance(count, int)
+
+
 if __name__ == "__main__":
     unittest.main()
