@@ -1,0 +1,23 @@
+{
+    "bot": {
+        "server": "http://example.com",
+        "random_delay": {
+            "min_delay": 1,
+            "max_delay": 5
+        }
+    },
+    "webmanager": {
+        "host": "127.0.0.1",
+        "port": 8080
+    },
+    "villages": {
+        "123": {
+            "building": "default",
+            "units": "default"
+        }
+    },
+    "credentials": {
+        "user": "your_username",
+        "password": "your_password"
+    }
+}
