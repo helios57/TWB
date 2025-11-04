@@ -42,6 +42,18 @@ class ActionGenerator:
                 state.resources['stone'] >= cost.get('stone', 0) and
                 state.resources['iron'] >= cost.get('iron', 0))
 
+    def _are_prerequisites_met(self, state: GameState, unit):
+        """
+        Checks if the prerequisites for researching a unit are met.
+        """
+        if self.research_costs and unit in self.research_costs.get('available', {}):
+            prerequisites = self.research_costs['available'][unit].get('requirements', {})
+            for building, required_level in prerequisites.items():
+                if state.building_levels.get(building, 0) < required_level:
+                    return False
+            return True
+        return False
+
     def _generate_build_actions(self, state: GameState):
         build_actions = []
         if not self.building_templates or 'template_data' not in self.building_templates:
@@ -98,6 +110,6 @@ class ActionGenerator:
                         if target_level > current_level:
                             if self.research_costs and unit in self.research_costs.get('available', {}):
                                 cost = self.research_costs['available'][unit]
-                                if self._can_afford(state, cost):
+                                if self._can_afford(state, cost) and self._are_prerequisites_met(state, unit):
                                     research_actions.append(ResearchAction(unit, target_level, cost))
         return research_actions
