@@ -43,7 +43,7 @@ class ScavengeOptimizer:
         """
         scored = []
         for option_id, data in options.items():
-            if data['is_locked'] or data['scavenging_squad'] is not None:
+            if not isinstance(data, dict) or data.get('is_locked') or data.get('scavenging_squad') is not None:
                 continue
 
             # Total potential loot is the sum of resources

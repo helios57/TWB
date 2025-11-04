@@ -673,7 +673,8 @@ class Village:
             self.resource_solver = ResourceAllocationSolver(self.farm_optimizer, self.scavenge_optimizer)
 
         farm_targets = self.attack.get_targets()
-        scavenge_options = Extractor.village_data(self.wrapper.get_url(f"game.php?village={self.village_id}&screen=place&mode=scavenge"))
+        village_data = Extractor.village_data(self.wrapper.get_url(f"game.php?village={self.village_id}&screen=place&mode=scavenge"))
+        scavenge_options = village_data.get("scavenge_options") if village_data else None
 
         marginal_incomes = self.resource_solver.calculate_unified_marginal_income(self.units.troops, farm_targets, scavenge_options)
 

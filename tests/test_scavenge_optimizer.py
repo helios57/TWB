@@ -52,6 +52,21 @@ class TestScavengeOptimizer(unittest.TestCase):
         incomes = self.optimizer.calculate_marginal_income(troops, self.scavenge_options)
         self.assertAlmostEqual(incomes['light'], 40)
 
+    def test_score_options_handles_invalid_data(self):
+        """
+        Tests that the `_score_options` method can handle invalid data structures gracefully.
+        """
+        invalid_options = {
+            '1': {'is_locked': False, 'scavenging_squad': None, 'loot': {'wood': 1000, 'stone': 1000, 'iron': 1000}, 'duration_in_seconds': 3600},
+            'invalid': 123,
+            '2': {'is_locked': False, 'scavenging_squad': None, 'loot': {'wood': 2000, 'stone': 2000, 'iron': 2000}, 'duration_in_seconds': 14400},
+        }
+
+        scored = self.optimizer._score_options(invalid_options)
+        self.assertEqual(len(scored), 2)
+        self.assertEqual(scored[0]['option_data']['id'], '1')
+        self.assertEqual(scored[1]['option_data']['id'], '2')
+
 
 if __name__ == '__main__':
     unittest.main()
