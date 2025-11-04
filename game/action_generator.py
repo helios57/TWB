@@ -51,8 +51,14 @@ class ActionGenerator:
         for item in template_data:
             if ":" not in item or item.startswith("#"):
                 continue
-            building, target_level = item.split(":")
-            target_level = int(target_level)
+            parts = item.split(":")
+            if len(parts) != 2:
+                continue
+            building, target_level_str = parts
+            building = building.strip()
+            if not target_level_str.isdigit():
+                continue
+            target_level = int(target_level_str)
             current_level = state.building_levels.get(building, 0)
             if current_level < target_level:
                 if building in self.building_costs:
