@@ -406,34 +406,29 @@ class Village:
             self.units.randomize_unit_queue = self.get_config(
                 section="units", parameter="randomize_unit_queue", default=True
             )
-            # prioritize_building: will only recruit when builder has sufficient funds for queue items
-            if (
-                    self.get_village_config(
-                        self.village_id, parameter="prioritize_building", default=False
-                    )
-                    and not self.resman.can_recruit()
-            ):
+            # Automated Prioritization Logic
+            # Prioritize building if the ResourceManager indicates insufficient funds for the build queue.
+            if not self.resman.can_recruit():
                 self.logger.info(
-                    "Not recruiting because builder has insufficient funds"
+                    "Automated Priority: Pausing recruitment. Builder has insufficient funds."
                 )
+                # Clear any existing recruitment resource requests
                 for x in list(self.resman.requested.keys()):
                     if "recruitment_" in x:
                         self.resman.requested.pop(f"{x}", None)
-            elif (
-                    self.get_village_config(
-                        self.village_id, parameter="prioritize_snob", default=False
-                    )
-                    and self.snobman
-                    and self.snobman.can_snob
-                    and self.snobman.is_incomplete
-            ):
-                self.logger.info("Not recruiting because snob has insufficient funds")
+                return
+
+            # Prioritize snob if it's saving for a nobleman and doesn't have enough resources.
+            if self.snobman and self.snobman.is_incomplete:
+                self.logger.info("Automated Priority: Pausing recruitment to save for nobleman.")
+                # Clear any existing recruitment resource requests
                 for x in list(self.resman.requested.keys()):
                     if "recruitment_" in x:
                         self.resman.requested.pop(f"{x}", None)
-            else:
-                # do a build run for every
-                for building in self.units.wanted:
+                return
+
+            # If neither of the above conditions are met, proceed with recruitment.
+            for building in self.units.wanted:
                     if not self.builder.get_level(building):
                         self.logger.debug(
                             "Recruit of %s will be ignored because building is not (yet) available", building

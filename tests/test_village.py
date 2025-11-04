@@ -264,5 +264,61 @@ class TestVillage(unittest.TestCase):
         # Ensure the actual unit recruitment function was never called
         self.village.units.start_update.assert_not_called()
 
+class TestAutomatedPrioritization(unittest.TestCase):
+    def setUp(self):
+        self.wrapper = MagicMock()
+        self.village = Village(village_id='123', wrapper=self.wrapper)
+        self.village.logger = MagicMock()
+        self.village.resman = MagicMock()
+        self.village.snobman = MagicMock()
+        self.village.units = MagicMock()
+        self.village.builder = MagicMock()
+
+        self.village.config = {
+            "units": {"recruit": True},
+            "world": {}, "bot": {}, "farms": {}, "market": {},
+            "villages": {"123": {"managed": True}}
+        }
+
+    def test_recruitment_paused_when_builder_lacks_funds(self):
+        """
+        Verify recruitment is automatically paused if the builder is short on resources.
+        """
+        # --- Arrange ---
+        # Simulate ResourceManager indicating builder cannot afford its queue
+        self.village.resman.can_recruit.return_value = False
+        self.village.snobman = None # Ensure snob has no effect
+
+        # --- Act ---
+        self.village.do_recruit()
+
+        # --- Assert ---
+        self.village.logger.info.assert_called_once_with(
+            "Automated Priority: Pausing recruitment. Builder has insufficient funds."
+        )
+        # Verify that the core recruitment logic was NOT called
+        self.village.units.start_update.assert_not_called()
+
+    def test_recruitment_paused_when_saving_for_snob(self):
+        """
+        Verify recruitment is automatically paused if the snob manager is saving.
+        """
+        # --- Arrange ---
+        # Simulate ResourceManager indicating builder CAN afford its queue
+        self.village.resman.can_recruit.return_value = True
+        # Simulate SnobManager saving for a nobleman
+        self.village.snobman.is_incomplete = True
+
+        # --- Act ---
+        self.village.do_recruit()
+
+        # --- Assert ---
+        self.village.logger.info.assert_called_once_with(
+            "Automated Priority: Pausing recruitment to save for nobleman."
+        )
+        # Verify that the core recruitment logic was NOT called
+        self.village.units.start_update.assert_not_called()
+
+
 if __name__ == '__main__':
     unittest.main()
