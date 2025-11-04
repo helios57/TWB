@@ -149,6 +149,33 @@ class TestVillage(unittest.TestCase):
         except KeyError:
             self.fail("set_unit_wanted_levels raised a KeyError unexpectedly.")
 
+    def test_automatic_building_template_switching(self):
+        """
+        Tests that the bot automatically switches to the next building template
+        when the current linear queue is empty.
+        """
+        # Arrange
+        mock_config_manager = MagicMock()
+        self.village.config_manager = mock_config_manager
+        self.village.build_template_full = {
+            "next_template": {
+                "template_name": "noble_rush_stage_2",
+                "condition": {} # No condition, just completion
+            },
+            "template_data": [],
+            "mode": "linear"
+        }
+        self.village.builder.mode = "linear"
+        self.village.builder.queue = [] # Queue is empty
+
+        # Act
+        self.village._check_and_handle_template_switch()
+
+        # Assert
+        mock_config_manager.update_village_config.assert_called_once_with(
+            '123', 'building', 'noble_rush_stage_2'
+        )
+
 
 if __name__ == '__main__':
     unittest.main()

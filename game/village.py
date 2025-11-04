@@ -316,26 +316,33 @@ class Village:
             )
 
         new_template_data = TemplateManager.get_template(
-            category="builder", template=self.build_config
+            category="builder", template=self.build_config, output_json=True
         )
 
-        # Handle both string and list template data
-        if isinstance(new_template_data, list):
-            template_lines = new_template_data
-        elif isinstance(new_template_data, str):
-            template_lines = new_template_data.splitlines()
+        # Handle JSON (new) vs. legacy string/list formats
+        if isinstance(new_template_data, dict):
+            # New JSON format
+            self.build_template_full = new_template_data
+            template_lines = new_template_data.get("template_data", [])
+            self.builder.mode = new_template_data.get("mode", "linear")
         else:
+            # Legacy format
+            self.build_template_full = {"template_data": new_template_data}
+            template_lines = new_template_data.splitlines() if isinstance(new_template_data, str) else new_template_data
+            self.builder.mode = "dynamic" if "final" in self.build_config else "linear"
+
+
+        if not template_lines:
             self.logger.error(f"Building template '{self.build_config}' not found or is empty.")
             return
 
-        if "final" in self.build_config:
-             self.builder.mode = "dynamic"
-             self.builder.target_levels = {line.split(':')[0]: int(line.split(':')[1]) for line in template_lines if ':' in line and not line.startswith('#')}
-        else:
-             self.builder.mode = "linear"
-             self.builder.queue = [line for line in template_lines if ':' in line and not line.startswith('#')]
+        # Configure builder based on mode
+        if self.builder.mode == "dynamic":
+            self.builder.target_levels = {line.split(':')[0]: int(line.split(':')[1]) for line in template_lines if ':' in line and not line.startswith('#')}
+        else: # linear
+            self.builder.queue = [line for line in template_lines if ':' in line and not line.startswith('#')]
 
-        self.builder.raw_template = new_template_data
+        self.builder.raw_template = template_lines
 
         self.builder.max_lookahead = self.get_config(
             section="building", parameter="max_lookahead", default=2
@@ -964,11 +971,15 @@ class Village:
         if hasattr(self, 'unit_template_full') and 'next_template' in self.unit_template_full:
             self._evaluate_and_switch('units', self.unit_template_full['next_template'])
 
-        # Check Building Template (assuming it's loaded and structured similarly)
-        # Note: Building templates need to be adapted to the same JSON structure.
-        # For now, this part is speculative until builder templates are updated.
         if hasattr(self, 'build_template_full') and 'next_template' in self.build_template_full:
-            self._evaluate_and_switch('building', self.build_template_full['next_template'])
+            # In linear mode, the queue must be empty to switch
+            if self.builder.mode == 'linear' and not self.builder.queue:
+                self._evaluate_and_switch('building', self.build_template_full['next_template'])
+            # In dynamic mode, all target levels must be met
+            elif self.builder.mode == 'dynamic':
+                all_met = all(self.builder.get_level(b) >= lv for b, lv in self.builder.target_levels.items())
+                if all_met:
+                    self._evaluate_and_switch('building', self.build_template_full['next_template'])
 
     def _evaluate_and_switch(self, config_key, switch_info):
         """
@@ -979,8 +990,16 @@ class Village:
         target_level = condition.get('level')
         new_template = switch_info.get('template_name')
 
-        if not all([target_building, target_level, new_template]):
-            self.logger.debug(f"Invalid 'next_template' definition for {config_key}.")
+        if not new_template:
+            self.logger.debug(f"Invalid 'next_template' definition for {config_key}: missing 'template_name'.")
+            return
+
+        # If condition is not specified, switch immediately
+        if not condition or not all([target_building, target_level]):
+            self.logger.info(
+                f"Conditionless template switch for '{config_key}'. Switching to '{new_template}'."
+            )
+            self.config_manager.update_village_config(self.village_id, config_key, new_template)
             return
 
         current_level = self.builder.get_level(target_building)

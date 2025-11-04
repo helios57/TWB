@@ -265,7 +265,17 @@ class BuildingManager:
 
     def _get_next_linear_action(self, index=0):
         if index >= len(self.queue):
-            return False
+            # --- FALLBACK LOGIC ---
+            # If the queue is empty, upgrade the lowest level resource pit
+            self.logger.info("Main building queue is empty. Looking for a resource pit to upgrade.")
+
+            resource_pits = ["wood", "stone", "iron"]
+            # Find the pit with the lowest current level
+            lowest_pit = min(resource_pits, key=lambda pit: self.get_level(pit))
+
+            self.logger.info(f"Identified '{lowest_pit}' as the lowest level resource pit. Attempting to upgrade.")
+            return self._build(lowest_pit)
+            # --- END FALLBACK LOGIC ---
 
         entry, min_lvl = self.queue[index].split(":")
         min_lvl = int(min_lvl)

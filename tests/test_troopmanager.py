@@ -103,5 +103,44 @@ class TestTroopManager(unittest.TestCase):
         mock_attempt_research.assert_not_called()
         self.troop_manager.logger.warning.assert_any_call("Recruitment of 10 axe failed because it is not researched")
 
+    def test_get_template_action_merges_unlocked_stages(self):
+        """
+        Tests that get_template_action correctly merges the 'build' and 'upgrades'
+        from all unlocked stages of a troop template.
+        """
+        # Arrange
+        self.troop_manager.template = [
+            {
+                "building": "barracks", "level": 1,
+                "build": {"barracks": {"spear": 50}},
+                "upgrades": {"axe": 1}
+            },
+            {
+                "building": "stable", "level": 1,
+                "build": {"barracks": {"spear": 100}, "stable": {"spy": 10}},
+                "upgrades": {"axe": 1, "light": 1}
+            },
+            {
+                "building": "stable", "level": 3,
+                "build": {"stable": {"spy": 20, "light": 50}}
+            }
+        ]
+        building_levels = {"barracks": 5, "stable": 2}
+
+        # Act
+        result = self.troop_manager.get_template_action(building_levels)
+
+        # Assert
+        expected_build = {
+            "barracks": {"spear": 100},
+            "stable": {"spy": 10}
+        }
+        expected_upgrades = {"axe": 1, "light": 1}
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result['build'], expected_build)
+        self.assertEqual(self.troop_manager.wanted_levels, expected_upgrades)
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -67,5 +67,27 @@ class TestBuildingManager(unittest.TestCase):
         actions = self.manager.get_planned_actions()
         self.assertIn("Build Wood to level 11 (Reason: Resource storage full)", actions[0])
 
+    def test_get_next_linear_action_fallback_logic(self):
+        """
+        Tests that the fallback logic in _get_next_linear_action correctly
+        identifies and builds the lowest-level resource pit when the queue is empty.
+        """
+        # Arrange
+        self.manager.mode = "linear"
+        self.manager.queue = [] # Empty queue
+        self.manager.levels = {"wood": 10, "stone": 8, "iron": 12}
+        self.manager.costs = {
+            "stone": {"can_build": True, "build_time": 100, "wood": 10, "stone": 10, "iron": 10, "pop": 1, "name": "stone"}
+        }
+
+        # Mock the _build method to prevent actual building and just check if it's called correctly
+        with patch.object(self.manager, '_build') as mock_build:
+            # Act
+            result = self.manager._get_next_linear_action()
+
+            # Assert
+            self.assertTrue(result)
+            mock_build.assert_called_once_with("stone")
+
 if __name__ == '__main__':
     unittest.main()

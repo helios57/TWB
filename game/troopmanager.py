@@ -227,28 +227,49 @@ class TroopManager:
 
     def get_template_action(self, levels):
         """
-        Read data from templates and determine the troops based op building progression
+        Read data from templates and determine the troops based on building progression.
+        This now merges all unlocked template stages to ensure all recruitment goals are met.
         """
-        last = None
-        wanted_upgrades = {}
-        for x in self.template:
-            if x["building"] not in levels:
-                return last
+        if not self.template:
+            return None
 
-            if x["level"] > levels[x["building"]]:
-                return last
+        combined_build = {}
+        combined_upgrades = {}
+        last_valid_entry = None
 
-            last = x
-            if "upgrades" in x:
-                for unit in x["upgrades"]:
-                    if (
-                            unit not in wanted_upgrades
-                            or x["upgrades"][unit] > wanted_upgrades[unit]
-                    ):
-                        wanted_upgrades[unit] = x["upgrades"][unit]
+        for entry in self.template:
+            if entry.get("building") not in levels or entry.get("level", 1) > levels.get(entry["building"], 0):
+                # This entry is not yet unlocked, so we stop here.
+                break
 
-            self.wanted_levels = wanted_upgrades
-        return last
+            last_valid_entry = entry
+
+            # Merge build goals
+            if "build" in entry:
+                for building, units in entry["build"].items():
+                    if building not in combined_build:
+                        combined_build[building] = {}
+                    for unit, amount in units.items():
+                        # Higher amounts in later stages override earlier ones
+                        combined_build[building][unit] = max(combined_build[building].get(unit, 0), amount)
+
+            # Merge upgrade goals
+            if "upgrades" in entry:
+                for unit, level in entry["upgrades"].items():
+                    combined_upgrades[unit] = max(combined_upgrades.get(unit, 0), level)
+
+        # Update the TroopManager's state
+        self.wanted_levels = combined_upgrades
+
+        if not last_valid_entry:
+            return None
+
+        # The "last" entry returned will now contain the merged build goals
+        # and will also include other keys from the last valid entry like 'farm'
+        final_action = last_valid_entry.copy()
+        final_action['build'] = combined_build
+
+        return final_action
 
     def research_time(self, time_str):
         """
