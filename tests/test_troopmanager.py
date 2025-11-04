@@ -141,6 +141,47 @@ class TestTroopManager(unittest.TestCase):
         self.assertEqual(result['build'], expected_build)
         self.assertEqual(self.troop_manager.wanted_levels, expected_upgrades)
 
+    def test_get_template_action_handles_out_of_order_unlocked_stages(self):
+        """
+        Tests that get_template_action correctly processes templates where an
+        unlocked stage appears after a locked one. It should not stop processing
+        at the first locked stage. This is a regression test for a critical bug.
+        """
+        # Arrange
+        self.troop_manager.template = [
+            {
+                "building": "barracks", "level": 1,
+                "build": {"barracks": {"spear": 50}},
+            },
+            {
+                "building": "barracks", "level": 10, # This stage is locked
+                "build": {"barracks": {"axe": 100}},
+            },
+            {
+                "building": "stable", "level": 1, # This stage is unlocked
+                "build": {"stable": {"spy": 10, "light": 20}},
+                "upgrades": {"light": 1}
+            }
+        ]
+        # Village has a stable, but barracks is not yet level 10
+        building_levels = {"barracks": 5, "stable": 2}
+
+        # Act
+        result = self.troop_manager.get_template_action(building_levels)
+
+        # Assert
+        # The bot should have adopted the goals from both the unlocked barracks
+        # and stable stages, and ignored the locked barracks stage.
+        expected_build = {
+            "barracks": {"spear": 50},
+            "stable": {"spy": 10, "light": 20}
+        }
+        expected_upgrades = {"light": 1}
+
+        self.assertIsNotNone(result)
+        self.assertEqual(result['build'], expected_build)
+        self.assertEqual(self.troop_manager.wanted_levels, expected_upgrades)
+
 
 class TestAutomatedHoarding(unittest.TestCase):
     def setUp(self):

@@ -241,8 +241,8 @@ class TroopManager:
 
         for entry in self.template:
             if entry.get("building") not in levels or entry.get("level", 1) > levels.get(entry["building"], 0):
-                # This entry is not yet unlocked, so we stop here.
-                break
+                # This entry is not yet unlocked, so we skip to the next one.
+                continue
 
             last_valid_entry = entry
 
