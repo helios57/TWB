@@ -233,6 +233,7 @@ class ResourceManager:
         """
         self.wrapper = wrapper
         self.village_id = village_id
+        self.last_troop_recruit_time = 0
 
     def calculate_income(self, game_state):
         """
@@ -316,6 +317,25 @@ class ResourceManager:
         self.check_state()
         store_state = game_state["village"]["name"]
         self.logger = logging.getLogger(f"Resource Manager: {store_state}")
+
+    def update_game_state(self, game_state_model, raw_game_state):
+        """
+        Populates the GameState object with the latest resource information.
+        """
+        game_state_model.resources['wood'] = raw_game_state["village"]["wood"]
+        game_state_model.resources['stone'] = raw_game_state["village"]["stone"]
+        game_state_model.resources['iron'] = raw_game_state["village"]["iron"]
+        game_state_model.resources['pop'] = (
+            raw_game_state["village"]["pop_max"] - raw_game_state["village"]["pop"]
+        )
+        game_state_model.storage_capacity = raw_game_state["village"]["storage_max"]
+        game_state_model.timestamp = int(time.time())
+        # Also update income if available
+        if self.income and 'total' in self.income:
+            game_state_model.resource_income['wood'] = self.income['total'].get('wood', 0)
+            game_state_model.resource_income['stone'] = self.income['total'].get('clay', 0) # Mapped from 'clay'
+            game_state_model.resource_income['iron'] = self.income['total'].get('iron', 0)
+
 
     def do_premium_stuff(self):
         """
@@ -568,64 +588,6 @@ class ResourceManager:
                 if self.requested[source][res] <= self.actual[res]:
                     self.requested[source][res] = 0
 
-    def mark_troop_recruited(self):
-        """
-        Marks the timestamp when troops were successfully recruited
-        Used for troop prioritization system
-        """
-        self.last_troop_recruit_time = int(time.time())
-        self.logger.debug("Marked troop recruitment at timestamp %d", self.last_troop_recruit_time)
-
-    def can_build(self, prioritize_troops, timeout):
-        """
-        Checks if buildings can be constructed based on troop prioritization
-        Returns False if troops should be prioritized and are waiting for resources
-
-        Args:
-            prioritize_troops: Whether troops should be prioritized over buildings
-            timeout: Timeout in seconds before allowing buildings despite troop requests
-
-        Returns:
-            True if buildings can be built, False if blocked by troop priority
-        """
-        # If troop prioritization is disabled, always allow building
-        if not prioritize_troops:
-            self.logger.debug("Building allowed: troop prioritization disabled")
-            return True
-
-        # First run: no blockade (allows initial building construction)
-        if self.last_troop_recruit_time == 0:
-            self.logger.debug("Building allowed: first run (no troop recruitment yet)")
-            return True
-
-        # Check for active recruitment requests
-        active_recruitment = False
-        for key in self.requested:
-            if key.startswith("recruitment_"):
-                if sum(self.requested[key].values()) > 0:
-                    active_recruitment = True
-                    self.logger.debug("Active recruitment request found: %s", key)
-                    break
-
-        if not active_recruitment:
-            self.logger.debug("Building allowed: no active recruitment requests")
-            return True
-
-        # Check timeout
-        elapsed = int(time.time()) - self.last_troop_recruit_time
-        if elapsed < timeout:
-            self.logger.debug(
-                "Building blocked: waiting for troops (%ds elapsed, %ds timeout)",
-                elapsed, timeout
-            )
-            return False
-        else:
-            self.logger.info(
-                "Smart-Fallback activated: allowing buildings after %ds timeout (elapsed: %ds)",
-                timeout, elapsed
-            )
-            return True
-
     def request(self, source="building", resource="wood", amount=1):
         """
         When called, resources can be taken from other actions
@@ -642,18 +604,14 @@ class ResourceManager:
         """
         if self.actual["pop"] == 0:
             self.logger.info("Can't recruit, no room for pops!")
-            for x in self.requested:
-                if "recruitment" in x:
-                    del self.requested[x]
+            # Clear any existing recruitment requests if there's no population headroom
+            for key in list(self.requested.keys()):
+                if key.startswith("recruitment_"):
+                    del self.requested[key]
             return False
 
-        for x in self.requested:
-            if "recruitment" in x:
-                continue
-            types = self.requested[x]
-            for sub in types:
-                if types[sub] > 0:
-                    return False
+        # Allow recruitment even if other (e.g., building) requests are pending.
+        # The new can_build method will handle the prioritization.
         return True
 
     def get_plenty_off(self):
@@ -955,3 +913,61 @@ class ResourceManager:
                 "".join([s for s in res_wanted_amount if s.isdigit()])
             ),
         }
+
+    def mark_troop_recruited(self):
+        """
+        Marks the timestamp when troops were successfully recruited
+        Used for troop prioritization system
+        """
+        self.last_troop_recruit_time = int(time.time())
+        self.logger.debug("Marked troop recruitment at timestamp %d", self.last_troop_recruit_time)
+
+    def can_build(self, prioritize_troops, timeout):
+        """
+        Checks if buildings can be constructed based on troop prioritization
+        Returns False if troops should be prioritized and are waiting for resources
+
+        Args:
+            prioritize_troops: Whether troops should be prioritized over buildings
+            timeout: Timeout in seconds before allowing buildings despite troop requests
+
+        Returns:
+            True if buildings can be built, False if blocked by troop priority
+        """
+        # If troop prioritization is disabled, always allow building
+        if not prioritize_troops:
+            self.logger.debug("Building allowed: troop prioritization disabled")
+            return True
+
+        # First run: no blockade (allows initial building construction)
+        if self.last_troop_recruit_time == 0:
+            self.logger.debug("Building allowed: first run (no troop recruitment yet)")
+            return True
+
+        # Check for active recruitment requests
+        active_recruitment = False
+        for key in self.requested:
+            if key.startswith("recruitment_"):
+                if sum(self.requested[key].values()) > 0:
+                    active_recruitment = True
+                    self.logger.debug("Active recruitment request found: %s", key)
+                    break
+
+        if not active_recruitment:
+            self.logger.debug("Building allowed: no active recruitment requests")
+            return True
+
+        # Check timeout
+        elapsed = int(time.time()) - self.last_troop_recruit_time
+        if elapsed < timeout:
+            self.logger.debug(
+                "Building blocked: waiting for troops (%ds elapsed, %ds timeout)",
+                elapsed, timeout
+            )
+            return False
+        else:
+            self.logger.info(
+                "Smart-Fallback activated: allowing buildings after %ds timeout (elapsed: %ds)",
+                timeout, elapsed
+            )
+            return True

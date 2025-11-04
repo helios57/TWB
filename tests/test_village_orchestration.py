@@ -118,8 +118,6 @@ class TestVillageOrchestration(unittest.TestCase):
              patch.object(self.village, 'run_snob_recruit', return_value=None), \
              patch.object(self.village, 'do_recruit', return_value=None), \
              patch.object(self.village, 'manage_local_resources', return_value=None), \
-             patch.object(self.village, 'run_farming', return_value=None), \
-             patch.object(self.village, 'do_gather', return_value=None), \
              patch.object(self.village, 'go_manage_market', return_value=None), \
              patch.object(self.village, 'set_cache_vars', return_value=None):
 
@@ -151,8 +149,6 @@ class TestVillageOrchestration(unittest.TestCase):
              patch.object(self.village, 'run_snob_recruit', return_value=None), \
              patch.object(self.village, 'do_recruit', return_value=None), \
              patch.object(self.village, 'manage_local_resources', return_value=None), \
-             patch.object(self.village, 'run_farming', return_value=None), \
-             patch.object(self.village, 'do_gather', return_value=None), \
              patch.object(self.village, 'go_manage_market', return_value=None), \
              patch.object(self.village, 'set_cache_vars', return_value=None):
 

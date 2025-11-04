@@ -51,6 +51,13 @@ class BuildingManager:
         self.village_id = village_id
         self.last_status = None
 
+    def update_game_state(self, game_state_model):
+        """
+        Populates the GameState object with the latest building information.
+        """
+        game_state_model.building_levels = self.levels
+        game_state_model.building_queue = self.waits_building
+
     def create_update_links(self, extracted_buildings):
         """
         Creates update links for a building

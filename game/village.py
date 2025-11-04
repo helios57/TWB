@@ -17,7 +17,13 @@ from game.reports import ReportManager
 from game.resources import ResourceManager
 from game.snobber import SnobManager
 from game.troopmanager import TroopManager
+from game.gamestate import GameState
+from game.solver import MultiActionPlanner
+from game.action_generator import ActionGenerator
 from core.exceptions import *
+from game.farm_optimizer import FarmOptimizer
+from game.scavenge_optimizer import ScavengeOptimizer
+from game.resource_allocation import ResourceAllocationSolver
 
 
 class Village:
@@ -65,6 +71,14 @@ class Village:
                 self.config_manager = None
         self.current_unit_entry = None
         self.status = "Initializing..."
+        self.game_state_model = GameState(village_id=village_id)
+        # Initialize the AI components
+        self.action_generator = ActionGenerator()
+        self.solver = MultiActionPlanner(self.action_generator)
+        self.farm_optimizer = None
+        self.scavenge_optimizer = None
+        self.resource_solver = None
+
 
     def get_config(self, section, parameter, default=None):
         if section not in self.config:
@@ -170,6 +184,7 @@ class Village:
         # --- PERFORMANCE (POINT 2) ---
         # Pass cached game_data
         self.resman.update(self.game_data)
+        self.resman.update_game_state(self.game_state_model, self.game_data)
         # --- END PERFORMANCE ---
 
         self.wrapper.reporter.report(
@@ -364,6 +379,7 @@ class Village:
             ),
             set_village_name=self.village_set_name,
         )
+        self.builder.update_game_state(self.game_state_model)
 
     def run_snob_recruit(self):
         """
@@ -407,18 +423,8 @@ class Village:
                 section="units", parameter="randomize_unit_queue", default=True
             )
             # Automated Prioritization Logic
-            # Prioritize building if the ResourceManager indicates insufficient funds for the build queue.
-            if not self.resman.can_recruit():
-                self.logger.info(
-                    "Automated Priority: Pausing recruitment. Builder has insufficient funds."
-                )
-                # Clear any existing recruitment resource requests
-                for x in list(self.resman.requested.keys()):
-                    if "recruitment_" in x:
-                        self.resman.requested.pop(f"{x}", None)
-                return
-
-            # Prioritize snob if it's saving for a nobleman and doesn't have enough resources.
+            # With the new smart fallback, we can simplify this.
+            # We'll still prioritize snobs, but the builder/recruitment lock is now handled by can_build.
             if self.snobman and self.snobman.is_incomplete:
                 self.logger.info("Automated Priority: Pausing recruitment to save for nobleman.")
                 # Clear any existing recruitment resource requests
@@ -434,7 +440,7 @@ class Village:
                             "Recruit of %s will be ignored because building is not (yet) available", building
                         )
                         continue
-                    self.units.start_update(building, self.disabled_units)
+                    recruited = self.units.start_update(building, self.disabled_units)
 
     def check_forced_peace(self):
         """
@@ -549,90 +555,6 @@ class Village:
         except (TypeError, ValueError):
             margin = 0.02
         self.attack.farm_bag_limit_margin = max(0.0, min(0.2, margin))
-        
-        # Collect farm templates from all unlocked entries (fallback support)
-        farm_templates = []
-        if self.units.template:
-            for entry in self.units.template:
-                # Check if this entry is unlocked (building exists and level requirement met)
-                if entry.get("building") not in self.builder.levels:
-                    continue  # Skip to the next entry if building doesn't exist yet
-                if entry.get("level", 1) > self.builder.levels.get(entry.get("building"), 0):
-                    continue  # Skip to the next entry if level requirement is not met
-                
-                # Add farm template from this entry if it exists
-                if "farm" in entry:
-                    farm_config = entry["farm"]
-                    # Ensure farm_config is a list
-                    if isinstance(farm_config, dict):
-                        farm_templates.append(farm_config)
-                    elif isinstance(farm_config, list):
-                        farm_templates.extend(farm_config)
-        
-        if farm_templates:
-            self.attack.template = farm_templates
-        else:
-            self.logger.warning("No farm templates available from unlocked entries")
-            self.attack.template = []
-
-    def run_farming(self):
-        """
-        Runs the farming logic
-        """
-        if not self.forced_peace and self.units.can_attack:
-            if not self.area:
-                self.area = Map(wrapper=self.wrapper, village_id=self.village_id)
-            self.area.get_map()
-            if self.area.villages:
-                self.units.can_scout = self.get_config(
-                    section="farms", parameter="force_scout_if_available", default=True
-                )
-                self.logger.info(
-                    "%d villages from map cache, (your location: %s)",
-                    len(self.area.villages),
-                    ":".join([str(x) for x in self.area.my_location])
-                )
-                if not self.attack:
-                    self.attack = AttackManager(
-                        wrapper=self.wrapper,
-                        village_id=self.village_id,
-                        troopmanager=self.units,
-                        map=self.area,
-                    )
-                    self.attack.repman = self.rep_man
-
-                if self.forced_peace_today:
-                    self.logger.info("Forced peace time coming up today!")
-                    self.attack.forced_peace_time = self.forced_peace_today_start
-                self.set_farm_options()
-
-                if (
-                        self.get_config(section="farms", parameter="farm", default=False)
-                        and not self.def_man.under_attack
-                ):
-                    self.attack.extra_farm = self.get_village_config(
-                        self.village_id, parameter="additional_farms", default=[]
-                    )
-                    self.attack.max_farms = self.get_config(
-                        section="farms", parameter="max_farms", default=25
-                    )
-                    self.attack.run()
-
-    def do_gather(self):
-        """
-        Runs gathering if unlocked and active
-        """
-        self.units.can_gather = self.get_village_config(
-            self.village_id, parameter="gather_enabled", default=False
-        )
-        if not self.def_man or not self.def_man.under_attack:
-            self.units.gather(
-                selection=self.get_village_config(
-                    self.village_id, parameter="gather_selection", default=1
-                ),
-                disabled_units=self.disabled_units,
-                advanced_gather=self.get_village_config(self.village_id, parameter="advanced_gather", default=1)
-            )
 
     def go_manage_market(self):
         """
@@ -724,56 +646,75 @@ class Village:
         # The BuildingManager needs to be run to populate building levels
         self.status = "Managing building queue..."
         self.run_builder()
-        if self.builder.last_status:
-            self.status = self.builder.last_status
-
-        # Now that builder.levels is available, we can set the wanted unit levels
-        self.set_unit_wanted_levels()
-        self._check_and_handle_template_switch()
 
         # Update total troop counts before making recruitment decisions
         self.units.update_totals(self.game_data, self.overview_html)
+        self.units.update_game_state(self.game_state_model)
 
-        # Run upgrades before recruiting to ensure units are researched
-        self.status = "Upgrading units..."
-        self.run_unit_upgrades()
 
-        if self._priority_research_unaffordable:
-            self.hoard_for_research = True
-            self.logger.info("Activating hoard mode to save for priority research.")
-        else:
-            self.hoard_for_research = False
+        # --- New Optimizing Agent Logic ---
+        if not self.area:
+            self.area = Map(wrapper=self.wrapper, village_id=self.village_id)
+        self.area.get_map()
+        if not self.attack:
+            self.attack = AttackManager(
+                wrapper=self.wrapper,
+                village_id=self.village_id,
+                troopmanager=self.units,
+                map=self.area,
+            )
+            self.attack.repman = self.rep_man
 
-        self.status = "Recruiting snobs..."
-        self.run_snob_recruit()
+        if not self.farm_optimizer:
+            self.farm_optimizer = FarmOptimizer(self.units, self.rep_man, self.area)
+        if not self.scavenge_optimizer:
+            self.scavenge_optimizer = ScavengeOptimizer(self.units)
+        if not self.resource_solver:
+            self.resource_solver = ResourceAllocationSolver(self.farm_optimizer, self.scavenge_optimizer)
 
-        # Combine hoard modes
-        if self.hoard_for_research:
-            self.hoard_mode = True
+        farm_targets = self.attack.get_targets()
+        scavenge_options = Extractor.village_data(self.wrapper.get_url(f"game.php?village={self.village_id}&screen=place&mode=scavenge"))
 
-        self.status = "Recruiting units..."
-        self.do_recruit()
-        self.status = "Balancing resources..."
-        self.manage_local_resources()
+        marginal_incomes = self.resource_solver.calculate_unified_marginal_income(self.units.troops, farm_targets, scavenge_options)
 
-        # --- CONFIGURABLE GATHER/FARM PRIORITY ---
-        prioritize_gathering = self.get_village_config(
-            self.village_id, parameter="prioritize_gathering", default=False
+        self.action_generator.update_data(
+            building_templates=self.build_template_full,
+            troop_templates=self.unit_template_full,
+            building_costs=self.builder.costs,
+            recruit_costs=self.units.recruit_data,
+            research_costs=self.units._smith_data,
         )
+        planned_actions = self.solver.plan_actions(self.game_state_model, marginal_incomes)
 
-        if prioritize_gathering:
-            self.logger.debug("Prioritizing gathering over farming.")
-            self.status = "Gathering resources..."
-            self.do_gather()
-            self.status = "Farming..."
-            self.run_farming()
+        if planned_actions:
+            self.logger.info(f"Optimal plan: {[a.name for a in planned_actions]}")
+            for action in planned_actions:
+                cost = action.cost()
+                if all(self.resman.actual.get(res, 0) >= cost.get(res, 0) for res in cost):
+                    self.logger.info(f"Executing planned action: {action.name}")
+                    if self.execute_action(action):
+                        for res, amount in cost.items():
+                            self.resman.actual[res] -= amount
+                    else:
+                        self.logger.warning(f"Failed to execute planned action: {action.name}. Stopping.")
+                        break
+                else:
+                    self.logger.warning(f"Could not afford action '{action.name}'. Stopping.")
+                    break
         else:
-            self.logger.debug("Prioritizing farming over gathering (default).")
-            self.status = "Farming..."
-            self.run_farming()
-            self.status = "Gathering resources..."
-            self.do_gather()
-        # --- END CONFIGURABLE PRIORITY ---
+            self.logger.info("No optimal actions could be determined in this cycle.")
+
+        # --- Resource Gathering ---
+        if not self.forced_peace and self.units.can_attack:
+            strategy, plan = self.resource_solver.determine_best_strategy(self.units.troops, farm_targets, scavenge_options)
+            if strategy == 'farming':
+                self.logger.info(f"Executing optimal farming plan with {len(plan)} attacks.")
+                for attack_cmd in plan:
+                    self.attack.attack(attack_cmd['target_id'], troops=attack_cmd['troops'])
+            elif strategy == 'scavenging':
+                self.logger.info(f"Executing optimal scavenging plan with {len(plan)} squads.")
+                for scavenge_cmd in plan:
+                    self._execute_scavenge_squad(scavenge_cmd['option_id'], scavenge_cmd['troops'])
 
         self.status = "Managing market..."
         self.go_manage_market()
@@ -802,6 +743,46 @@ class Village:
         self.wrapper.reporter.add_data(
             self.village_id, data_type="village.config", data=json.dumps(vdata)
         )
+
+    def execute_action(self, action):
+        """
+        Executes a given action.
+        """
+        if action.name.startswith("Build"):
+            return self.builder._build(action.building)
+        elif action.name.startswith("Recruit"):
+            building = self.units.unit_building.get(action.unit)
+            if building:
+                return self.units.recruit(action.unit, action.amount, building=building)
+        elif action.name.startswith("Research"):
+            return self.units.attempt_research(action.unit)
+        return False
+
+    def _execute_scavenge_squad(self, option_id, troops):
+        """
+        Sends a single squad to a scavenging mission.
+        """
+        payload = {
+            "squad_requests[0][village_id]": self.village_id,
+            "squad_requests[0][option_id]": str(option_id),
+            "squad_requests[0][use_premium]": "false",
+        }
+        total_carry = 0
+        for unit, count in troops.items():
+            payload[f"squad_requests[0][candidate_squad][unit_counts][{unit}]"] = str(count)
+            total_carry += self.scavenge_optimizer.unit_capacity.get(unit, 0) * count
+
+        payload["squad_requests[0][candidate_squad][carry_max]"] = str(total_carry)
+        payload["h"] = self.wrapper.last_h
+
+        self.wrapper.get_api_action(
+            action="send_squads",
+            params={"screen": "scavenge_api"},
+            data=payload,
+            village_id=self.village_id,
+        )
+        self.logger.info(f"Sent scavenge squad to option {option_id} with troops: {troops}")
+
 
     def calculate_resource_forecast(self):
         """
