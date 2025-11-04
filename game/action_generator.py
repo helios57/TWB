@@ -49,6 +49,8 @@ class ActionGenerator:
 
         template_data = self.building_templates['template_data']
         for item in template_data:
+            if ":" not in item or item.startswith("#"):
+                continue
             building, target_level = item.split(":")
             target_level = int(target_level)
             current_level = state.building_levels.get(building, 0)
