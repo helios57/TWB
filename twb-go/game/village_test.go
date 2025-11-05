@@ -30,7 +30,7 @@ villages:
 
 	// These would be properly initialized in a real scenario
 	wrapper, _ := core.NewWebWrapper("http://example.com", 1, 2)
-	cm, _ := core.NewConfigManager(configPath)
+	cm, _ := core.NewConfigManager(configPath, nil)
 	rm := NewResourceManager()
 	bm := NewBuildingManager(wrapper, "123", rm)
 	tm := NewTroopManager(wrapper, "123", rm)
@@ -72,7 +72,7 @@ villages:
 	}
 
 	wrapper, _ := core.NewWebWrapper("http://example.com", 1, 2)
-	cm, _ := core.NewConfigManager(configPath)
+	cm, _ := core.NewConfigManager(configPath, nil)
 	rm := NewResourceManager()
 	bm := NewBuildingManager(wrapper, "123", rm)
 	tm := NewTroopManager(wrapper, "123", rm)

@@ -46,7 +46,7 @@ func TestConfigManager(t *testing.T) {
 	}
 
 	// Test NewConfigManager and LoadConfig
-	cm, err := NewConfigManager(configPath)
+	cm, err := NewConfigManager(configPath, nil)
 	if err != nil {
 		t.Fatalf("NewConfigManager failed: %v", err)
 	}
@@ -70,7 +70,7 @@ func TestConfigManager(t *testing.T) {
 	}
 
 	// Verify the file was saved correctly
-	cm2, err := NewConfigManager(configPath)
+	cm2, err := NewConfigManager(configPath, nil)
 	if err != nil {
 		t.Fatalf("NewConfigManager (reload) failed: %v", err)
 	}

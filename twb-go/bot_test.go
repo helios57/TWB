@@ -2,10 +2,12 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"twb-go/game"
 )
@@ -68,7 +70,7 @@ villages:
 	defer server.Close()
 
 	// Create a new Bot
-	bot, err := NewBot(configPath)
+	bot, err := NewBot(configPath, strings.NewReader("http://test.com\ntest-agent\ntest-cookie\n"))
 	if err != nil {
 		t.Fatalf("NewBot failed: %v", err)
 	}

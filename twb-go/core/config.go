@@ -1,9 +1,13 @@
 package core
 
 import (
+	"bufio"
 	"fmt"
+	"io"
 	"os"
+	"strings"
 	"sync"
+
 	"gopkg.in/yaml.v3"
 )
 
@@ -72,33 +76,150 @@ type ConfigManager struct {
 }
 
 // NewConfigManager creates and initializes a new ConfigManager.
-func NewConfigManager(path string) (*ConfigManager, error) {
+func NewConfigManager(path string, reader io.Reader) (*ConfigManager, error) {
 	cm := &ConfigManager{
 		configPath: path,
 	}
-	err := cm.LoadConfig()
-	if err != nil {
-		return nil, err
+
+	for {
+		exists, err := cm.LoadConfig()
+		if err != nil {
+			return nil, err
+		}
+		if !exists {
+			if reader == nil {
+				tty, err := os.Open("/dev/tty")
+				if err != nil {
+					return nil, fmt.Errorf("failed to open tty: %w", err)
+				}
+				defer tty.Close()
+				reader = tty
+			}
+			bufReader := bufio.NewReader(reader)
+			newConfig, err := createConfig(bufReader)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create config: %w", err)
+			}
+			cm.config = newConfig
+			if err := cm.SaveConfig(); err != nil {
+				return nil, fmt.Errorf("failed to save config: %w", err)
+			}
+			continue
+		}
+		if err := cm.Validate(); err != nil {
+			fmt.Println("Configuration is invalid, please re-enter details.")
+			if reader == nil {
+				tty, err := os.Open("/dev/tty")
+				if err != nil {
+					return nil, fmt.Errorf("failed to open tty: %w", err)
+				}
+				defer tty.Close()
+				reader = tty
+			}
+			bufReader := bufio.NewReader(reader)
+			newConfig, err := createConfig(bufReader)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create config: %w", err)
+			}
+			cm.config = newConfig
+			if err := cm.SaveConfig(); err != nil {
+				return nil, fmt.Errorf("failed to save config: %w", err)
+			}
+			continue
+		}
+		break
 	}
+
 	return cm, nil
 }
 
+// Validate checks if the essential configuration values are set.
+func (cm *ConfigManager) Validate() error {
+	cm.lock.Lock()
+	defer cm.lock.Unlock()
+
+	if cm.config.Bot.Server == "" {
+		return fmt.Errorf("server URL is not set")
+	}
+	if cm.config.Credentials["user_agent"] == "" {
+		return fmt.Errorf("user_agent is not set")
+	}
+	if cm.config.Credentials["cookie"] == "" {
+		return fmt.Errorf("cookie is not set")
+	}
+	return nil
+}
+
+func createConfig(reader *bufio.Reader) (*Config, error) {
+	fmt.Print("Enter server URL: ")
+	server, _ := reader.ReadString('\n')
+	fmt.Print("Enter User-Agent: ")
+	userAgent, _ := reader.ReadString('\n')
+	fmt.Print("Enter Cookie: ")
+	cookie, _ := reader.ReadString('\n')
+
+	return &Config{
+		Bot: BotConfig{
+			Server: strings.TrimSpace(server),
+			RandomDelay: RandomDelayConfig{
+				MinDelay: 1,
+				MaxDelay: 5,
+			},
+		},
+		WebManager: WebManagerConfig{
+			Host: "127.0.0.1",
+			Port: 8080,
+		},
+		Solver: SolverConfig{
+			EconomicWeight:  1.0,
+			StrategicWeight: 2.0,
+			MilitaryWeight:  1.5,
+		},
+		Planner: PlannerConfig{
+			RecruitmentGoals: map[string]int{
+				"spear": 250,
+			},
+			RecruitmentBatchSize: 10,
+		},
+		BuildingPrerequisites: map[string]map[string]int{
+			"snob": {
+				"main":   20,
+				"smith":  20,
+				"market": 10,
+			},
+		},
+		Villages: map[string]VillageConfig{
+			"123": {
+				Building: "default",
+				Units:    "default",
+			},
+		},
+		Credentials: map[string]string{
+			"user_agent": strings.TrimSpace(userAgent),
+			"cookie":     strings.TrimSpace(cookie),
+		},
+	}, nil
+}
+
 // LoadConfig loads the configuration from the specified YAML file.
-func (cm *ConfigManager) LoadConfig() error {
+func (cm *ConfigManager) LoadConfig() (bool, error) {
 	cm.lock.Lock()
 	defer cm.lock.Unlock()
 
 	file, err := os.ReadFile(cm.configPath)
 	if err != nil {
-		return fmt.Errorf("failed to read config file: %w", err)
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		return false, fmt.Errorf("failed to read config file: %w", err)
 	}
 
 	var config Config
 	if err := yaml.Unmarshal(file, &config); err != nil {
-		return fmt.Errorf("failed to decode YAML from config file: %w", err)
+		return false, fmt.Errorf("failed to decode YAML from config file: %w", err)
 	}
 	cm.config = &config
-	return nil
+	return true, nil
 }
 
 // saveConfig is the internal, non-locking implementation of saving the configuration.

@@ -12,16 +12,23 @@ import (
 	"time"
 )
 
+// Pausable defines the interface for an object that can be paused.
+type Pausable interface {
+	Pause()
+	IsPaused() bool
+}
+
 // WebWrapper is an object for sending HTTP requests.
 type WebWrapper struct {
-	client      *http.Client
-	headers     http.Header
-	Endpoint    string
-	delay       time.Duration
-	minDelay    time.Duration
-	maxDelay    time.Duration
-	lastH       string // To store the 'h' parameter
+	client       *http.Client
+	headers      http.Header
+	Endpoint     string
+	delay        time.Duration
+	minDelay     time.Duration
+	maxDelay     time.Duration
+	lastH        string // To store the 'h' parameter
 	lastResponse *http.Response
+	Bot          Pausable
 }
 
 // NewWebWrapper creates a new WebWrapper.
@@ -64,8 +71,18 @@ func (ww *WebWrapper) randomDelay() {
 	}
 }
 
+// SetBot sets the bot instance for the WebWrapper.
+func (ww *WebWrapper) SetBot(bot Pausable) {
+	ww.Bot = bot
+}
+
 // GetURL fetches a URL using a GET request.
 func (ww *WebWrapper) GetURL(path string) (*http.Response, error) {
+	if ww.Bot != nil {
+		for ww.Bot.IsPaused() {
+			time.Sleep(1 * time.Second)
+		}
+	}
 	ww.randomDelay()
 	fullURL, err := url.Parse(ww.Endpoint)
 	if err != nil {
@@ -90,11 +107,17 @@ func (ww *WebWrapper) GetURL(path string) (*http.Response, error) {
 	}
 	ww.lastResponse = resp
 	log.Printf("GET %s [%d]", path, resp.StatusCode)
+	ww.checkForCaptcha(resp)
 	return resp, nil
 }
 
 // PostURL sends a POST request with form data.
 func (ww *WebWrapper) PostURL(path string, data url.Values) (*http.Response, error) {
+	if ww.Bot != nil {
+		for ww.Bot.IsPaused() {
+			time.Sleep(1 * time.Second)
+		}
+	}
 	ww.randomDelay()
 	fullURL, err := url.Parse(ww.Endpoint)
 	if err != nil {
@@ -120,7 +143,27 @@ func (ww *WebWrapper) PostURL(path string, data url.Values) (*http.Response, err
 	}
 	ww.lastResponse = resp
 	log.Printf("POST %s %s [%d]", path, data.Encode(), resp.StatusCode)
+	ww.checkForCaptcha(resp)
 	return resp, nil
+}
+
+// checkForCaptcha checks the response for a captcha and pauses the bot if found.
+func (ww *WebWrapper) checkForCaptcha(resp *http.Response) {
+	if ww.Bot == nil {
+		return
+	}
+	body, err := ReadBody(resp)
+	if err != nil {
+		log.Printf("failed to read response body: %v", err)
+		return
+	}
+	// Restore the body for subsequent reads
+	resp.Body = io.NopCloser(strings.NewReader(body))
+
+	if strings.Contains(strings.ToLower(body), "captcha") {
+		log.Println("Captcha detected! Pausing bot.")
+		ww.Bot.Pause()
+	}
 }
 
 // ReadBody reads the response body and returns it as a string.

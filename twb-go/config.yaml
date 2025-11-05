@@ -1,0 +1,31 @@
+bot:
+    server: http://test.com
+    random_delay:
+        min_delay: 1
+        max_delay: 5
+    attack_timing: {}
+    forced_peace_times: []
+webmanager:
+    host: 127.0.0.1
+    port: 8080
+    refresh: 0
+solver:
+    economic_weight: 1
+    strategic_weight: 2
+    military_weight: 1.5
+planner:
+    recruitment_goals:
+        spear: 250
+    recruitment_batch_size: 10
+building_prerequisites:
+    snob:
+        main: 20
+        market: 10
+        smith: 20
+villages:
+    "123":
+        building: default
+        units: default
+credentials:
+    cookie: test-cookie
+    user_agent: test-agent
