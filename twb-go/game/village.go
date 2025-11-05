@@ -19,10 +19,10 @@ type Village struct {
 	AttackManager          *AttackManager
 	DefenceManager         *DefenceManager
 	GameMap                *Map
+	Solver                 *Solver
 	ForcedPeace            bool
 	ForcedPeaceToday       bool
 	ForcedPeaceTodayStart time.Time
-	// ... other fields
 }
 
 // NewVillage creates a new Village.
@@ -31,7 +31,7 @@ func NewVillage(id string, wrapper *core.WebWrapper, cm *core.ConfigManager, rm 
 		return nil, fmt.Errorf("village ID cannot be empty")
 	}
 
-	return &Village{
+	village := &Village{
 		ID:              id,
 		Wrapper:         wrapper,
 		ConfigManager:   cm,
@@ -41,7 +41,9 @@ func NewVillage(id string, wrapper *core.WebWrapper, cm *core.ConfigManager, rm 
 		AttackManager:   am,
 		DefenceManager:  dm,
 		GameMap:         gameMap,
-	}, nil
+	}
+	village.Solver = NewSolver(village)
+	return village, nil
 }
 
 // Run starts the main loop for the village.
@@ -79,9 +81,17 @@ func (v *Village) Run() {
 		v.TroopManager.UpdateTroops(units, false)
 	}
 
-	// 3. Run manager logic
-	v.BuildingManager.BuildNext()
-	v.TroopManager.Recruit("barracks")
+	// 3. Get next action from solver and execute it
+	action := v.Solver.GetNextAction()
+	if action != nil {
+		fmt.Printf("Executing action: %s\n", action)
+		err := action.Execute(v)
+		if err != nil {
+			fmt.Printf("Error executing action: %v\n", err)
+		}
+	} else {
+		fmt.Println("No action to execute.")
+	}
 }
 
 // CheckForcedPeace checks if farming is disabled for the current time.

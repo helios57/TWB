@@ -17,12 +17,13 @@ func TestNewVillage(t *testing.T) {
 	defer os.RemoveAll(tmpDir)
 
 	// Create a dummy config file
-	configContent := `{
-		"bot": {
-			"server": "http://example.com"
-		}
-	}`
-	configPath := filepath.Join(tmpDir, "config.json")
+	configContent := `
+bot:
+  server: http://example.com
+villages:
+  "123": {}
+`
+	configPath := filepath.Join(tmpDir, "config.yaml")
 	if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
 		t.Fatalf("Failed to write dummy config file: %v", err)
 	}
@@ -57,17 +58,15 @@ func TestVillage_CheckForcedPeace(t *testing.T) {
 	defer os.RemoveAll(tmpDir)
 
 	// Create a dummy config file
-	configContent := `{
-		"bot": {
-			"forced_peace_times": [
-				{
-					"start": "01.01.25 10:00:00",
-					"end": "01.01.25 12:00:00"
-				}
-			]
-		}
-	}`
-	configPath := filepath.Join(tmpDir, "config.json")
+	configContent := `
+bot:
+  forced_peace_times:
+    - start: "01.01.25 10:00:00"
+      end: "01.01.25 12:00:00"
+villages:
+  "123": {}
+`
+	configPath := filepath.Join(tmpDir, "config.yaml")
 	if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
 		t.Fatalf("Failed to write dummy config file: %v", err)
 	}

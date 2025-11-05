@@ -1,0 +1,19 @@
+bot:
+  server: http://example.com
+  random_delay:
+    min_delay: 1
+    max_delay: 5
+  forced_peace_times: []
+webmanager:
+  host: 127.0.0.1
+  port: 8080
+planner:
+  recruitment_goals:
+    spear: 250
+villages:
+  "123":
+    building: default
+    units: default
+credentials:
+  user: your_username
+  password: your_password

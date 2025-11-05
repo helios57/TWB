@@ -15,8 +15,8 @@ type Bot struct {
 }
 
 // NewBot creates a new Bot.
-func NewBot() (*Bot, error) {
-	cm, err := core.NewConfigManager("config.example.json")
+func NewBot(configPath string) (*Bot, error) {
+	cm, err := core.NewConfigManager(configPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create config manager: %w", err)
 	}

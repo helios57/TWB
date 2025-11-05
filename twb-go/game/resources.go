@@ -31,7 +31,7 @@ type ResourceManager struct {
 	Actual          Resources
 	requested       map[string]Resources
 	storage         int
-	income          Income
+	Income          Income
 	doPremiumTrade  bool
 	tradeBias       float64
 	lastTrade       int64
@@ -69,12 +69,12 @@ func (rm *ResourceManager) CalculateIncome(woodProd, stoneProd, ironProd int, re
 	rm.lock.Lock()
 	defer rm.lock.Unlock()
 
-	rm.income.Mines = Resources{Wood: woodProd, Stone: stoneProd, Iron: ironProd}
-	rm.income.Farming = Resources{Wood: 100, Stone: 100, Iron: 100} // Dummy data
-	rm.income.Total = Resources{
-		Wood:  rm.income.Mines.Wood + rm.income.Farming.Wood,
-		Stone: rm.income.Mines.Stone + rm.income.Farming.Stone,
-		Iron:  rm.income.Mines.Iron + rm.income.Farming.Iron,
+	rm.Income.Mines = Resources{Wood: woodProd, Stone: stoneProd, Iron: ironProd}
+	rm.Income.Farming = Resources{Wood: 100, Stone: 100, Iron: 100} // Dummy data
+	rm.Income.Total = Resources{
+		Wood:  rm.Income.Mines.Wood + rm.Income.Farming.Wood,
+		Stone: rm.Income.Mines.Stone + rm.Income.Farming.Stone,
+		Iron:  rm.Income.Mines.Iron + rm.Income.Farming.Iron,
 	}
 }
 

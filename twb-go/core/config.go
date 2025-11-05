@@ -1,51 +1,57 @@
 package core
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"sync"
+	"gopkg.in/yaml.v3"
 )
 
-// Config corresponds to the structure of the JSON config file.
+// PlannerConfig holds the configuration for the Planner.
+type PlannerConfig struct {
+	RecruitmentGoals map[string]int `yaml:"recruitment_goals"`
+}
+
+// Config corresponds to the structure of the YAML config file.
 type Config struct {
-	Bot         BotConfig                `json:"bot"`
-	WebManager  WebManagerConfig         `json:"webmanager"`
-	Villages    map[string]VillageConfig `json:"villages"`
-	Credentials map[string]string        `json:"credentials"`
+	Bot         BotConfig                `yaml:"bot"`
+	WebManager  WebManagerConfig         `yaml:"webmanager"`
+	Planner     PlannerConfig            `yaml:"planner"`
+	Villages    map[string]VillageConfig `yaml:"villages"`
+	Credentials map[string]string        `yaml:"credentials"`
 }
 
 // BotConfig holds bot-related settings.
 type BotConfig struct {
-	Server           string            `json:"server"`
-	RandomDelay      RandomDelayConfig `json:"random_delay"`
-	AttackTiming     map[string]int    `json:"attack_timing"`
-	ForcedPeaceTimes []PeaceTime       `json:"forced_peace_times"`
+	Server           string            `yaml:"server"`
+	RandomDelay      RandomDelayConfig `yaml:"random_delay"`
+	AttackTiming     map[string]int    `yaml:"attack_timing"`
+	ForcedPeaceTimes []PeaceTime       `yaml:"forced_peace_times"`
 }
 
 // PeaceTime represents a period of forced peace.
 type PeaceTime struct {
-	Start string `json:"start"`
-	End   string `json:"end"`
+	Start string `yaml:"start"`
+	End   string `yaml:"end"`
 }
 
 // RandomDelayConfig specifies the min/max delay for requests.
 type RandomDelayConfig struct {
-	MinDelay int `json:"min_delay"`
-	MaxDelay int `json:"max_delay"`
+	MinDelay int `yaml:"min_delay"`
+	MaxDelay int `yaml:"max_delay"`
 }
 
 // WebManagerConfig holds web UI related settings.
 type WebManagerConfig struct {
-	Host    string `json:"host"`
-	Port    int    `json:"port"`
-	Refresh int    `json:"refresh"`
+	Host    string `yaml:"host"`
+	Port    int    `yaml:"port"`
+	Refresh int    `yaml:"refresh"`
 }
 
 // VillageConfig holds settings specific to a village.
 type VillageConfig struct {
-	Building string `json:"building"`
-	Units    string `json:"units"`
+	Building string `yaml:"building"`
+	Units    string `yaml:"units"`
 }
 
 // ConfigManager handles loading and saving of the bot's configuration.
@@ -67,7 +73,7 @@ func NewConfigManager(path string) (*ConfigManager, error) {
 	return cm, nil
 }
 
-// LoadConfig loads the configuration from the specified JSON file.
+// LoadConfig loads the configuration from the specified YAML file.
 func (cm *ConfigManager) LoadConfig() error {
 	cm.lock.Lock()
 	defer cm.lock.Unlock()
@@ -78,8 +84,8 @@ func (cm *ConfigManager) LoadConfig() error {
 	}
 
 	var config Config
-	if err := json.Unmarshal(file, &config); err != nil {
-		return fmt.Errorf("failed to decode JSON from config file: %w", err)
+	if err := yaml.Unmarshal(file, &config); err != nil {
+		return fmt.Errorf("failed to decode YAML from config file: %w", err)
 	}
 	cm.config = &config
 	return nil
@@ -87,9 +93,9 @@ func (cm *ConfigManager) LoadConfig() error {
 
 // saveConfig is the internal, non-locking implementation of saving the configuration.
 func (cm *ConfigManager) saveConfig() error {
-	data, err := json.MarshalIndent(cm.config, "", "    ")
+	data, err := yaml.Marshal(cm.config)
 	if err != nil {
-		return fmt.Errorf("failed to encode config to JSON: %w", err)
+		return fmt.Errorf("failed to encode config to YAML: %w", err)
 	}
 
 	if err := os.WriteFile(cm.configPath, data, 0644); err != nil {
@@ -98,7 +104,7 @@ func (cm *ConfigManager) saveConfig() error {
 	return nil
 }
 
-// SaveConfig saves the current configuration to the JSON file.
+// SaveConfig saves the current configuration to the YAML file.
 func (cm *ConfigManager) SaveConfig() error {
 	cm.lock.Lock()
 	defer cm.lock.Unlock()
