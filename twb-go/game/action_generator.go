@@ -1,11 +1,19 @@
 package game
 
+import "twb-go/core"
+
 // ActionGenerator generates all possible actions for a given game state.
-type ActionGenerator struct{}
+type ActionGenerator struct {
+	config                *core.PlannerConfig
+	buildingPrerequisites map[string]map[string]int
+}
 
 // NewActionGenerator creates a new ActionGenerator.
-func NewActionGenerator() *ActionGenerator {
-	return &ActionGenerator{}
+func NewActionGenerator(config *core.PlannerConfig, buildingPrerequisites map[string]map[string]int) *ActionGenerator {
+	return &ActionGenerator{
+		config:                config,
+		buildingPrerequisites: buildingPrerequisites,
+	}
 }
 
 // GenerateActions returns a list of all possible actions.
@@ -14,8 +22,15 @@ func (ag *ActionGenerator) GenerateActions(village *Village) []Action {
 
 	// Generate BuildActions
 	for building := range village.BuildingManager.Costs {
-		if building == "snob" {
-			if village.BuildingManager.Levels["main"] < 20 || village.BuildingManager.Levels["smith"] < 20 || village.BuildingManager.Levels["market"] < 10 {
+		if prereqs, ok := ag.buildingPrerequisites[building]; ok {
+			allPrereqsMet := true
+			for prereqBuilding, prereqLevel := range prereqs {
+				if village.BuildingManager.Levels[prereqBuilding] < prereqLevel {
+					allPrereqsMet = false
+					break
+				}
+			}
+			if !allPrereqsMet {
 				continue
 			}
 		}
@@ -26,8 +41,12 @@ func (ag *ActionGenerator) GenerateActions(village *Village) []Action {
 
 	// Generate RecruitActions
 	for unit := range village.TroopManager.RecruitData {
-		// A simple heuristic: recruit in batches of 10
-		actions = append(actions, &RecruitAction{Unit: unit, Amount: 10})
+		actions = append(actions, &RecruitAction{Unit: unit, Amount: ag.config.RecruitmentBatchSize})
+	}
+
+	// Generate FarmActions
+	for _, target := range village.AttackManager.Targets {
+		actions = append(actions, &FarmAction{Target: target})
 	}
 
 	return actions

@@ -42,7 +42,7 @@ func NewVillage(id string, wrapper *core.WebWrapper, cm *core.ConfigManager, rm 
 		DefenceManager:  dm,
 		GameMap:         gameMap,
 	}
-	village.Solver = NewSolver(village)
+	village.Solver = NewSolver(village, &cm.GetConfig().Solver, &cm.GetConfig().Planner)
 	return village, nil
 }
 

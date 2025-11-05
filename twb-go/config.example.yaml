@@ -7,9 +7,19 @@ bot:
 webmanager:
   host: 127.0.0.1
   port: 8080
+solver:
+  economic_weight: 1.0
+  strategic_weight: 2.0
+  military_weight: 1.5
 planner:
   recruitment_goals:
     spear: 250
+  recruitment_batch_size: 10
+building_prerequisites:
+  snob:
+    main: 20
+    smith: 20
+    market: 10
 villages:
   "123":
     building: default

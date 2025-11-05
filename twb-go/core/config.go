@@ -9,16 +9,26 @@ import (
 
 // PlannerConfig holds the configuration for the Planner.
 type PlannerConfig struct {
-	RecruitmentGoals map[string]int `yaml:"recruitment_goals"`
+	RecruitmentGoals      map[string]int `yaml:"recruitment_goals"`
+	RecruitmentBatchSize int            `yaml:"recruitment_batch_size"`
+}
+
+// SolverConfig holds the configuration for the Solver.
+type SolverConfig struct {
+	EconomicWeight  float64 `yaml:"economic_weight"`
+	StrategicWeight float64 `yaml:"strategic_weight"`
+	MilitaryWeight  float64 `yaml:"military_weight"`
 }
 
 // Config corresponds to the structure of the YAML config file.
 type Config struct {
-	Bot         BotConfig                `yaml:"bot"`
-	WebManager  WebManagerConfig         `yaml:"webmanager"`
-	Planner     PlannerConfig            `yaml:"planner"`
-	Villages    map[string]VillageConfig `yaml:"villages"`
-	Credentials map[string]string        `yaml:"credentials"`
+	Bot                   BotConfig                       `yaml:"bot"`
+	WebManager            WebManagerConfig                `yaml:"webmanager"`
+	Solver                SolverConfig                    `yaml:"solver"`
+	Planner               PlannerConfig                   `yaml:"planner"`
+	BuildingPrerequisites map[string]map[string]int       `yaml:"building_prerequisites"`
+	Villages              map[string]VillageConfig        `yaml:"villages"`
+	Credentials           map[string]string               `yaml:"credentials"`
 }
 
 // BotConfig holds bot-related settings.
@@ -114,6 +124,11 @@ func (cm *ConfigManager) SaveConfig() error {
 // GetConfig returns the entire configuration.
 func (cm *ConfigManager) GetConfig() *Config {
 	return cm.config
+}
+
+// SetConfig sets the configuration for testing purposes.
+func (cm *ConfigManager) SetConfig(config *Config) {
+	cm.config = config
 }
 
 // UpdateVillageConfig updates a specific key for a village and saves the config.

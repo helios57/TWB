@@ -8,7 +8,7 @@ import (
 )
 
 // setupAttackManager creates a new AttackManager with mocked dependencies for testing.
-func setupAttackManager() (*AttackManager, *TroopManager) {
+func setupAttackManager() (*AttackManager, *TroopManager, *Map) {
 	// Mock TroopManager
 	rm := NewResourceManager()
 	tm := NewTroopManager(nil, "village1", rm)
@@ -25,7 +25,10 @@ func setupAttackManager() (*AttackManager, *TroopManager) {
 		Villages: map[string]VillageInfo{
 			"village1": {ID: "village1", Name: "My Village", Location: [2]int{50, 50}, Owner: "1", Points: 1000},
 			"target1":  {ID: "target1", Name: "Barbarian Village", Location: [2]int{51, 51}, Owner: "0", Points: 50},
+			"target2":  {ID: "target2", Name: "Too Far", Location: [2]int{100, 100}, Owner: "0", Points: 50},
+			"target3":  {ID: "target3", Name: "Player Village", Location: [2]int{52, 52}, Owner: "2", Points: 50},
 		},
+		myLocation: [2]int{50, 50},
 	}
 
 	am := NewAttackManager(nil, "village1", tm, gameMap)
@@ -37,17 +40,12 @@ func setupAttackManager() (*AttackManager, *TroopManager) {
 			Condition: "default",
 			Units:     map[string]int{"light": 5, "spy": 1},
 		},
-		{
-			Condition: "scouted_gt_1000",
-			Units:     map[string]int{"light": 20},
-			Calculate: "total_res_div_80",
-		},
 	}
 
 	// Create cache directory for tests
 	os.MkdirAll(filepath.Join("cache", "attacks"), 0755)
 
-	return am, tm
+	return am, tm, gameMap
 }
 
 // cleanupAttackCache removes test cache files.
@@ -55,8 +53,23 @@ func cleanupAttackCache(targetID string) {
 	os.Remove(filepath.Join("cache", "attacks", targetID+".json"))
 }
 
+func TestAttackManager_FindFarmTargets(t *testing.T) {
+	am, _, gameMap := setupAttackManager()
+	am.Map = gameMap
+	am.FarmRadius = 10
+
+	am.FindFarmTargets()
+
+	if len(am.Targets) != 1 {
+		t.Fatalf("Expected 1 target, got %d", len(am.Targets))
+	}
+	if am.Targets[0].ID != "target1" {
+		t.Errorf("Expected target to be 'target1', got '%s'", am.Targets[0].ID)
+	}
+}
+
 func TestSendFarm_Success_FullAttack(t *testing.T) {
-	am, tm := setupAttackManager()
+	am, tm, _ := setupAttackManager()
 	target := am.Map.Villages["target1"]
 
 	initialLightCav := tm.GetTroops()["light"]
@@ -89,7 +102,7 @@ func TestSendFarm_Success_FullAttack(t *testing.T) {
 }
 
 func TestSendFarm_Success_PartialAttack(t *testing.T) {
-	am, tm := setupAttackManager()
+	am, tm, _ := setupAttackManager()
 	target := am.Map.Villages["target1"]
 
 	// Set troops for a partial attack scenario
@@ -118,7 +131,7 @@ func TestSendFarm_Success_PartialAttack(t *testing.T) {
 }
 
 func TestSendFarm_Failure_NotEnoughUnits(t *testing.T) {
-	am, tm := setupAttackManager()
+	am, tm, _ := setupAttackManager()
 	target := am.Map.Villages["target1"]
 
 	// Set required troops to zero

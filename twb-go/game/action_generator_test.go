@@ -10,6 +10,15 @@ func TestActionGenerator_GenerateActions(t *testing.T) {
 	rm := NewResourceManager()
 	bm := NewBuildingManager(wrapper, "123", rm)
 	tm := NewTroopManager(wrapper, "123", rm)
+	gameMap := &Map{}
+	am := NewAttackManager(wrapper, "123", tm, gameMap)
+	cm := &core.ConfigManager{}
+	cm.SetConfig(&core.Config{
+		Planner: core.PlannerConfig{
+			RecruitmentBatchSize: 5,
+		},
+	})
+
 	bm.Costs = map[string]BuildingCost{
 		"main": {},
 	}
@@ -19,8 +28,14 @@ func TestActionGenerator_GenerateActions(t *testing.T) {
 	village := &Village{
 		BuildingManager: bm,
 		TroopManager:    tm,
+		AttackManager:   am,
+		GameMap:         gameMap,
+		ConfigManager:   cm,
 	}
-	ag := NewActionGenerator()
+	config := &core.PlannerConfig{
+		RecruitmentBatchSize: 5,
+	}
+	ag := NewActionGenerator(config, nil)
 
 	actions := ag.GenerateActions(village)
 
@@ -37,7 +52,7 @@ func TestActionGenerator_GenerateActions(t *testing.T) {
 				foundBuildAction = true
 			}
 		case *RecruitAction:
-			if a.Unit == "spear" {
+			if a.Unit == "spear" && a.Amount == 5 {
 				foundRecruitAction = true
 			}
 		}
@@ -47,6 +62,6 @@ func TestActionGenerator_GenerateActions(t *testing.T) {
 		t.Error("Expected to find a BuildAction for 'main'")
 	}
 	if !foundRecruitAction {
-		t.Error("Expected to find a RecruitAction for 'spear'")
+		t.Error("Expected to find a RecruitAction for 'spear' with amount 5")
 	}
 }

@@ -62,6 +62,16 @@ func NewAttackManager(wrapper *core.WebWrapper, villageID string, troopManager *
 	}
 }
 
+// FindFarmTargets finds all barbarian villages within the farm radius.
+func (am *AttackManager) FindFarmTargets() {
+	am.Targets = []VillageInfo{}
+	for _, village := range am.Map.Villages {
+		if village.Owner == "0" && am.Map.GetDist(village.Location) <= am.FarmRadius {
+			am.Targets = append(am.Targets, village)
+		}
+	}
+}
+
 // SendFarm sends a farming attack to a specific target village.
 // This is a simplified port of the core logic. The actual attack HTTP requests are complex
 // and will be handled by a dedicated `attack` method (currently a placeholder).
