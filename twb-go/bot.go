@@ -30,9 +30,26 @@ func NewBot(configPath string, reader io.Reader) (*Bot, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create web wrapper: %w", err)
 	}
+	return NewBotWithDeps(cm, wrapper)
+}
+
+// NewBotWithDeps creates a new Bot with dependencies.
+func NewBotWithDeps(cm *core.ConfigManager, wrapper *core.WebWrapper) (*Bot, error) {
+	resp, err := wrapper.GetURL("game.php?screen=overview_villages")
+	if err != nil {
+		return nil, fmt.Errorf("failed to get villages: %w", err)
+	}
+	body, err := core.ReadBody(resp)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read villages response body: %w", err)
+	}
+	villageIDs, err := core.Extractor.VillageIDs(body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to extract village IDs: %w", err)
+	}
 
 	var villages []*game.Village
-	for id := range config.Villages {
+	for _, id := range villageIDs {
 		rm := game.NewResourceManager()
 		bm := game.NewBuildingManager(wrapper, id, rm)
 		tm := game.NewTroopManager(wrapper, id, rm)

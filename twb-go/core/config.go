@@ -31,7 +31,6 @@ type Config struct {
 	Solver                SolverConfig                    `yaml:"solver"`
 	Planner               PlannerConfig                   `yaml:"planner"`
 	BuildingPrerequisites map[string]map[string]int       `yaml:"building_prerequisites"`
-	Villages              map[string]VillageConfig        `yaml:"villages"`
 	Credentials           map[string]string               `yaml:"credentials"`
 }
 
@@ -188,12 +187,6 @@ func createConfig(reader *bufio.Reader) (*Config, error) {
 				"market": 10,
 			},
 		},
-		Villages: map[string]VillageConfig{
-			"123": {
-				Building: "default",
-				Units:    "default",
-			},
-		},
 		Credentials: map[string]string{
 			"user_agent": strings.TrimSpace(userAgent),
 			"cookie":     strings.TrimSpace(cookie),
@@ -252,19 +245,3 @@ func (cm *ConfigManager) SetConfig(config *Config) {
 	cm.config = config
 }
 
-// UpdateVillageConfig updates a specific key for a village and saves the config.
-func (cm *ConfigManager) UpdateVillageConfig(villageID, key string, value interface{}) {
-	cm.lock.Lock()
-	defer cm.lock.Unlock()
-
-	if village, ok := cm.config.Villages[villageID]; ok {
-		switch key {
-		case "building":
-			village.Building = value.(string)
-		case "units":
-			village.Units = value.(string)
-		}
-		cm.config.Villages[villageID] = village
-		cm.saveConfig() // Call the internal, non-locking save
-	}
-}

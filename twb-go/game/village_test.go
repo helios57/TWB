@@ -3,6 +3,7 @@ package game
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 	"twb-go/core"
@@ -20,8 +21,9 @@ func TestNewVillage(t *testing.T) {
 	configContent := `
 bot:
   server: http://example.com
-villages:
-  "123": {}
+credentials:
+  user_agent: "test-agent"
+  cookie: "test-cookie"
 `
 	configPath := filepath.Join(tmpDir, "config.yaml")
 	if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
@@ -30,7 +32,7 @@ villages:
 
 	// These would be properly initialized in a real scenario
 	wrapper, _ := core.NewWebWrapper("http://example.com", 1, 2)
-	cm, _ := core.NewConfigManager(configPath, nil)
+	cm, _ := core.NewConfigManager(configPath, strings.NewReader("http://test.com\ntest-agent\ntest-cookie\n"))
 	rm := NewResourceManager()
 	bm := NewBuildingManager(wrapper, "123", rm)
 	tm := NewTroopManager(wrapper, "123", rm)
@@ -60,11 +62,13 @@ func TestVillage_CheckForcedPeace(t *testing.T) {
 	// Create a dummy config file
 	configContent := `
 bot:
+  server: http://example.com
   forced_peace_times:
     - start: "01.01.25 10:00:00"
       end: "01.01.25 12:00:00"
-villages:
-  "123": {}
+credentials:
+  user_agent: "test-agent"
+  cookie: "test-cookie"
 `
 	configPath := filepath.Join(tmpDir, "config.yaml")
 	if err := os.WriteFile(configPath, []byte(configContent), 0644); err != nil {
@@ -72,7 +76,7 @@ villages:
 	}
 
 	wrapper, _ := core.NewWebWrapper("http://example.com", 1, 2)
-	cm, _ := core.NewConfigManager(configPath, nil)
+	cm, _ := core.NewConfigManager(configPath, strings.NewReader("http://test.com\ntest-agent\ntest-cookie\n"))
 	rm := NewResourceManager()
 	bm := NewBuildingManager(wrapper, "123", rm)
 	tm := NewTroopManager(wrapper, "123", rm)

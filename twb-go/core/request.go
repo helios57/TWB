@@ -162,6 +162,7 @@ func (ww *WebWrapper) checkForCaptcha(resp *http.Response) {
 
 	if strings.Contains(strings.ToLower(body), "captcha") {
 		log.Println("Captcha detected! Pausing bot.")
+		log.Printf("Response body: %s", body)
 		ww.Bot.Pause()
 	}
 }

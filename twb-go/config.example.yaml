@@ -20,10 +20,6 @@ building_prerequisites:
     main: 20
     smith: 20
     market: 10
-villages:
-  "123":
-    building: default
-    units: default
 credentials:
   user: your_username
   password: your_password

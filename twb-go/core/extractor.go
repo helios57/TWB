@@ -69,3 +69,23 @@ func (e *extractor) UnitsInVillage(html string) (map[string]int, error) {
 
 	return units, nil
 }
+
+// VillageIDs extracts the village IDs from the HTML.
+func (e *extractor) VillageIDs(html string) ([]string, error) {
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create goquery document: %w", err)
+	}
+
+	var villageIDs []string
+	doc.Find("a[href*='village=']").Each(func(i int, s *goquery.Selection) {
+		href, _ := s.Attr("href")
+		re := regexp.MustCompile(`village=(\d+)`)
+		matches := re.FindStringSubmatch(href)
+		if len(matches) > 1 {
+			villageIDs = append(villageIDs, matches[1])
+		}
+	})
+
+	return villageIDs, nil
+}
