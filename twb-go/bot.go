@@ -29,6 +29,7 @@ func newBotWithDeps(cm *core.ConfigManager, wrapper *core.WebWrapper) (*Bot, err
 	if err != nil {
 		return nil, fmt.Errorf("failed to read villages response body: %w", err)
 	}
+	log.Printf("overview_villages body: %s", body)
 	villageIDs, err := core.Extractor.VillageIDs(body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to extract village IDs: %w", err)
