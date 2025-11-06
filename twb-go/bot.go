@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"io"
+	"log"
 	"sync"
 	"time"
 	"twb-go/core"
@@ -18,23 +19,8 @@ type Bot struct {
 	lock          sync.Mutex
 }
 
-// NewBot creates a new Bot.
-func NewBot(configPath string, reader io.Reader) (*Bot, error) {
-	cm, err := core.NewConfigManager(configPath, reader)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create config manager: %w", err)
-	}
-	config := cm.GetConfig()
-
-	wrapper, err := core.NewWebWrapper(config.Bot.Server, config.Bot.RandomDelay.MinDelay, config.Bot.RandomDelay.MaxDelay)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create web wrapper: %w", err)
-	}
-	return NewBotWithDeps(cm, wrapper)
-}
-
-// NewBotWithDeps creates a new Bot with dependencies.
-func NewBotWithDeps(cm *core.ConfigManager, wrapper *core.WebWrapper) (*Bot, error) {
+// newBotWithDeps creates a new Bot with dependencies.
+func newBotWithDeps(cm *core.ConfigManager, wrapper *core.WebWrapper) (*Bot, error) {
 	resp, err := wrapper.GetURL("game.php?screen=overview_villages")
 	if err != nil {
 		return nil, fmt.Errorf("failed to get villages: %w", err)
@@ -69,27 +55,48 @@ func NewBotWithDeps(cm *core.ConfigManager, wrapper *core.WebWrapper) (*Bot, err
 		Villages:      villages,
 	}
 	wrapper.SetBot(bot)
+	log.Printf("Managing %d villages.", len(villages))
 	return bot, nil
 }
 
+// NewBot creates a new Bot.
+func NewBot(configPath string, reader io.Reader) (*Bot, error) {
+	cm, err := core.NewConfigManager(configPath, reader)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create config manager: %w", err)
+	}
+	config := cm.GetConfig()
+
+	wrapper, err := core.NewWebWrapper(config.Bot.Server, config.Bot.RandomDelay.MinDelay, config.Bot.RandomDelay.MaxDelay)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create web wrapper: %w", err)
+	}
+	return newBotWithDeps(cm, wrapper)
+}
+
+
 // Run starts the main loop for the bot.
 func (b *Bot) Run() {
-	fmt.Println("Starting bot...")
-	for {
+	log.Println("Starting bot...")
+	ticker := time.NewTicker(b.ConfigManager.GetConfig().Bot.TickInterval)
+	defer ticker.Stop()
+
+	for range ticker.C {
 		b.lock.Lock()
 		if b.paused {
 			b.lock.Unlock()
-			fmt.Println("Bot is paused. Press Enter to continue...")
+			log.Println("Bot is paused. Press Enter to continue...")
 			fmt.Scanln()
 			continue
 		}
 		b.lock.Unlock()
 
+		log.Println("Bot tick...")
 		for _, v := range b.Villages {
-			fmt.Printf("Running village %s...\n", v.ID)
 			v.Run()
 		}
-		time.Sleep(10 * time.Second)
+		log.Println("Bot tick finished.")
+		log.Printf("Waiting for next tick... (interval: %s)", b.ConfigManager.GetConfig().Bot.TickInterval)
 	}
 }
 

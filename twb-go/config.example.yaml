@@ -3,6 +3,7 @@ bot:
   random_delay:
     min_delay: 1
     max_delay: 5
+  tick_interval: 10s
   forced_peace_times: []
 webmanager:
   host: 127.0.0.1

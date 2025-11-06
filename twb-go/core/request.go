@@ -107,6 +107,12 @@ func (ww *WebWrapper) GetURL(path string) (*http.Response, error) {
 	}
 	ww.lastResponse = resp
 	log.Printf("GET %s [%d]", path, resp.StatusCode)
+	if resp.StatusCode != http.StatusOK {
+		body, _ := ReadBody(resp)
+		log.Printf("Response body: %s", body)
+		// Restore the body for subsequent reads
+		resp.Body = io.NopCloser(strings.NewReader(body))
+	}
 	ww.checkForCaptcha(resp)
 	return resp, nil
 }
@@ -143,6 +149,12 @@ func (ww *WebWrapper) PostURL(path string, data url.Values) (*http.Response, err
 	}
 	ww.lastResponse = resp
 	log.Printf("POST %s %s [%d]", path, data.Encode(), resp.StatusCode)
+	if resp.StatusCode != http.StatusOK {
+		body, _ := ReadBody(resp)
+		log.Printf("Response body: %s", body)
+		// Restore the body for subsequent reads
+		resp.Body = io.NopCloser(strings.NewReader(body))
+	}
 	ww.checkForCaptcha(resp)
 	return resp, nil
 }

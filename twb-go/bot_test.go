@@ -86,9 +86,9 @@ bot:
 	}
 
 	// Create a new Bot
-	bot, err := NewBotWithDeps(cm, wrapper)
+	bot, err := newBotWithDeps(cm, wrapper)
 	if err != nil {
-		t.Fatalf("NewBotWithDeps failed: %v", err)
+		t.Fatalf("newBotWithDeps failed: %v", err)
 	}
 
 	// Assert that the villages are discovered correctly

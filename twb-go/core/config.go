@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"time"
 
 	"gopkg.in/yaml.v3"
 )
@@ -40,6 +41,7 @@ type BotConfig struct {
 	RandomDelay      RandomDelayConfig `yaml:"random_delay"`
 	AttackTiming     map[string]int    `yaml:"attack_timing"`
 	ForcedPeaceTimes []PeaceTime       `yaml:"forced_peace_times"`
+	TickInterval     time.Duration     `yaml:"tick_interval"`
 }
 
 // PeaceTime represents a period of forced peace.
@@ -164,6 +166,7 @@ func createConfig(reader *bufio.Reader) (*Config, error) {
 				MinDelay: 1,
 				MaxDelay: 5,
 			},
+			TickInterval: 10 * time.Second,
 		},
 		WebManager: WebManagerConfig{
 			Host: "127.0.0.1",

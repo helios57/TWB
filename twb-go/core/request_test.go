@@ -1,4 +1,4 @@
-package core
+package core_test
 
 import (
 	"fmt"
@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"testing"
+	"twb-go/core"
 )
 
 func TestWebWrapper(t *testing.T) {
@@ -35,7 +36,7 @@ func TestWebWrapper(t *testing.T) {
 	defer server.Close()
 
 	// Create a new WebWrapper
-	ww, err := NewWebWrapper(server.URL, 1, 2)
+	ww, err := core.NewWebWrapper(server.URL, 1, 2)
 	if err != nil {
 		t.Fatalf("NewWebWrapper failed: %v", err)
 	}
@@ -45,7 +46,7 @@ func TestWebWrapper(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetURL failed: %v", err)
 	}
-	body, err := ReadBody(resp)
+	body, err := core.ReadBody(resp)
 	if err != nil {
 		t.Fatalf("ReadBody failed: %v", err)
 	}
@@ -60,7 +61,7 @@ func TestWebWrapper(t *testing.T) {
 	if err != nil {
 		t.Fatalf("PostURL failed: %v", err)
 	}
-	body, err = ReadBody(resp)
+	body, err = core.ReadBody(resp)
 	if err != nil {
 		t.Fatalf("ReadBody failed: %v", err)
 	}
