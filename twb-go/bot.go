@@ -1,9 +1,12 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"log"
+	"os"
+	"strings"
 	"sync"
 	"time"
 	"twb-go/core"
@@ -29,7 +32,9 @@ func newBotWithDeps(cm *core.ConfigManager, wrapper *core.WebWrapper) (*Bot, err
 	if err != nil {
 		return nil, fmt.Errorf("failed to read villages response body: %w", err)
 	}
-	log.Printf("overview_villages body: %s", body)
+	if strings.Contains(body, "Deine Session ist abgelaufen") {
+		return nil, core.ErrSessionExpired
+	}
 	villageIDs, err := core.Extractor.VillageIDs(body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to extract village IDs: %w", err)
@@ -72,7 +77,24 @@ func NewBot(configPath string, reader io.Reader) (*Bot, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to create web wrapper: %w", err)
 	}
-	return newBotWithDeps(cm, wrapper)
+
+	for {
+		bot, err := newBotWithDeps(cm, wrapper)
+		if err != nil {
+			if err == core.ErrSessionExpired {
+				log.Println("Session expired. Please enter a new cookie:")
+				reader := bufio.NewReader(os.Stdin)
+				cookie, _ := reader.ReadString('\n')
+				cm.GetConfig().Credentials["cookie"] = strings.TrimSpace(cookie)
+				if err := cm.SaveConfig(); err != nil {
+					return nil, fmt.Errorf("failed to save config: %w", err)
+				}
+				continue
+			}
+			return nil, err
+		}
+		return bot, nil
+	}
 }
 
 
