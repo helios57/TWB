@@ -80,7 +80,7 @@ bot:
 	if err != nil {
 		t.Fatalf("NewConfigManager failed: %v", err)
 	}
-	wrapper, err := core.NewWebWrapper(server.URL, 0, 0)
+	wrapper, err := core.NewWebWrapper(server.URL, 0, 0, "test-agent", "test-cookie")
 	if err != nil {
 		t.Fatalf("NewWebWrapper failed: %v", err)
 	}

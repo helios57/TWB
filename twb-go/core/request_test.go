@@ -36,7 +36,7 @@ func TestWebWrapper(t *testing.T) {
 	defer server.Close()
 
 	// Create a new WebWrapper
-	ww, err := core.NewWebWrapper(server.URL, 1, 2)
+	ww, err := core.NewWebWrapper(server.URL, 1, 2, "test-agent", "test-cookie")
 	if err != nil {
 		t.Fatalf("NewWebWrapper failed: %v", err)
 	}

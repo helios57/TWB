@@ -32,7 +32,7 @@ type WebWrapper struct {
 }
 
 // NewWebWrapper creates a new WebWrapper.
-func NewWebWrapper(endpoint string, minDelay, maxDelay int) (*WebWrapper, error) {
+func NewWebWrapper(endpoint string, minDelay, maxDelay int, userAgent, cookie string) (*WebWrapper, error) {
 	jar, err := cookiejar.New(nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create cookie jar: %w", err)
@@ -43,7 +43,8 @@ func NewWebWrapper(endpoint string, minDelay, maxDelay int) (*WebWrapper, error)
 			Jar: jar,
 		},
 		headers: http.Header{
-			"User-Agent":                []string{"Mozilla/5.0 (Windows NT 6.3; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/78.0.3904.97 Safari/537.36"},
+			"User-Agent":                []string{userAgent},
+			"Cookie":                    []string{cookie},
 			"Upgrade-Insecure-Requests": []string{"1"},
 		},
 		Endpoint: endpoint,
@@ -100,6 +101,7 @@ func (ww *WebWrapper) GetURL(path string) (*http.Response, error) {
 	req.Header = ww.headers
 	ww.setRefererAndOrigin(req)
 
+	log.Printf("GET %s [User-Agent: %s] [Cookie: %s]", path, req.Header.Get("User-Agent"), req.Header.Get("Cookie"))
 	resp, err := ww.client.Do(req)
 	if err != nil {
 		log.Printf("GET %s failed: %v", path, err)
@@ -142,6 +144,7 @@ func (ww *WebWrapper) PostURL(path string, data url.Values) (*http.Response, err
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	ww.setRefererAndOrigin(req)
 
+	log.Printf("POST %s [User-Agent: %s] [Cookie: %s]", path, req.Header.Get("User-Agent"), req.Header.Get("Cookie"))
 	resp, err := ww.client.Do(req)
 	if err != nil {
 		log.Printf("POST %s failed: %v", path, err)

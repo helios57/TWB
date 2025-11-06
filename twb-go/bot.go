@@ -73,7 +73,13 @@ func NewBot(configPath string, reader io.Reader) (*Bot, error) {
 	}
 	config := cm.GetConfig()
 
-	wrapper, err := core.NewWebWrapper(config.Bot.Server, config.Bot.RandomDelay.MinDelay, config.Bot.RandomDelay.MaxDelay)
+	wrapper, err := core.NewWebWrapper(
+		config.Bot.Server,
+		config.Bot.RandomDelay.MinDelay,
+		config.Bot.RandomDelay.MaxDelay,
+		config.Credentials["user_agent"],
+		config.Credentials["cookie"],
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create web wrapper: %w", err)
 	}
