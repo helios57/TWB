@@ -6,7 +6,7 @@ import (
 )
 
 func TestActionGenerator_GenerateActions(t *testing.T) {
-	wrapper, _ := core.NewWebWrapper("http://example.com", 1, 2)
+	wrapper, _ := core.NewWebWrapper("http://example.com", 1, 2, "test-agent", "test-cookie")
 	rm := NewResourceManager()
 	bm := NewBuildingManager(wrapper, "123", rm)
 	tm := NewTroopManager(wrapper, "123", rm)
@@ -19,10 +19,10 @@ func TestActionGenerator_GenerateActions(t *testing.T) {
 		},
 	})
 
-	bm.Costs = map[string]BuildingCost{
+	bm.Costs = map[string]core.BuildingCost{
 		"main": {},
 	}
-	tm.RecruitData = map[string]UnitCost{
+	tm.RecruitData = map[string]core.UnitCost{
 		"spear": {},
 	}
 	village := &Village{

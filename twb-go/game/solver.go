@@ -185,9 +185,16 @@ func (s *Solver) evaluateState(state *GameState, action Action) float64 {
 				oldLevel := s.village.BuildingManager.Levels[buildAction.Building]
 				newLevel := state.BuildingLevels[buildAction.Building]
 				incomeIncrease := float64(getProduction(newLevel) - getProduction(oldLevel))
-				roiScore = (incomeIncrease / float64(totalCost)) * 100 // Reduced multiplier
+				if incomeIncrease > 0 {
+					paybackPeriodHours := float64(totalCost) / incomeIncrease
+					// A shorter payback period is better. We'll invert it and scale it.
+					roiScore = (1 / paybackPeriodHours) * 1000
+				}
 			}
 		}
+	} else if _, ok := action.(*RecruitAction); ok {
+		// Placeholder for troop ROI calculation
+		roiScore = 100
 	} else if farmAction, ok := action.(*FarmAction); ok {
 		// A simple heuristic for farming: the value of the raid is the expected loot
 		// divided by the travel time.
@@ -214,7 +221,7 @@ func calculateStrategicScore(buildingLevels map[string]int) float64 {
 }
 
 // calculateMilitaryScore scores the total population of troops.
-func calculateMilitaryScore(troopLevels map[string]int, recruitData map[string]UnitCost) float64 {
+func calculateMilitaryScore(troopLevels map[string]int, recruitData map[string]core.UnitCost) float64 {
 	totalPop := 0
 	for unit, count := range troopLevels {
 		if data, ok := recruitData[unit]; ok {

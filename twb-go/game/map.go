@@ -17,7 +17,7 @@ type VillageInfo struct {
 
 // Map represents the game map.
 type Map struct {
-	wrapper    *core.WebWrapper
+	wrapper    core.WebWrapperInterface
 	villageID  string
 	Villages   map[string]VillageInfo
 	myLocation [2]int
@@ -25,7 +25,7 @@ type Map struct {
 }
 
 // NewMap creates a new Map.
-func NewMap(wrapper *core.WebWrapper, villageID string) *Map {
+func NewMap(wrapper core.WebWrapperInterface, villageID string) *Map {
 	return &Map{
 		wrapper:   wrapper,
 		villageID: villageID,

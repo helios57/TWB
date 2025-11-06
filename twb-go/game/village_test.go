@@ -31,7 +31,7 @@ credentials:
 	}
 
 	// These would be properly initialized in a real scenario
-	wrapper, _ := core.NewWebWrapper("http://example.com", 1, 2)
+	wrapper, _ := core.NewWebWrapper("http://example.com", 1, 2, "test-agent", "test-cookie")
 	cm, _ := core.NewConfigManager(configPath, strings.NewReader("http://test.com\ntest-agent\ntest-cookie\n"))
 	rm := NewResourceManager()
 	bm := NewBuildingManager(wrapper, "123", rm)
@@ -75,7 +75,7 @@ credentials:
 		t.Fatalf("Failed to write dummy config file: %v", err)
 	}
 
-	wrapper, _ := core.NewWebWrapper("http://example.com", 1, 2)
+	wrapper, _ := core.NewWebWrapper("http://example.com", 1, 2, "test-agent", "test-cookie")
 	cm, _ := core.NewConfigManager(configPath, strings.NewReader("http://test.com\ntest-agent\ntest-cookie\n"))
 	rm := NewResourceManager()
 	bm := NewBuildingManager(wrapper, "123", rm)

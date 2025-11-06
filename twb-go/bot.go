@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math/rand"
 	"os"
 	"strings"
 	"sync"
@@ -15,7 +16,7 @@ import (
 
 // Bot represents the main bot application.
 type Bot struct {
-	Wrapper       *core.WebWrapper
+	Wrapper       core.WebWrapperInterface
 	ConfigManager *core.ConfigManager
 	Villages      []*game.Village
 	paused        bool
@@ -23,7 +24,7 @@ type Bot struct {
 }
 
 // newBotWithDeps creates a new Bot with dependencies.
-func newBotWithDeps(cm *core.ConfigManager, wrapper *core.WebWrapper) (*Bot, error) {
+func newBotWithDeps(cm *core.ConfigManager, wrapper core.WebWrapperInterface) (*Bot, error) {
 	resp, err := wrapper.GetURL("game.php?screen=overview_villages")
 	if err != nil {
 		return nil, fmt.Errorf("failed to get villages: %w", err)
@@ -66,7 +67,7 @@ func newBotWithDeps(cm *core.ConfigManager, wrapper *core.WebWrapper) (*Bot, err
 }
 
 // NewBot creates a new Bot.
-func NewBot(configPath string, reader io.Reader, wrapper *core.WebWrapper) (*Bot, error) {
+func NewBot(configPath string, reader io.Reader, wrapper core.WebWrapperInterface) (*Bot, error) {
 	cm, err := core.NewConfigManager(configPath, reader)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create config manager: %w", err)
@@ -109,10 +110,9 @@ func NewBot(configPath string, reader io.Reader, wrapper *core.WebWrapper) (*Bot
 // Run starts the main loop for the bot.
 func (b *Bot) Run() {
 	log.Println("Starting bot...")
-	ticker := time.NewTicker(b.ConfigManager.GetConfig().Bot.TickInterval)
-	defer ticker.Stop()
+	rand.Seed(time.Now().UnixNano())
 
-	for range ticker.C {
+	for {
 		b.lock.Lock()
 		if b.paused {
 			b.lock.Unlock()
@@ -128,7 +128,12 @@ func (b *Bot) Run() {
 			v.Run()
 		}
 		log.Println("Bot tick finished.")
-		log.Printf("Waiting for next tick... (interval: %s)", b.ConfigManager.GetConfig().Bot.TickInterval)
+
+		minTick := b.ConfigManager.GetConfig().Bot.MinTickInterval
+		maxTick := b.ConfigManager.GetConfig().Bot.MaxTickInterval
+		nextTickIn := minTick + time.Duration(rand.Int63n(int64(maxTick-minTick)))
+		log.Printf("Waiting for next tick... (interval: %s)", nextTickIn)
+		time.Sleep(nextTickIn)
 	}
 }
 

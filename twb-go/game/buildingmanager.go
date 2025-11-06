@@ -7,34 +7,24 @@ import (
 	"twb-go/core"
 )
 
-// BuildingCost represents the resource cost of a building.
-type BuildingCost struct {
-	Wood      int
-	Stone     int
-	Iron      int
-	Pop       int
-	CanBuild  bool
-	BuildLink string
-}
-
 // BuildingManager manages the buildings in a village.
 type BuildingManager struct {
-	wrapper   *core.WebWrapper
+	wrapper   core.WebWrapperInterface
 	villageID string
 	resman    *ResourceManager
 	Levels    map[string]int
-	Costs     map[string]BuildingCost
+	Costs     map[string]core.BuildingCost
 	lock      sync.Mutex
 }
 
 // NewBuildingManager creates a new BuildingManager.
-func NewBuildingManager(wrapper *core.WebWrapper, villageID string, resman *ResourceManager) *BuildingManager {
+func NewBuildingManager(wrapper core.WebWrapperInterface, villageID string, resman *ResourceManager) *BuildingManager {
 	return &BuildingManager{
 		wrapper:   wrapper,
 		villageID: villageID,
 		resman:    resman,
 		Levels:    make(map[string]int),
-		Costs:     make(map[string]BuildingCost),
+		Costs:     make(map[string]core.BuildingCost),
 	}
 }
 
@@ -46,6 +36,13 @@ func (bm *BuildingManager) UpdateBuildingLevels(levels map[string]string) {
 		level, _ := strconv.Atoi(l)
 		bm.Levels[b] = level
 	}
+}
+
+// UpdateBuildingCosts updates the building costs from a map.
+func (bm *BuildingManager) UpdateBuildingCosts(costs map[string]core.BuildingCost) {
+	bm.lock.Lock()
+	defer bm.lock.Unlock()
+	bm.Costs = costs
 }
 
 // ExecuteBuildAction builds the building specified in the action.
@@ -66,5 +63,12 @@ func (bm *BuildingManager) ExecuteBuildAction(action *BuildAction) error {
 
 	bm.Levels[action.Building]++
 	fmt.Printf("Building %s to level %d\n", action.Building, bm.Levels[action.Building])
+
+	if cost.BuildLink != "" {
+		_, err := bm.wrapper.GetURL(cost.BuildLink)
+		if err != nil {
+			return fmt.Errorf("failed to execute build action: %w", err)
+		}
+	}
 	return nil
 }

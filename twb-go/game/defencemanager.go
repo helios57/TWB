@@ -7,7 +7,7 @@ import (
 
 // DefenceManager manages the defence of a village.
 type DefenceManager struct {
-	wrapper      *core.WebWrapper
+	wrapper     core.WebWrapperInterface
 	villageID    string
 	resman       *ResourceManager
 	underAttack  bool
@@ -17,7 +17,7 @@ type DefenceManager struct {
 }
 
 // NewDefenceManager creates a new DefenceManager.
-func NewDefenceManager(wrapper *core.WebWrapper, villageID string, resman *ResourceManager) *DefenceManager {
+func NewDefenceManager(wrapper core.WebWrapperInterface, villageID string, resman *ResourceManager) *DefenceManager {
 	return &DefenceManager{
 		wrapper:      wrapper,
 		villageID:    villageID,

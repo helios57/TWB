@@ -6,7 +6,7 @@ import (
 )
 
 func TestDefenceManager(t *testing.T) {
-	wrapper, _ := core.NewWebWrapper("http://example.com", 1, 2)
+	wrapper, _ := core.NewWebWrapper("http://example.com", 1, 2, "test-agent", "test-cookie")
 	rm := NewResourceManager()
 	dm := NewDefenceManager(wrapper, "123", rm)
 

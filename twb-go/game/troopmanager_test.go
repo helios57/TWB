@@ -1,17 +1,25 @@
 package game
 
 import (
+	"io"
+	"net/http"
+	"strings"
 	"testing"
 	"twb-go/core"
 )
 
 func TestTroopManager_ExecuteRecruitAction(t *testing.T) {
-	wrapper, _ := core.NewWebWrapper("http://example.com", 1, 2)
+	wrapper := &MockWebWrapper{}
+	wrapper.GetURLFunc = func(url string) (*http.Response, error) {
+		return &http.Response{
+			Body: io.NopCloser(strings.NewReader(`<html><body><input type="hidden" name="h" value="12345" /></body></html>`)),
+		}, nil
+	}
 	rm := NewResourceManager()
 	rm.Update(10000, 10000, 10000, 1000, 10000)
 	tm := NewTroopManager(wrapper, "123", rm)
 
-	tm.RecruitData["spear"] = UnitCost{Wood: 50, Stone: 30, Iron: 10, Pop: 1, RequirementsMet: true}
+	tm.RecruitData["spear"] = core.UnitCost{Wood: 50, Stone: 30, Iron: 10, Pop: 1, RequirementsMet: true}
 	action := &RecruitAction{Unit: "spear", Amount: 100}
 
 	err := tm.ExecuteRecruitAction(action)

@@ -7,7 +7,7 @@ import (
 )
 
 func TestMap(t *testing.T) {
-	wrapper, _ := core.NewWebWrapper("http://example.com", 1, 2)
+	wrapper, _ := core.NewWebWrapper("http://example.com", 1, 2, "test-agent", "test-cookie")
 	gameMap := NewMap(wrapper, "123")
 	gameMap.myLocation = [2]int{500, 500}
 

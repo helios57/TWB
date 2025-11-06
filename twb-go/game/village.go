@@ -11,7 +11,7 @@ var timeNow = time.Now
 // Village represents a single village and orchestrates the bot's logic.
 type Village struct {
 	ID                     string
-	Wrapper                *core.WebWrapper
+	Wrapper                core.WebWrapperInterface
 	ConfigManager          *core.ConfigManager
 	ResourceManager        *ResourceManager
 	BuildingManager        *BuildingManager
@@ -26,7 +26,7 @@ type Village struct {
 }
 
 // NewVillage creates a new Village.
-func NewVillage(id string, wrapper *core.WebWrapper, cm *core.ConfigManager, rm *ResourceManager, bm *BuildingManager, tm *TroopManager, am *AttackManager, dm *DefenceManager, gameMap *Map) (*Village, error) {
+func NewVillage(id string, wrapper core.WebWrapperInterface, cm *core.ConfigManager, rm *ResourceManager, bm *BuildingManager, tm *TroopManager, am *AttackManager, dm *DefenceManager, gameMap *Map) (*Village, error) {
 	if id == "" {
 		return nil, fmt.Errorf("village ID cannot be empty")
 	}
@@ -55,18 +55,56 @@ func (v *Village) Run() {
 		fmt.Printf("Error fetching game state: %v\n", err)
 		return
 	}
-	body, err := core.ReadBody(resp)
+	overviewBody, err := core.ReadBody(resp)
 	if err != nil {
 		fmt.Printf("Error reading response body: %v\n", err)
 		return
 	}
 
 	// 2. Update managers with new data
-	gameState, err := core.Extractor.GameState(body)
+	gameState, err := core.Extractor.GameState(overviewBody)
 	if err != nil {
 		fmt.Printf("Error parsing game state: %v\n", err)
 		return
 	}
+	resp, err = v.Wrapper.GetURL(fmt.Sprintf("game.php?village=%s&screen=main", v.ID))
+	if err != nil {
+		fmt.Printf("Error fetching game state: %v\n", err)
+		return
+	}
+	mainBody, err := core.ReadBody(resp)
+	if err != nil {
+		fmt.Printf("Error reading response body: %v\n", err)
+		return
+	}
+	buildingCosts, err := core.Extractor.BuildingCosts(mainBody)
+	if err != nil {
+		fmt.Printf("Error parsing building costs: %v\n", err)
+		return
+	}
+	v.BuildingManager.UpdateBuildingCosts(buildingCosts)
+	recruitData := make(map[string]core.UnitCost)
+	for _, screen := range []string{"train", "stable", "garage"} {
+		resp, err := v.Wrapper.GetURL(fmt.Sprintf("game.php?village=%s&screen=%s", v.ID, screen))
+		if err != nil {
+			fmt.Printf("Error fetching %s screen: %v\n", screen, err)
+			continue
+		}
+		recruitBody, err := core.ReadBody(resp)
+		if err != nil {
+			fmt.Printf("Error reading %s screen body: %v\n", screen, err)
+			continue
+		}
+		data, err := core.Extractor.RecruitData(recruitBody)
+		if err != nil {
+			fmt.Printf("Error parsing %s screen: %v\n", screen, err)
+			continue
+		}
+		for unit, cost := range data {
+			recruitData[unit] = cost
+		}
+	}
+	v.TroopManager.UpdateRecruitData(recruitData)
 	v.ResourceManager.Update(
 		int(gameState.Village.Wood),
 		int(gameState.Village.Stone),
@@ -76,7 +114,7 @@ func (v *Village) Run() {
 	)
 	v.BuildingManager.UpdateBuildingLevels(gameState.Village.Buildings)
 
-	units, err := core.Extractor.UnitsInVillage(body)
+	units, err := core.Extractor.UnitsInVillage(overviewBody)
 	if err == nil {
 		v.TroopManager.UpdateTroops(units, false)
 	}

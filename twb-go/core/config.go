@@ -41,7 +41,8 @@ type BotConfig struct {
 	RandomDelay      RandomDelayConfig `yaml:"random_delay"`
 	AttackTiming     map[string]int    `yaml:"attack_timing"`
 	ForcedPeaceTimes []PeaceTime       `yaml:"forced_peace_times"`
-	TickInterval     time.Duration     `yaml:"tick_interval"`
+	MinTickInterval  time.Duration     `yaml:"min_tick_interval"`
+	MaxTickInterval  time.Duration     `yaml:"max_tick_interval"`
 }
 
 // PeaceTime represents a period of forced peace.
@@ -166,7 +167,8 @@ func createConfig(reader *bufio.Reader) (*Config, error) {
 				MinDelay: 1,
 				MaxDelay: 5,
 			},
-			TickInterval: 10 * time.Second,
+			MinTickInterval: 30 * time.Second,
+			MaxTickInterval: 300 * time.Second,
 		},
 		WebManager: WebManagerConfig{
 			Host: "127.0.0.1",
@@ -214,8 +216,11 @@ func (cm *ConfigManager) LoadConfig() (bool, error) {
 	if err := yaml.Unmarshal(file, &config); err != nil {
 		return false, fmt.Errorf("failed to decode YAML from config file: %w", err)
 	}
-	if config.Bot.TickInterval <= 0 {
-		config.Bot.TickInterval = 10 * time.Second
+	if config.Bot.MinTickInterval <= 0 {
+		config.Bot.MinTickInterval = 30 * time.Second
+	}
+	if config.Bot.MaxTickInterval <= 0 {
+		config.Bot.MaxTickInterval = 300 * time.Second
 	}
 	cm.config = &config
 	return true, nil

@@ -7,7 +7,7 @@ import (
 )
 
 func TestPremiumExchange(t *testing.T) {
-	wrapper, _ := core.NewWebWrapper("http://example.com", 1, 2)
+	wrapper, _ := core.NewWebWrapper("http://example.com", 1, 2, "test-agent", "test-cookie")
 	stock := map[string]int{"wood": 1000}
 	capacity := map[string]int{"wood": 2000}
 	tax := map[string]float64{"buy": 0.1, "sell": 0.2}

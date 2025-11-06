@@ -6,12 +6,12 @@ import (
 )
 
 func TestBuildingManager_ExecuteBuildAction(t *testing.T) {
-	wrapper, _ := core.NewWebWrapper("http://example.com", 1, 2)
+	wrapper, _ := core.NewWebWrapper("http://example.com", 1, 2, "test-agent", "test-cookie")
 	rm := NewResourceManager()
 	rm.Update(1000, 1000, 1000, 100, 1000)
 	bm := NewBuildingManager(wrapper, "123", rm)
 
-	bm.Costs["main"] = BuildingCost{Wood: 100, Stone: 100, Iron: 100, Pop: 10, CanBuild: true}
+	bm.Costs["main"] = core.BuildingCost{Wood: 100, Stone: 100, Iron: 100, Pop: 10, CanBuild: true}
 	action := &BuildAction{Building: "main", Level: 1}
 
 	err := bm.ExecuteBuildAction(action)

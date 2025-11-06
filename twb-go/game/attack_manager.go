@@ -13,7 +13,7 @@ import (
 
 // AttackManager handles sending farm attacks and other attack-related logic.
 type AttackManager struct {
-	Wrapper           *core.WebWrapper
+	Wrapper           core.WebWrapperInterface
 	VillageID         string
 	TroopManager      *TroopManager
 	Map               *Map
@@ -46,7 +46,7 @@ type AttackCacheEntry struct {
 }
 
 // NewAttackManager creates and initializes an AttackManager.
-func NewAttackManager(wrapper *core.WebWrapper, villageID string, troopManager *TroopManager, gameMap *Map) *AttackManager {
+func NewAttackManager(wrapper core.WebWrapperInterface, villageID string, troopManager *TroopManager, gameMap *Map) *AttackManager {
 	return &AttackManager{
 		Wrapper:           wrapper,
 		VillageID:         villageID,

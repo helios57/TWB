@@ -6,7 +6,7 @@ import (
 )
 
 func newTestVillageWithConfigs(plannerConfig *core.PlannerConfig, solverConfig *core.SolverConfig, buildingPrerequisites map[string]map[string]int) *Village {
-	wrapper, _ := core.NewWebWrapper("http://example.com", 1, 2)
+	wrapper, _ := core.NewWebWrapper("http://example.com", 1, 2, "test-agent", "test-cookie")
 	rm := NewResourceManager()
 	bm := NewBuildingManager(wrapper, "123", rm)
 	tm := NewTroopManager(wrapper, "123", rm)
@@ -25,10 +25,10 @@ func newTestVillageWithConfigs(plannerConfig *core.PlannerConfig, solverConfig *
 		Planner:               *plannerConfig,
 	})
 
-	bm.Costs = map[string]BuildingCost{
+	bm.Costs = map[string]core.BuildingCost{
 		"main": {Wood: 10000, Stone: 10000, Iron: 10000, Pop: 10}, // High cost to make it unattractive
 	}
-	tm.RecruitData = map[string]UnitCost{
+	tm.RecruitData = map[string]core.UnitCost{
 		"spear": {Wood: 5000, Stone: 3000, Iron: 1000, Pop: 1, RequirementsMet: true}, // High cost
 	}
 

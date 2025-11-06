@@ -2,6 +2,7 @@ package game
 
 import (
 	"fmt"
+	"net/url"
 	"strconv"
 	"strings"
 	"sync"
@@ -10,36 +11,27 @@ import (
 	"github.com/PuerkitoBio/goquery"
 )
 
-// UnitCost represents the resource cost of a unit.
-type UnitCost struct {
-	Wood            int
-	Stone           int
-	Iron            int
-	Pop             int
-	RequirementsMet bool
-}
-
 // TroopManager manages the troops in a village.
 type TroopManager struct {
-	wrapper     *core.WebWrapper
+	wrapper     core.WebWrapperInterface
 	villageID   string
 	resman      *ResourceManager
 	troops      map[string]int
 	TotalTroops map[string]int
-	RecruitData map[string]UnitCost
+	RecruitData map[string]core.UnitCost
 	smithData   map[string]map[string]string
 	lock        sync.Mutex
 }
 
 // NewTroopManager creates a new TroopManager.
-func NewTroopManager(wrapper *core.WebWrapper, villageID string, resman *ResourceManager) *TroopManager {
+func NewTroopManager(wrapper core.WebWrapperInterface, villageID string, resman *ResourceManager) *TroopManager {
 	return &TroopManager{
 		wrapper:     wrapper,
 		villageID:   villageID,
 		resman:      resman,
 		troops:      make(map[string]int),
 		TotalTroops: make(map[string]int),
-		RecruitData: make(map[string]UnitCost),
+		RecruitData: make(map[string]core.UnitCost),
 		smithData:   make(map[string]map[string]string),
 	}
 }
@@ -96,6 +88,15 @@ func (tm *TroopManager) UpdateTotals(html string) error {
 	return nil
 }
 
+// UpdateRecruitData updates the recruitment data from a map.
+func (tm *TroopManager) UpdateRecruitData(data map[string]core.UnitCost) {
+	tm.lock.Lock()
+	defer tm.lock.Unlock()
+	for unit, cost := range data {
+		tm.RecruitData[unit] = cost
+	}
+}
+
 // ExecuteRecruitAction recruits the troops specified in the action.
 func (tm *TroopManager) ExecuteRecruitAction(action *RecruitAction) error {
 	tm.lock.Lock()
@@ -122,5 +123,38 @@ func (tm *TroopManager) ExecuteRecruitAction(action *RecruitAction) error {
 
 	tm.TotalTroops[action.Unit] += action.Amount
 	fmt.Printf("Recruiting %d %s\n", action.Amount, action.Unit)
+
+	screen := "train"
+	if action.Unit == "spy" || action.Unit == "light" || action.Unit == "heavy" || action.Unit == "ram" || action.Unit == "catapult" || action.Unit == "knight" {
+		screen = "stable"
+	}
+	if action.Unit == "ram" || action.Unit == "catapult" {
+		screen = "garage"
+	}
+
+	resp, err := tm.wrapper.GetURL(fmt.Sprintf("game.php?village=%s&screen=%s", tm.villageID, screen))
+	if err != nil {
+		return fmt.Errorf("failed to get %s screen: %w", screen, err)
+	}
+	body, err := core.ReadBody(resp)
+	if err != nil {
+		return fmt.Errorf("failed to read %s screen body: %w", screen, err)
+	}
+	h, err := core.Extractor.HToken(body)
+	if err != nil {
+		return fmt.Errorf("failed to extract h token from %s screen: %w", screen, err)
+	}
+
+	data := url.Values{}
+	data.Set("h", h)
+	data.Set(action.Unit, strconv.Itoa(action.Amount))
+	_, err = tm.wrapper.PostURL(
+		fmt.Sprintf("game.php?village=%s&screen=%s&action=train&mode=train", tm.villageID, screen),
+		data,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to execute recruit action: %w", err)
+	}
+
 	return nil
 }

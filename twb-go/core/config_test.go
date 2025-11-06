@@ -46,15 +46,19 @@ credentials:
 	if config.WebManager.Port != 8080 {
 		t.Errorf("Expected Port to be 8080, got %d", config.WebManager.Port)
 	}
-	if config.Bot.TickInterval.Seconds() != 10 {
-		t.Errorf("Expected TickInterval to be 10, got %f", config.Bot.TickInterval.Seconds())
+	if config.Bot.MinTickInterval.Seconds() != 30 {
+		t.Errorf("Expected MinTickInterval to be 30, got %f", config.Bot.MinTickInterval.Seconds())
+	}
+	if config.Bot.MaxTickInterval.Seconds() != 300 {
+		t.Errorf("Expected MaxTickInterval to be 300, got %f", config.Bot.MaxTickInterval.Seconds())
 	}
 
 	// Test with a config file that has a tick_interval
 	configContentWithTickInterval := `
 bot:
   server: http://example.com
-  tick_interval: 15s
+  min_tick_interval: 15s
+  max_tick_interval: 150s
 credentials:
   user_agent: "test-agent"
   cookie: "test-cookie"
@@ -70,7 +74,10 @@ credentials:
 	}
 
 	configWithTickInterval := cmWithTickInterval.GetConfig()
-	if configWithTickInterval.Bot.TickInterval.Seconds() != 15 {
-		t.Errorf("Expected TickInterval to be 15, got %f", configWithTickInterval.Bot.TickInterval.Seconds())
+	if configWithTickInterval.Bot.MinTickInterval.Seconds() != 15 {
+		t.Errorf("Expected MinTickInterval to be 15, got %f", configWithTickInterval.Bot.MinTickInterval.Seconds())
+	}
+	if configWithTickInterval.Bot.MaxTickInterval.Seconds() != 150 {
+		t.Errorf("Expected MaxTickInterval to be 150, got %f", configWithTickInterval.Bot.MaxTickInterval.Seconds())
 	}
 }

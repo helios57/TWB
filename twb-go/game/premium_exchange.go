@@ -7,7 +7,7 @@ import (
 
 // PremiumExchange handles the logic for interacting with the premium exchange.
 type PremiumExchange struct {
-	wrapper   *core.WebWrapper
+	wrapper   core.WebWrapperInterface
 	stock     map[string]int
 	capacity  map[string]int
 	tax       map[string]float64
@@ -15,7 +15,7 @@ type PremiumExchange struct {
 }
 
 // NewPremiumExchange creates a new PremiumExchange.
-func NewPremiumExchange(wrapper *core.WebWrapper, stock, capacity map[string]int, tax, constants map[string]float64) *PremiumExchange {
+func NewPremiumExchange(wrapper core.WebWrapperInterface, stock, capacity map[string]int, tax, constants map[string]float64) *PremiumExchange {
 	return &PremiumExchange{
 		wrapper:   wrapper,
 		stock:     stock,
