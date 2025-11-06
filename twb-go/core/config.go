@@ -214,6 +214,9 @@ func (cm *ConfigManager) LoadConfig() (bool, error) {
 	if err := yaml.Unmarshal(file, &config); err != nil {
 		return false, fmt.Errorf("failed to decode YAML from config file: %w", err)
 	}
+	if config.Bot.TickInterval <= 0 {
+		config.Bot.TickInterval = 10 * time.Second
+	}
 	cm.config = &config
 	return true, nil
 }
