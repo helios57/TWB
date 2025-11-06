@@ -66,22 +66,24 @@ func newBotWithDeps(cm *core.ConfigManager, wrapper *core.WebWrapper) (*Bot, err
 }
 
 // NewBot creates a new Bot.
-func NewBot(configPath string, reader io.Reader) (*Bot, error) {
+func NewBot(configPath string, reader io.Reader, wrapper *core.WebWrapper) (*Bot, error) {
 	cm, err := core.NewConfigManager(configPath, reader)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create config manager: %w", err)
 	}
 	config := cm.GetConfig()
 
-	wrapper, err := core.NewWebWrapper(
-		config.Bot.Server,
-		config.Bot.RandomDelay.MinDelay,
-		config.Bot.RandomDelay.MaxDelay,
-		config.Credentials["user_agent"],
-		config.Credentials["cookie"],
-	)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create web wrapper: %w", err)
+	if wrapper == nil {
+		wrapper, err = core.NewWebWrapper(
+			config.Bot.Server,
+			config.Bot.RandomDelay.MinDelay,
+			config.Bot.RandomDelay.MaxDelay,
+			config.Credentials["user_agent"],
+			config.Credentials["cookie"],
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create web wrapper: %w", err)
+		}
 	}
 
 	for {
@@ -120,6 +122,7 @@ func (b *Bot) Run() {
 		}
 		b.lock.Unlock()
 
+		b.Wrapper.CheckPaused()
 		log.Println("Bot tick...")
 		for _, v := range b.Villages {
 			v.Run()

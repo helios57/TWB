@@ -2,10 +2,15 @@ package core
 
 import (
 	"testing"
+	"time"
 )
 
 func TestExtractor_GameState(t *testing.T) {
-	html := `
+	timeout := time.After(10 * time.Second)
+	done := make(chan bool)
+
+	go func() {
+		html := `
 		<script>
 			TribalWars.updateGameData({
 				"village": {
@@ -40,10 +45,22 @@ func TestExtractor_GameState(t *testing.T) {
 	if gameState.Village.Wood != 100.5 {
 		t.Errorf("Expected wood to be 100.5, got %f", gameState.Village.Wood)
 	}
+		done <- true
+	}()
+
+	select {
+	case <-timeout:
+		t.Fatal("Test timed out")
+	case <-done:
+	}
 }
 
 func TestExtractor_UnitsInVillage(t *testing.T) {
-	html := `
+	timeout := time.After(10 * time.Second)
+	done := make(chan bool)
+
+	go func() {
+		html := `
 		<table id="units_home">
 			<tr><th>Unit</th><th>Count</th></tr>
 			<tr>
@@ -67,5 +84,50 @@ func TestExtractor_UnitsInVillage(t *testing.T) {
 	}
 	if units["axe"] != 25 {
 		t.Errorf("Expected axe to be 25, got %d", units["axe"])
+	}
+		done <- true
+	}()
+
+	select {
+	case <-timeout:
+		t.Fatal("Test timed out")
+	case <-done:
+	}
+}
+
+func TestExtractor_VillageIDs(t *testing.T) {
+	timeout := time.After(10 * time.Second)
+	done := make(chan bool)
+
+	go func() {
+		html := `
+		<div id="menu_row2_village">
+			<a href="game.php?village=123&screen=overview">Village 1</a>
+			<a href="game.php?village=456&screen=overview">Village 2</a>
+		</div>
+		<a href="game.php?village=789&screen=overview">Some other link</a>
+	`
+
+	villageIDs, err := Extractor.VillageIDs(html)
+	if err != nil {
+		t.Fatalf("VillageIDs failed: %v", err)
+	}
+
+	if len(villageIDs) != 2 {
+		t.Fatalf("Expected 2 village IDs, got %d", len(villageIDs))
+	}
+	if villageIDs[0] != "123" {
+		t.Errorf("Expected village ID to be 123, got %s", villageIDs[0])
+	}
+	if villageIDs[1] != "456" {
+		t.Errorf("Expected village ID to be 456, got %s", villageIDs[1])
+	}
+		done <- true
+	}()
+
+	select {
+	case <-timeout:
+		t.Fatal("Test timed out")
+	case <-done:
 	}
 }

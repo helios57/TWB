@@ -78,12 +78,16 @@ func (e *extractor) VillageIDs(html string) ([]string, error) {
 	}
 
 	var villageIDs []string
-	doc.Find("a[href*='village=']").Each(func(i int, s *goquery.Selection) {
+	villageIDMap := make(map[string]bool)
+	doc.Find("#menu_row2_village a[href*='village=']").Each(func(i int, s *goquery.Selection) {
 		href, _ := s.Attr("href")
 		re := regexp.MustCompile(`village=(\d+)`)
 		matches := re.FindStringSubmatch(href)
 		if len(matches) > 1 {
-			villageIDs = append(villageIDs, matches[1])
+			if _, ok := villageIDMap[matches[1]]; !ok {
+				villageIDs = append(villageIDs, matches[1])
+				villageIDMap[matches[1]] = true
+			}
 		}
 	})
 

@@ -77,13 +77,18 @@ func (ww *WebWrapper) SetBot(bot Pausable) {
 	ww.Bot = bot
 }
 
-// GetURL fetches a URL using a GET request.
-func (ww *WebWrapper) GetURL(path string) (*http.Response, error) {
+// CheckPaused checks if the bot is paused and waits until it is resumed.
+func (ww *WebWrapper) CheckPaused() {
 	if ww.Bot != nil {
 		for ww.Bot.IsPaused() {
 			time.Sleep(1 * time.Second)
 		}
 	}
+}
+
+// GetURL fetches a URL using a GET request.
+func (ww *WebWrapper) GetURL(path string) (*http.Response, error) {
+	ww.CheckPaused()
 	ww.randomDelay()
 	fullURL, err := url.Parse(ww.Endpoint)
 	if err != nil {
@@ -121,11 +126,7 @@ func (ww *WebWrapper) GetURL(path string) (*http.Response, error) {
 
 // PostURL sends a POST request with form data.
 func (ww *WebWrapper) PostURL(path string, data url.Values) (*http.Response, error) {
-	if ww.Bot != nil {
-		for ww.Bot.IsPaused() {
-			time.Sleep(1 * time.Second)
-		}
-	}
+	ww.CheckPaused()
 	ww.randomDelay()
 	fullURL, err := url.Parse(ww.Endpoint)
 	if err != nil {
