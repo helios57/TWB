@@ -6,6 +6,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/PuerkitoBio/goquery"
 )
@@ -50,6 +51,17 @@ type UnitData struct {
 	DefenseArcher  int            `yaml:"defense_archer"`
 }
 
+// QueueItem represents an item in a building or recruitment queue.
+type QueueItem struct {
+	ID        string
+	Building  string
+	Unit      string
+	Level     int
+	Count     int
+	Duration  time.Duration
+	Completes time.Time
+}
+
 // GameState represents the game data.
 type GameState struct {
 	Village struct {
@@ -63,6 +75,8 @@ type GameState struct {
 		StorageMax int               `json:"storage_max"`
 		Buildings  map[string]string `json:"buildings"`
 	} `json:"village"`
+	BuildingQueue []QueueItem
+	RecruitQueues map[string][]QueueItem
 }
 
 // Extractor provides methods for parsing HTML.
@@ -128,7 +142,7 @@ func (e *extractor) VillageIDs(html string) ([]string, error) {
 
 	var villageIDs []string
 	villageIDMap := make(map[string]bool)
-	doc.Find("#menu_row2_village a[href*='village=']").Each(func(i int, s *goquery.Selection) {
+	doc.Find("a[href*='village=']").Each(func(i int, s *goquery.Selection) {
 		href, _ := s.Attr("href")
 		re := regexp.MustCompile(`village=(\d+)`)
 		matches := re.FindStringSubmatch(href)
@@ -197,7 +211,7 @@ func (e *extractor) RecruitData(html string) (map[string]UnitCost, error) {
 	}
 
 	data := make(map[string]UnitCost)
-	doc.Find("form#train_form tr.row_a, form#train_form tr.row_b").Each(func(i int, s *goquery.Selection) {
+	doc.Find("form#train_form tr").Each(func(i int, s *goquery.Selection) {
 		unitName, exists := s.Find("input[name]").Attr("name")
 		if !exists {
 			return
@@ -222,6 +236,103 @@ func (e *extractor) RecruitData(html string) (map[string]UnitCost, error) {
 	})
 
 	return data, nil
+}
+
+// BuildingQueue extracts the building queue from the HTML.
+func (e *extractor) BuildingQueue(html string) ([]QueueItem, error) {
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create goquery document: %w", err)
+	}
+
+	var queue []QueueItem
+	doc.Find("table#build_queue tr.build_order").Each(func(i int, s *goquery.Selection) {
+		var item QueueItem
+		buildingAndLevel := strings.TrimSpace(s.Find("td:first-child").Text())
+		re := regexp.MustCompile(`(.+)\s+\(Stufe (\d+)\)`)
+		matches := re.FindStringSubmatch(buildingAndLevel)
+		if len(matches) == 3 {
+			var err error
+			item.Building = matches[1]
+			item.Level, err = strconv.Atoi(matches[2])
+			if err != nil {
+				item.Level = 0
+			}
+		} else {
+			item.Building = buildingAndLevel
+		}
+
+		durationStr, _ := s.Find("span.timer").Attr("data-duration")
+		duration, _ := strconv.Atoi(durationStr)
+		item.Duration = time.Duration(duration) * time.Second
+		item.Completes = time.Now().Add(item.Duration)
+
+		cancelLink, _ := s.Find("a.btn-cancel").Attr("href")
+		idRe := regexp.MustCompile(`id=(\d+)`)
+		idMatches := idRe.FindStringSubmatch(cancelLink)
+		if len(idMatches) > 1 {
+			item.ID = idMatches[1]
+		}
+
+		queue = append(queue, item)
+	})
+
+	return queue, nil
+}
+
+// RecruitQueues extracts the recruitment queues from the HTML.
+func (e *extractor) RecruitQueues(html string) (map[string][]QueueItem, error) {
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create goquery document: %w", err)
+	}
+
+	queues := make(map[string][]QueueItem)
+	doc.Find("div.unit_queue_wrapper").Each(func(i int, s *goquery.Selection) {
+		building, _ := s.Find("a.building_title").Attr("href")
+		building = strings.TrimPrefix(building, "game.php?screen=")
+		re := regexp.MustCompile(`^([a-z_]+)`)
+		matches := re.FindStringSubmatch(building)
+		if len(matches) < 2 {
+			return
+		}
+		building = matches[1]
+
+		var queue []QueueItem
+		s.Find("table.trainqueue_wrap tr").Each(func(j int, s *goquery.Selection) {
+			if s.Find("a.btn-cancel").Length() == 0 {
+				return
+			}
+			var item QueueItem
+			countAndUnit := strings.TrimSpace(s.Find("td:first-child").Text())
+			parts := strings.SplitN(countAndUnit, " ", 2)
+			var err error
+			item.Count, err = strconv.Atoi(parts[0])
+			if err != nil {
+				item.Count = 0
+			}
+			item.Unit = strings.TrimSpace(parts[1])
+
+			durationStr, _ := s.Find("span.timer").Attr("data-duration")
+			duration, err := strconv.Atoi(durationStr)
+			if err != nil {
+				duration = 0
+			}
+			item.Duration = time.Duration(duration) * time.Second
+			item.Completes = time.Now().Add(item.Duration)
+
+			cancelLink, _ := s.Find("a.btn-cancel").Attr("href")
+			idRe := regexp.MustCompile(`id=(\d+)`)
+			idMatches := idRe.FindStringSubmatch(cancelLink)
+			if len(idMatches) > 1 {
+				item.ID = idMatches[1]
+			}
+			queue = append(queue, item)
+		})
+		queues[building] = queue
+	})
+
+	return queues, nil
 }
 
 // HToken extracts the h token from the HTML.
