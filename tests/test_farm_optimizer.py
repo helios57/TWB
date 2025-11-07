@@ -54,6 +54,18 @@ class TestFarmOptimizer(unittest.TestCase):
         # Troops needed: ceil(100 loot / 80 carry_per_lc) = 2 LC
         self.assertDictEqual(plan[2]['troops'], {'light': 2})
 
+    def test_attack_includes_spy_if_available(self):
+        # Arrange
+        self.available_troops['spy'] = 5
+
+        # Act
+        plan = self.optimizer.create_optimal_plan(self.available_troops, self.targets)
+
+        # Assert
+        # Every attack in the plan should include exactly one spy.
+        for attack in plan:
+            self.assertIn('spy', attack['troops'])
+            self.assertEqual(attack['troops']['spy'], 1)
 
     def test_marginal_income_calculation(self):
         # Arrange

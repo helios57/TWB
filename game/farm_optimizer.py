@@ -77,13 +77,19 @@ class FarmOptimizer:
         efficient units first.
         """
         plan = []
-        remaining_troops = {unit: count for unit, count in available_troops.items() if self.unit_capacity.get(unit, 0) > 0}
+        # Keep all available troops, including spies
+        remaining_troops = available_troops.copy()
 
-        # Sort available units by carry capacity (most efficient first)
-        sorted_units = sorted(remaining_troops.keys(), key=lambda u: self.unit_capacity[u], reverse=True)
+        # Sort units with carry capacity for the main allocation logic
+        sorted_units = sorted(
+            [unit for unit, count in remaining_troops.items() if self.unit_capacity.get(unit, 0) > 0],
+            key=lambda u: self.unit_capacity[u],
+            reverse=True
+        )
 
         for target in scored_targets:
-            if not any(remaining_troops.values()):
+            # Check if there are any troops left that can carry loot
+            if not any(remaining_troops.get(u, 0) for u in sorted_units):
                 break
 
             loot_to_carry = target['predicted_loot']
@@ -102,6 +108,13 @@ class FarmOptimizer:
                 troops_to_send[unit] = num_to_send
                 remaining_troops[unit] -= num_to_send
                 loot_to_carry -= num_to_send * capacity
+
+            # --- START MODIFICATION ---
+            # If we are sending any troops, and have spies, add one spy.
+            if troops_to_send and remaining_troops.get('spy', 0) > 0:
+                troops_to_send['spy'] = troops_to_send.get('spy', 0) + 1
+                remaining_troops['spy'] -= 1
+            # --- END MODIFICATION ---
 
             if troops_to_send:
                 plan.append({
