@@ -2,9 +2,12 @@ package game
 
 import (
 	"fmt"
+	"io/ioutil"
 	"strconv"
 	"sync"
 	"twb-go/core"
+
+	"gopkg.in/yaml.v3"
 )
 
 // BuildingManager manages the buildings in a village.
@@ -14,6 +17,7 @@ type BuildingManager struct {
 	resman    *ResourceManager
 	Levels    map[string]int
 	Costs     map[string]core.BuildingCost
+	Data      map[string]core.BuildingData
 	lock      sync.Mutex
 }
 
@@ -25,7 +29,24 @@ func NewBuildingManager(wrapper core.WebWrapperInterface, villageID string, resm
 		resman:    resman,
 		Levels:    make(map[string]int),
 		Costs:     make(map[string]core.BuildingCost),
+		Data:      make(map[string]core.BuildingData),
 	}
+}
+
+// LoadBuildingData loads the building data from the YAML file.
+func (bm *BuildingManager) LoadBuildingData() error {
+	bm.lock.Lock()
+	defer bm.lock.Unlock()
+
+	file, err := ioutil.ReadFile("game/data/buildings.yaml")
+	if err != nil {
+		return fmt.Errorf("failed to read buildings.yaml: %w", err)
+	}
+
+	if err := yaml.Unmarshal(file, &bm.Data); err != nil {
+		return fmt.Errorf("failed to unmarshal buildings.yaml: %w", err)
+	}
+	return nil
 }
 
 // UpdateBuildingLevels updates the building levels from a map.

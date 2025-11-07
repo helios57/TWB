@@ -45,7 +45,13 @@ func newBotWithDeps(cm *core.ConfigManager, wrapper core.WebWrapperInterface) (*
 	for _, id := range villageIDs {
 		rm := game.NewResourceManager()
 		bm := game.NewBuildingManager(wrapper, id, rm)
+		if err := bm.LoadBuildingData(); err != nil {
+			return nil, fmt.Errorf("failed to load building data: %w", err)
+		}
 		tm := game.NewTroopManager(wrapper, id, rm)
+		if err := tm.LoadUnitData(); err != nil {
+			return nil, fmt.Errorf("failed to load unit data: %w", err)
+		}
 		gameMap := game.NewMap(wrapper, id)
 		am := game.NewAttackManager(wrapper, id, tm, gameMap)
 		dm := game.NewDefenceManager(wrapper, id, rm)

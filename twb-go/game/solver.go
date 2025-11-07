@@ -2,8 +2,8 @@ package game
 
 import (
 	"fmt"
-	"math"
 	"twb-go/core"
+	"time"
 )
 
 // Action represents a task that can be executed by the bot.
@@ -83,11 +83,16 @@ type GameState struct {
 	FarmingIncome    Resources
 }
 
+type ActionGeneratorInterface interface {
+	GenerateActions(village *Village) []Action
+}
+
 // Solver is the core decision-making engine.
 type Solver struct {
 	village         *Village
 	config          *core.SolverConfig
-	actionGenerator *ActionGenerator
+	actionGenerator ActionGeneratorInterface
+	planGenerator   *PlanGenerator
 }
 
 // NewSolver creates a new Solver.
@@ -96,137 +101,59 @@ func NewSolver(village *Village, config *core.SolverConfig, plannerConfig *core.
 		village:         village,
 		config:          config,
 		actionGenerator: NewActionGenerator(plannerConfig, village.ConfigManager.GetConfig().BuildingPrerequisites),
+		planGenerator:   NewPlanGenerator(village.TroopManager.Data, village.BuildingManager.Data),
 	}
 }
 
-// GetNextAction determines the next best action by simulating the outcome of all possible actions.
+// GetNextAction determines the next best action by finding the fastest plan to recruit a nobleman.
 func (s *Solver) GetNextAction() Action {
-	actions := s.actionGenerator.GenerateActions(s.village)
+	possibleNextActions := s.actionGenerator.GenerateActions(s.village)
+	var bestPlan []Action
+	var shortestTime time.Duration
 
-	var bestAction Action
-	bestScore := -1.0
+	for _, nextAction := range possibleNextActions {
+		if _, ok := nextAction.(*BuildAction); !ok {
+			continue // For now, only consider build actions as the next step
+		}
 
-	for _, action := range actions {
-		cost := action.GetCost(s.village)
-		if s.village.ResourceManager.CanAfford(*cost) {
-			futureState := s.simulateAction(action)
-			score := s.evaluateState(&futureState, action)
-			if score > bestScore {
-				bestScore = score
-				bestAction = action
-			}
+		hypotheticalVillage := s.createHypotheticalVillage(nextAction)
+		plan := s.planGenerator.GeneratePlan("adelsgeschlecht", hypotheticalVillage.BuildingManager.Levels)
+		fullPlan := append([]Action{nextAction}, plan...)
+
+		simulator := NewVillageSimulator(s.village.BuildingManager.Data, s.village.TroopManager.Data, s.village.logger)
+		totalTime, err := simulator.Simulate(s.village, fullPlan)
+		if err != nil {
+			s.village.logger(fmt.Sprintf("Simulation error for plan starting with '%s': %v", nextAction, err))
+			continue
+		}
+
+		s.village.logger(fmt.Sprintf("Plan starting with '%s' takes %v", nextAction, totalTime))
+		if shortestTime == 0 || totalTime < shortestTime {
+			shortestTime = totalTime
+			bestPlan = fullPlan
 		}
 	}
 
-	return bestAction
+	if len(bestPlan) > 0 {
+		return bestPlan[0]
+	}
+
+	return nil
 }
 
-// simulateAction creates a hypothetical future state by applying an action.
-func (s *Solver) simulateAction(action Action) GameState {
-	// Create a copy of the current state
-	futureState := GameState{
-		Resources:       s.village.ResourceManager.Actual,
-		BuildingLevels:  make(map[string]int),
-		TroopLevels:     make(map[string]int),
-		ResourceIncome:  s.village.ResourceManager.Income.Total,
+// createHypotheticalVillage creates a copy of the village with a build action applied.
+func (s *Solver) createHypotheticalVillage(action Action) *Village {
+	hypotheticalVillage := &Village{
+		BuildingManager: &BuildingManager{
+			Levels: make(map[string]int),
+		},
 	}
-	for k, v := range s.village.BuildingManager.Levels {
-		futureState.BuildingLevels[k] = v
+	for b, l := range s.village.BuildingManager.Levels {
+		hypotheticalVillage.BuildingManager.Levels[b] = l
 	}
-	for k, v := range s.village.TroopManager.TotalTroops {
-		futureState.TroopLevels[k] = v
-	}
-
-	// Apply the action's effects
-	cost := action.GetCost(s.village)
-	futureState.Resources.Wood -= cost.Wood
-	futureState.Resources.Stone -= cost.Stone
-	futureState.Resources.Iron -= cost.Iron
-	futureState.Resources.Pop -= cost.Pop
-
-	switch a := action.(type) {
-	case *BuildAction:
-		futureState.BuildingLevels[a.Building]++
-	case *RecruitAction:
-		futureState.TroopLevels[a.Unit] += a.Amount
-	case *FarmAction:
-		// This is a placeholder. A real implementation would have a more sophisticated model.
-		expectedLoot := 1000
-		futureState.FarmingIncome.Wood += expectedLoot / 3
-		futureState.FarmingIncome.Stone += expectedLoot / 3
-		futureState.FarmingIncome.Iron += expectedLoot / 3
-	}
-
-	return futureState
-}
-
-// getProduction returns the resource production for a given level.
-func getProduction(level int) int {
-	if level == 0 {
-		return 5 // Base production
-	}
-	// Simplified production formula based on Tribal Wars' exponential growth.
-	return int(30 * math.Pow(1.16314, float64(level-1)))
-}
-
-// evaluateState scores a game state based on a weighted combination of metrics.
-func (s *Solver) evaluateState(state *GameState, action Action) float64 {
-	economicScore := float64(state.ResourceIncome.Wood + state.ResourceIncome.Stone + state.ResourceIncome.Iron + state.FarmingIncome.Wood + state.FarmingIncome.Stone + state.FarmingIncome.Iron)
-	strategicScore := calculateStrategicScore(state.BuildingLevels)
-	militaryScore := calculateMilitaryScore(state.TroopLevels, s.village.TroopManager.RecruitData)
-	roiScore := 0.0
-
 	if buildAction, ok := action.(*BuildAction); ok {
-		switch buildAction.Building {
-		case "wood", "stone", "iron":
-			cost := buildAction.GetCost(s.village)
-			totalCost := cost.Wood + cost.Stone + cost.Iron
-			if totalCost > 0 {
-				oldLevel := s.village.BuildingManager.Levels[buildAction.Building]
-				newLevel := state.BuildingLevels[buildAction.Building]
-				incomeIncrease := float64(getProduction(newLevel) - getProduction(oldLevel))
-				if incomeIncrease > 0 {
-					paybackPeriodHours := float64(totalCost) / incomeIncrease
-					// A shorter payback period is better. We'll invert it and scale it.
-					roiScore = (1 / paybackPeriodHours) * 1000
-				}
-			}
-		}
-	} else if _, ok := action.(*RecruitAction); ok {
-		// Placeholder for troop ROI calculation
-		roiScore = 100
-	} else if farmAction, ok := action.(*FarmAction); ok {
-		// A simple heuristic for farming: the value of the raid is the expected loot
-		// divided by the travel time.
-		// This is a placeholder, a real implementation would have a more sophisticated model.
-		distance := s.village.GameMap.GetDist(farmAction.Target.Location)
-		travelTime := distance * 10 // Placeholder for travel time calculation
-		expectedLoot := 1000        // Placeholder for expected loot
-		if travelTime > 0 {
-			roiScore = float64(expectedLoot) / travelTime * 100
-		}
+		hypotheticalVillage.BuildingManager.Levels[buildAction.Building] = buildAction.Level
 	}
-
-	return economicScore*s.config.EconomicWeight + strategicScore*s.config.StrategicWeight + militaryScore*s.config.MilitaryWeight + roiScore
+	return hypotheticalVillage
 }
 
-// calculateStrategicScore scores progress towards the "Noble Rush" goal.
-func calculateStrategicScore(buildingLevels map[string]int) float64 {
-	score := 0.0
-	score += math.Min(float64(buildingLevels["main"])/20.0, 1.0) * 300 // Further increased weight
-	score += math.Min(float64(buildingLevels["smith"])/20.0, 1.0) * 100
-	score += math.Min(float64(buildingLevels["market"])/10.0, 1.0) * 50
-	score += math.Min(float64(buildingLevels["snob"])/1.0, 1.0) * 500
-	return score
-}
-
-// calculateMilitaryScore scores the total population of troops.
-func calculateMilitaryScore(troopLevels map[string]int, recruitData map[string]core.UnitCost) float64 {
-	totalPop := 0
-	for unit, count := range troopLevels {
-		if data, ok := recruitData[unit]; ok {
-			totalPop += count * data.Pop
-		}
-	}
-	return float64(totalPop)
-}

@@ -1,0 +1,2334 @@
+adelshof:
+    max_level: 3
+    prerequisites:
+        hauptgebaude: 20
+        marktplatz: 10
+        schmiede: 20
+    upgrades:
+        - level: 1
+          resources:
+            eisen: 10000
+            holz: 15000
+            lehm: 25000
+          population: 80
+        - level: 2
+          resources:
+            eisen: 20000
+            holz: 30000
+            lehm: 50000
+          population: 14
+        - level: 3
+          resources:
+            eisen: 40000
+            holz: 60000
+            lehm: 100000
+          population: 16
+bauernhof:
+    max_level: 30
+    prerequisites: {}
+    upgrades:
+        - level: 1
+          resources:
+            eisen: 0
+            holz: 0
+            lehm: 0
+          population: 240
+        - level: 2
+          resources:
+            eisen: 39
+            holz: 59
+            lehm: 53
+          population: 40
+        - level: 3
+          resources:
+            eisen: 50
+            holz: 76
+            lehm: 70
+          population: 46
+        - level: 4
+          resources:
+            eisen: 64
+            holz: 99
+            lehm: 92
+          population: 54
+        - level: 5
+          resources:
+            eisen: 83
+            holz: 129
+            lehm: 121
+          population: 62
+        - level: 6
+          resources:
+            eisen: 107
+            holz: 167
+            lehm: 160
+          population: 73
+        - level: 7
+          resources:
+            eisen: 138
+            holz: 217
+            lehm: 212
+          population: 84
+        - level: 8
+          resources:
+            eisen: 178
+            holz: 282
+            lehm: 279
+          population: 98
+        - level: 9
+          resources:
+            eisen: 230
+            holz: 367
+            lehm: 369
+          population: 114
+        - level: 10
+          resources:
+            eisen: 297
+            holz: 477
+            lehm: 487
+          population: 134
+        - level: 11
+          resources:
+            eisen: 383
+            holz: 620
+            lehm: 642
+          population: 155
+        - level: 12
+          resources:
+            eisen: 494
+            holz: 806
+            lehm: 848
+          population: 181
+        - level: 13
+          resources:
+            eisen: 637
+            holz: 1048
+            lehm: 1119
+          population: 210
+        - level: 14
+          resources:
+            eisen: 822
+            holz: 1363
+            lehm: 1477
+          population: 245
+        - level: 15
+          resources:
+            eisen: 1060
+            holz: 1772
+            lehm: 1950
+          population: 285
+        - level: 16
+          resources:
+            eisen: 1368
+            holz: 2303
+            lehm: 2574
+          population: 332
+        - level: 17
+          resources:
+            eisen: 1764
+            holz: 2994
+            lehm: 3398
+          population: 386
+        - level: 18
+          resources:
+            eisen: 2276
+            holz: 3893
+            lehm: 4486
+          population: 450
+        - level: 19
+          resources:
+            eisen: 2936
+            holz: 5060
+            lehm: 5921
+          population: 523
+        - level: 20
+          resources:
+            eisen: 3787
+            holz: 6579
+            lehm: 7816
+          population: 609
+        - level: 21
+          resources:
+            eisen: 4886
+            holz: 8552
+            lehm: 10317
+          population: 709
+        - level: 22
+          resources:
+            eisen: 6302
+            holz: 11118
+            lehm: 13618
+          population: 825
+        - level: 23
+          resources:
+            eisen: 8130
+            holz: 14453
+            lehm: 17976
+          population: 960
+        - level: 24
+          resources:
+            eisen: 10488
+            holz: 18789
+            lehm: 23728
+          population: 1118
+        - level: 25
+          resources:
+            eisen: 13529
+            holz: 24426
+            lehm: 31321
+          population: 1301
+        - level: 26
+          resources:
+            eisen: 17453
+            holz: 31754
+            lehm: 41344
+          population: 1515
+        - level: 27
+          resources:
+            eisen: 22514
+            holz: 41280
+            lehm: 54574
+          population: 1763
+        - level: 28
+          resources:
+            eisen: 29043
+            holz: 53664
+            lehm: 72037
+          population: 2052
+        - level: 29
+          resources:
+            eisen: 37466
+            holz: 69763
+            lehm: 95089
+          population: 2389
+        - level: 30
+          resources:
+            eisen: 48331
+            holz: 90692
+            lehm: 125517
+          population: 3000
+eisenmine:
+    max_level: 30
+    prerequisites: {}
+    upgrades:
+        - level: 1
+          resources:
+            eisen: 70
+            holz: 75
+            lehm: 65
+          population: 10
+          production:
+            eisen: 30
+        - level: 2
+          resources:
+            eisen: 87
+            holz: 94
+            lehm: 83
+          population: 2
+          production:
+            eisen: 35
+        - level: 3
+          resources:
+            eisen: 108
+            holz: 118
+            lehm: 106
+          population: 2
+          production:
+            eisen: 41
+        - level: 4
+          resources:
+            eisen: 133
+            holz: 147
+            lehm: 135
+          population: 2
+          production:
+            eisen: 47
+        - level: 5
+          resources:
+            eisen: 165
+            holz: 184
+            lehm: 172
+          population: 3
+          production:
+            eisen: 55
+        - level: 6
+          resources:
+            eisen: 205
+            holz: 231
+            lehm: 219
+          population: 3
+          production:
+            eisen: 64
+        - level: 7
+          resources:
+            eisen: 254
+            holz: 289
+            lehm: 279
+          population: 4
+          production:
+            eisen: 74
+        - level: 8
+          resources:
+            eisen: 316
+            holz: 362
+            lehm: 356
+          population: 4
+          production:
+            eisen: 86
+        - level: 9
+          resources:
+            eisen: 391
+            holz: 453
+            lehm: 454
+          population: 5
+          production:
+            eisen: 100
+        - level: 10
+          resources:
+            eisen: 485
+            holz: 567
+            lehm: 579
+          population: 6
+          production:
+            eisen: 117
+        - level: 11
+          resources:
+            eisen: 602
+            holz: 710
+            lehm: 738
+          population: 7
+          production:
+            eisen: 136
+        - level: 12
+          resources:
+            eisen: 746
+            holz: 889
+            lehm: 941
+          population: 8
+          production:
+            eisen: 158
+        - level: 13
+          resources:
+            eisen: 925
+            holz: 1113
+            lehm: 1200
+          population: 10
+          production:
+            eisen: 184
+        - level: 14
+          resources:
+            eisen: 1147
+            holz: 1393
+            lehm: 1529
+          population: 11
+          production:
+            eisen: 214
+        - level: 15
+          resources:
+            eisen: 1422
+            holz: 1744
+            lehm: 1950
+          population: 13
+          production:
+            eisen: 249
+        - level: 16
+          resources:
+            eisen: 1764
+            holz: 2183
+            lehm: 2486
+          population: 15
+          production:
+            eisen: 289
+        - level: 17
+          resources:
+            eisen: 2187
+            holz: 2734
+            lehm: 3170
+          population: 18
+          production:
+            eisen: 337
+        - level: 18
+          resources:
+            eisen: 2712
+            holz: 3422
+            lehm: 4042
+          population: 21
+          production:
+            eisen: 391
+        - level: 19
+          resources:
+            eisen: 3363
+            holz: 4285
+            lehm: 5153
+          population: 25
+          production:
+            eisen: 455
+        - level: 20
+          resources:
+            eisen: 4170
+            holz: 5365
+            lehm: 6571
+          population: 28
+          production:
+            eisen: 530
+        - level: 21
+          resources:
+            eisen: 5170
+            holz: 6717
+            lehm: 8378
+          population: 34
+          production:
+            eisen: 616
+        - level: 22
+          resources:
+            eisen: 6411
+            holz: 8409
+            lehm: 10681
+          population: 39
+          production:
+            eisen: 717
+        - level: 23
+          resources:
+            eisen: 7950
+            holz: 10528
+            lehm: 13619
+          population: 46
+          production:
+            eisen: 833
+        - level: 24
+          resources:
+            eisen: 9858
+            holz: 13181
+            lehm: 17364
+          population: 54
+          production:
+            eisen: 969
+        - level: 25
+          resources:
+            eisen: 12224
+            holz: 16503
+            lehm: 22139
+          population: 63
+          production:
+            eisen: 1127
+        - level: 26
+          resources:
+            eisen: 15158
+            holz: 20662
+            lehm: 28227
+          population: 74
+          production:
+            eisen: 1311
+        - level: 27
+          resources:
+            eisen: 18796
+            holz: 25869
+            lehm: 35990
+          population: 86
+          production:
+            eisen: 1525
+        - level: 28
+          resources:
+            eisen: 23307
+            holz: 32388
+            lehm: 45887
+          population: 100
+          production:
+            eisen: 1774
+        - level: 29
+          resources:
+            eisen: 28900
+            holz: 40549
+            lehm: 58506
+          population: 118
+          production:
+            eisen: 2063
+        - level: 30
+          resources:
+            eisen: 35837
+            holz: 50768
+            lehm: 74595
+          population: 138
+          production:
+            eisen: 2400
+erste_kirche:
+    max_level: 1
+    prerequisites: {}
+    upgrades:
+        - level: 1
+          resources:
+            eisen: 50
+            holz: 160
+            lehm: 200
+          population: 5
+hauptgebaude:
+    max_level: 30
+    prerequisites: {}
+    upgrades:
+        - level: 1
+          resources:
+            eisen: 0
+            holz: 0
+            lehm: 0
+          population: 5
+        - level: 2
+          resources:
+            eisen: 88
+            holz: 113
+            lehm: 102
+          population: 1
+        - level: 3
+          resources:
+            eisen: 111
+            holz: 143
+            lehm: 130
+          population: 1
+        - level: 4
+          resources:
+            eisen: 140
+            holz: 180
+            lehm: 166
+          population: 1
+        - level: 5
+          resources:
+            eisen: 176
+            holz: 227
+            lehm: 211
+          population: 1
+        - level: 6
+          resources:
+            eisen: 222
+            holz: 286
+            lehm: 270
+          population: 2
+        - level: 7
+          resources:
+            eisen: 280
+            holz: 360
+            lehm: 344
+          population: 2
+        - level: 8
+          resources:
+            eisen: 353
+            holz: 454
+            lehm: 438
+          population: 2
+        - level: 9
+          resources:
+            eisen: 445
+            holz: 572
+            lehm: 559
+          population: 3
+        - level: 10
+          resources:
+            eisen: 560
+            holz: 720
+            lehm: 712
+          population: 3
+        - level: 11
+          resources:
+            eisen: 706
+            holz: 908
+            lehm: 908
+          population: 3
+        - level: 12
+          resources:
+            eisen: 890
+            holz: 1144
+            lehm: 1158
+          population: 4
+        - level: 13
+          resources:
+            eisen: 1121
+            holz: 1441
+            lehm: 1476
+          population: 5
+        - level: 14
+          resources:
+            eisen: 1412
+            holz: 1816
+            lehm: 1882
+          population: 5
+        - level: 15
+          resources:
+            eisen: 1779
+            holz: 2288
+            lehm: 2400
+          population: 7
+        - level: 16
+          resources:
+            eisen: 2242
+            holz: 2883
+            lehm: 3060
+          population: 8
+        - level: 17
+          resources:
+            eisen: 2825
+            holz: 3632
+            lehm: 3902
+          population: 9
+        - level: 18
+          resources:
+            eisen: 3560
+            holz: 4577
+            lehm: 4975
+          population: 10
+        - level: 19
+          resources:
+            eisen: 4485
+            holz: 5767
+            lehm: 6343
+          population: 12
+        - level: 20
+          resources:
+            eisen: 5651
+            holz: 7266
+            lehm: 8087
+          population: 15
+        - level: 21
+          resources:
+            eisen: 7120
+            holz: 9155
+            lehm: 10311
+          population: 17
+        - level: 22
+          resources:
+            eisen: 8972
+            holz: 11535
+            lehm: 13146
+          population: 19
+        - level: 23
+          resources:
+            eisen: 11304
+            holz: 14534
+            lehm: 16762
+          population: 23
+        - level: 24
+          resources:
+            eisen: 14244
+            holz: 18313
+            lehm: 21371
+          population: 27
+        - level: 25
+          resources:
+            eisen: 17947
+            holz: 23075
+            lehm: 27248
+          population: 31
+        - level: 26
+          resources:
+            eisen: 22613
+            holz: 29074
+            lehm: 34741
+          population: 37
+        - level: 27
+          resources:
+            eisen: 28493
+            holz: 36633
+            lehm: 44295
+          population: 43
+        - level: 28
+          resources:
+            eisen: 35901
+            holz: 46158
+            lehm: 56476
+          population: 51
+        - level: 29
+          resources:
+            eisen: 45235
+            holz: 58159
+            lehm: 72007
+          population: 59
+        - level: 30
+          resources:
+            eisen: 56996
+            holz: 73280
+            lehm: 91809
+          population: 69
+holzfallerlager:
+    max_level: 30
+    prerequisites: {}
+    upgrades:
+        - level: 1
+          resources:
+            eisen: 40
+            holz: 50
+            lehm: 60
+          population: 5
+          production:
+            holz: 30
+        - level: 2
+          resources:
+            eisen: 50
+            holz: 63
+            lehm: 77
+          population: 1
+          production:
+            holz: 35
+        - level: 3
+          resources:
+            eisen: 62
+            holz: 78
+            lehm: 98
+          population: 1
+          production:
+            holz: 41
+        - level: 4
+          resources:
+            eisen: 77
+            holz: 98
+            lehm: 124
+          population: 1
+          production:
+            holz: 47
+        - level: 5
+          resources:
+            eisen: 96
+            holz: 122
+            lehm: 159
+          population: 1
+          production:
+            holz: 55
+        - level: 6
+          resources:
+            eisen: 120
+            holz: 153
+            lehm: 202
+          population: 1
+          production:
+            holz: 64
+        - level: 7
+          resources:
+            eisen: 149
+            holz: 191
+            lehm: 258
+          population: 2
+          production:
+            holz: 74
+        - level: 8
+          resources:
+            eisen: 185
+            holz: 238
+            lehm: 329
+          population: 2
+          production:
+            holz: 86
+        - level: 9
+          resources:
+            eisen: 231
+            holz: 298
+            lehm: 419
+          population: 2
+          production:
+            holz: 100
+        - level: 10
+          resources:
+            eisen: 287
+            holz: 373
+            lehm: 534
+          population: 2
+          production:
+            holz: 117
+        - level: 11
+          resources:
+            eisen: 358
+            holz: 466
+            lehm: 681
+          population: 3
+          production:
+            holz: 136
+        - level: 12
+          resources:
+            eisen: 446
+            holz: 582
+            lehm: 868
+          population: 3
+          production:
+            holz: 158
+        - level: 13
+          resources:
+            eisen: 555
+            holz: 728
+            lehm: 1107
+          population: 4
+          production:
+            holz: 184
+        - level: 14
+          resources:
+            eisen: 691
+            holz: 909
+            lehm: 1412
+          population: 5
+          production:
+            holz: 214
+        - level: 15
+          resources:
+            eisen: 860
+            holz: 1137
+            lehm: 1800
+          population: 5
+          production:
+            holz: 249
+        - level: 16
+          resources:
+            eisen: 1071
+            holz: 1421
+            lehm: 2295
+          population: 5
+          production:
+            holz: 289
+        - level: 17
+          resources:
+            eisen: 1333
+            holz: 1776
+            lehm: 2926
+          population: 7
+          production:
+            holz: 337
+        - level: 18
+          resources:
+            eisen: 1659
+            holz: 2220
+            lehm: 3731
+          population: 8
+          production:
+            holz: 391
+        - level: 19
+          resources:
+            eisen: 2066
+            holz: 2776
+            lehm: 4757
+          population: 9
+          production:
+            holz: 455
+        - level: 20
+          resources:
+            eisen: 2572
+            holz: 3469
+            lehm: 6065
+          population: 10
+          production:
+            holz: 530
+        - level: 21
+          resources:
+            eisen: 3202
+            holz: 4337
+            lehm: 7733
+          population: 12
+          production:
+            holz: 616
+        - level: 22
+          resources:
+            eisen: 3987
+            holz: 5421
+            lehm: 9860
+          population: 14
+          production:
+            holz: 717
+        - level: 23
+          resources:
+            eisen: 4963
+            holz: 6776
+            lehm: 12571
+          population: 16
+          production:
+            holz: 833
+        - level: 24
+          resources:
+            eisen: 6180
+            holz: 8470
+            lehm: 16028
+          population: 19
+          production:
+            holz: 969
+        - level: 25
+          resources:
+            eisen: 7694
+            holz: 10588
+            lehm: 20436
+          population: 21
+          production:
+            holz: 1127
+        - level: 26
+          resources:
+            eisen: 9578
+            holz: 13235
+            lehm: 26056
+          population: 24
+          production:
+            holz: 1311
+        - level: 27
+          resources:
+            eisen: 11925
+            holz: 16544
+            lehm: 33221
+          population: 29
+          production:
+            holz: 1525
+        - level: 28
+          resources:
+            eisen: 14847
+            holz: 20680
+            lehm: 42357
+          population: 33
+          production:
+            holz: 1774
+        - level: 29
+          resources:
+            eisen: 18484
+            holz: 25849
+            lehm: 54005
+          population: 38
+          production:
+            holz: 2063
+        - level: 30
+          resources:
+            eisen: 23013
+            holz: 32312
+            lehm: 68857
+          population: 43
+          production:
+            holz: 2400
+kaserne:
+    max_level: 25
+    prerequisites:
+        hauptgebaude: 3
+    upgrades:
+        - level: 1
+          resources:
+            eisen: 90
+            holz: 200
+            lehm: 170
+          population: 7
+        - level: 2
+          resources:
+            eisen: 113
+            holz: 252
+            lehm: 218
+          population: 1
+        - level: 3
+          resources:
+            eisen: 143
+            holz: 318
+            lehm: 279
+          population: 2
+        - level: 4
+          resources:
+            eisen: 180
+            holz: 400
+            lehm: 357
+          population: 1
+        - level: 5
+          resources:
+            eisen: 227
+            holz: 504
+            lehm: 456
+          population: 2
+        - level: 6
+          resources:
+            eisen: 286
+            holz: 635
+            lehm: 584
+          population: 2
+        - level: 7
+          resources:
+            eisen: 360
+            holz: 800
+            lehm: 748
+          population: 3
+        - level: 8
+          resources:
+            eisen: 454
+            holz: 1008
+            lehm: 957
+          population: 3
+        - level: 9
+          resources:
+            eisen: 572
+            holz: 1271
+            lehm: 1225
+          population: 4
+        - level: 10
+          resources:
+            eisen: 720
+            holz: 1601
+            lehm: 1568
+          population: 4
+        - level: 11
+          resources:
+            eisen: 908
+            holz: 2017
+            lehm: 2007
+          population: 5
+        - level: 12
+          resources:
+            eisen: 1144
+            holz: 2542
+            lehm: 2569
+          population: 5
+        - level: 13
+          resources:
+            eisen: 1441
+            holz: 3202
+            lehm: 3288
+          population: 7
+        - level: 14
+          resources:
+            eisen: 1816
+            holz: 4035
+            lehm: 4209
+          population: 8
+        - level: 15
+          resources:
+            eisen: 2288
+            holz: 5084
+            lehm: 5388
+          population: 9
+        - level: 16
+          resources:
+            eisen: 2883
+            holz: 6406
+            lehm: 6896
+          population: 11
+        - level: 17
+          resources:
+            eisen: 3632
+            holz: 8072
+            lehm: 8827
+          population: 12
+        - level: 18
+          resources:
+            eisen: 4577
+            holz: 10170
+            lehm: 11298
+          population: 15
+        - level: 19
+          resources:
+            eisen: 5767
+            holz: 12814
+            lehm: 14462
+          population: 17
+        - level: 20
+          resources:
+            eisen: 7266
+            holz: 16146
+            lehm: 18511
+          population: 20
+        - level: 21
+          resources:
+            eisen: 9155
+            holz: 20344
+            lehm: 23695
+          population: 24
+        - level: 22
+          resources:
+            eisen: 11535
+            holz: 25634
+            lehm: 30329
+          population: 27
+        - level: 23
+          resources:
+            eisen: 14534
+            holz: 32298
+            lehm: 38821
+          population: 32
+        - level: 24
+          resources:
+            eisen: 18313
+            holz: 40696
+            lehm: 49691
+          population: 38
+        - level: 25
+          resources:
+            eisen: 23075
+            holz: 51277
+            lehm: 63605
+          population: 44
+kirche:
+    max_level: 3
+    prerequisites:
+        bauernhof: 5
+        hauptgebaude: 5
+    upgrades:
+        - level: 1
+          resources:
+            eisen: 5000
+            holz: 16000
+            lehm: 20000
+          population: 5000
+        - level: 2
+          resources:
+            eisen: 6300
+            holz: 20160
+            lehm: 25600
+          population: 2750
+        - level: 3
+          resources:
+            eisen: 7938
+            holz: 25402
+            lehm: 32768
+          population: 4263
+lehmgrube:
+    max_level: 30
+    prerequisites: {}
+    upgrades:
+        - level: 1
+          resources:
+            eisen: 40
+            holz: 65
+            lehm: 50
+          population: 10
+          production:
+            lehm: 30
+        - level: 2
+          resources:
+            eisen: 50
+            holz: 83
+            lehm: 63
+          population: 1
+          production:
+            lehm: 35
+        - level: 3
+          resources:
+            eisen: 62
+            holz: 105
+            lehm: 80
+          population: 2
+          production:
+            lehm: 41
+        - level: 4
+          resources:
+            eisen: 76
+            holz: 133
+            lehm: 101
+          population: 2
+          production:
+            lehm: 47
+        - level: 5
+          resources:
+            eisen: 95
+            holz: 169
+            lehm: 128
+          population: 2
+          production:
+            lehm: 55
+        - level: 6
+          resources:
+            eisen: 117
+            holz: 215
+            lehm: 162
+          population: 2
+          production:
+            lehm: 64
+        - level: 7
+          resources:
+            eisen: 145
+            holz: 273
+            lehm: 205
+          population: 3
+          production:
+            lehm: 74
+        - level: 8
+          resources:
+            eisen: 180
+            holz: 346
+            lehm: 259
+          population: 3
+          production:
+            lehm: 86
+        - level: 9
+          resources:
+            eisen: 224
+            holz: 440
+            lehm: 328
+          population: 4
+          production:
+            lehm: 100
+        - level: 10
+          resources:
+            eisen: 277
+            holz: 559
+            lehm: 415
+          population: 4
+          production:
+            lehm: 117
+        - level: 11
+          resources:
+            eisen: 344
+            holz: 709
+            lehm: 525
+          population: 4
+          production:
+            lehm: 136
+        - level: 12
+          resources:
+            eisen: 426
+            holz: 901
+            lehm: 664
+          population: 5
+          production:
+            lehm: 158
+        - level: 13
+          resources:
+            eisen: 529
+            holz: 1144
+            lehm: 840
+          population: 6
+          production:
+            lehm: 184
+        - level: 14
+          resources:
+            eisen: 655
+            holz: 1453
+            lehm: 1062
+          population: 7
+          production:
+            lehm: 214
+        - level: 15
+          resources:
+            eisen: 813
+            holz: 1846
+            lehm: 1343
+          population: 8
+          production:
+            lehm: 249
+        - level: 16
+          resources:
+            eisen: 1008
+            holz: 2344
+            lehm: 1700
+          population: 8
+          production:
+            lehm: 289
+        - level: 17
+          resources:
+            eisen: 1250
+            holz: 2977
+            lehm: 2150
+          population: 10
+          production:
+            lehm: 337
+        - level: 18
+          resources:
+            eisen: 1550
+            holz: 3781
+            lehm: 2720
+          population: 12
+          production:
+            lehm: 391
+        - level: 19
+          resources:
+            eisen: 1922
+            holz: 4802
+            lehm: 3440
+          population: 13
+          production:
+            lehm: 455
+        - level: 20
+          resources:
+            eisen: 2383
+            holz: 6098
+            lehm: 4352
+          population: 15
+          production:
+            lehm: 530
+        - level: 21
+          resources:
+            eisen: 2955
+            holz: 7744
+            lehm: 5505
+          population: 16
+          production:
+            lehm: 616
+        - level: 22
+          resources:
+            eisen: 3664
+            holz: 9835
+            lehm: 6964
+          population: 20
+          production:
+            lehm: 717
+        - level: 23
+          resources:
+            eisen: 4543
+            holz: 12491
+            lehm: 8810
+          population: 22
+          production:
+            lehm: 833
+        - level: 24
+          resources:
+            eisen: 5633
+            holz: 15863
+            lehm: 11144
+          population: 25
+          production:
+            lehm: 969
+        - level: 25
+          resources:
+            eisen: 6985
+            holz: 20147
+            lehm: 14098
+          population: 28
+          production:
+            lehm: 1127
+        - level: 26
+          resources:
+            eisen: 8662
+            holz: 25586
+            lehm: 17833
+          population: 33
+          production:
+            lehm: 1311
+        - level: 27
+          resources:
+            eisen: 10740
+            holz: 32495
+            lehm: 22559
+          population: 37
+          production:
+            lehm: 1525
+        - level: 28
+          resources:
+            eisen: 13318
+            holz: 41268
+            lehm: 28537
+          population: 42
+          production:
+            lehm: 1774
+        - level: 29
+          resources:
+            eisen: 16515
+            holz: 52410
+            lehm: 36100
+          population: 48
+          production:
+            lehm: 2063
+        - level: 30
+          resources:
+            eisen: 20478
+            holz: 66561
+            lehm: 45666
+          population: 55
+          production:
+            lehm: 2400
+marktplatz:
+    max_level: 25
+    prerequisites:
+        hauptgebaude: 3
+        speicher: 2
+    upgrades:
+        - level: 1
+          resources:
+            eisen: 100
+            holz: 100
+            lehm: 100
+          population: 20
+        - level: 2
+          resources:
+            eisen: 126
+            holz: 126
+            lehm: 127
+          population: 3
+        - level: 3
+          resources:
+            eisen: 159
+            holz: 159
+            lehm: 163
+          population: 4
+        - level: 4
+          resources:
+            eisen: 200
+            holz: 200
+            lehm: 207
+          population: 5
+        - level: 5
+          resources:
+            eisen: 252
+            holz: 252
+            lehm: 264
+          population: 5
+        - level: 6
+          resources:
+            eisen: 318
+            holz: 318
+            lehm: 337
+          population: 7
+        - level: 7
+          resources:
+            eisen: 400
+            holz: 400
+            lehm: 430
+          population: 7
+        - level: 8
+          resources:
+            eisen: 504
+            holz: 504
+            lehm: 548
+          population: 9
+        - level: 9
+          resources:
+            eisen: 635
+            holz: 635
+            lehm: 698
+          population: 10
+        - level: 10
+          resources:
+            eisen: 800
+            holz: 800
+            lehm: 890
+          population: 12
+        - level: 11
+          resources:
+            eisen: 1009
+            holz: 1009
+            lehm: 1135
+          population: 14
+        - level: 12
+          resources:
+            eisen: 1271
+            holz: 1271
+            lehm: 1447
+          population: 16
+        - level: 13
+          resources:
+            eisen: 1601
+            holz: 1601
+            lehm: 1846
+          population: 20
+        - level: 14
+          resources:
+            eisen: 2018
+            holz: 2018
+            lehm: 2353
+          population: 22
+        - level: 15
+          resources:
+            eisen: 2542
+            holz: 2542
+            lehm: 3000
+          population: 26
+        - level: 16
+          resources:
+            eisen: 3203
+            holz: 3203
+            lehm: 3825
+          population: 31
+        - level: 17
+          resources:
+            eisen: 4036
+            holz: 4036
+            lehm: 4877
+          population: 36
+        - level: 18
+          resources:
+            eisen: 5085
+            holz: 5085
+            lehm: 6218
+          population: 42
+        - level: 19
+          resources:
+            eisen: 6407
+            holz: 6407
+            lehm: 7928
+          population: 49
+        - level: 20
+          resources:
+            eisen: 8073
+            holz: 8073
+            lehm: 10109
+          population: 57
+        - level: 21
+          resources:
+            eisen: 10172
+            holz: 10172
+            lehm: 12889
+          population: 67
+        - level: 22
+          resources:
+            eisen: 12817
+            holz: 12817
+            lehm: 16433
+          population: 79
+        - level: 23
+          resources:
+            eisen: 16149
+            holz: 16149
+            lehm: 20952
+          population: 92
+        - level: 24
+          resources:
+            eisen: 20348
+            holz: 20348
+            lehm: 26714
+          population: 107
+        - level: 25
+          resources:
+            eisen: 25639
+            holz: 25639
+            lehm: 34060
+          population: 126
+schmiede:
+    max_level: 20
+    prerequisites:
+        hauptgebaude: 5
+        kaserne: 1
+    upgrades:
+        - level: 1
+          resources:
+            eisen: 240
+            holz: 220
+            lehm: 180
+          population: 20
+        - level: 2
+          resources:
+            eisen: 302
+            holz: 277
+            lehm: 229
+          population: 3
+        - level: 3
+          resources:
+            eisen: 381
+            holz: 349
+            lehm: 293
+          population: 4
+        - level: 4
+          resources:
+            eisen: 480
+            holz: 440
+            lehm: 373
+          population: 5
+        - level: 5
+          resources:
+            eisen: 605
+            holz: 555
+            lehm: 476
+          population: 5
+        - level: 6
+          resources:
+            eisen: 762
+            holz: 699
+            lehm: 606
+          population: 7
+        - level: 7
+          resources:
+            eisen: 960
+            holz: 880
+            lehm: 773
+          population: 7
+        - level: 8
+          resources:
+            eisen: 1210
+            holz: 1109
+            lehm: 986
+          population: 9
+        - level: 9
+          resources:
+            eisen: 1525
+            holz: 1398
+            lehm: 1257
+          population: 10
+        - level: 10
+          resources:
+            eisen: 1921
+            holz: 1761
+            lehm: 1603
+          population: 12
+        - level: 11
+          resources:
+            eisen: 2421
+            holz: 2219
+            lehm: 2043
+          population: 14
+        - level: 12
+          resources:
+            eisen: 3050
+            holz: 2796
+            lehm: 2605
+          population: 16
+        - level: 13
+          resources:
+            eisen: 3843
+            holz: 3523
+            lehm: 3322
+          population: 20
+        - level: 14
+          resources:
+            eisen: 4842
+            holz: 4439
+            lehm: 4236
+          population: 22
+        - level: 15
+          resources:
+            eisen: 6101
+            holz: 5593
+            lehm: 5400
+          population: 26
+        - level: 16
+          resources:
+            eisen: 7687
+            holz: 7047
+            lehm: 6885
+          population: 31
+        - level: 17
+          resources:
+            eisen: 9686
+            holz: 8879
+            lehm: 8779
+          population: 36
+        - level: 18
+          resources:
+            eisen: 12204
+            holz: 11187
+            lehm: 11193
+          population: 42
+        - level: 19
+          resources:
+            eisen: 15377
+            holz: 14096
+            lehm: 14271
+          population: 49
+        - level: 20
+          resources:
+            eisen: 19375
+            holz: 17761
+            lehm: 18196
+          population: 57
+speicher:
+    max_level: 30
+    prerequisites: {}
+    upgrades:
+        - level: 1
+          resources:
+            eisen: 0
+            holz: 0
+            lehm: 0
+          storage: 1000
+        - level: 2
+          resources:
+            eisen: 50
+            holz: 76
+            lehm: 64
+          storage: 1170
+        - level: 3
+          resources:
+            eisen: 62
+            holz: 96
+            lehm: 81
+          storage: 1367
+        - level: 4
+          resources:
+            eisen: 77
+            holz: 121
+            lehm: 102
+          storage: 1598
+        - level: 5
+          resources:
+            eisen: 96
+            holz: 154
+            lehm: 130
+          storage: 1868
+        - level: 6
+          resources:
+            eisen: 120
+            holz: 194
+            lehm: 165
+          storage: 2183
+        - level: 7
+          resources:
+            eisen: 149
+            holz: 246
+            lehm: 210
+          storage: 2552
+        - level: 8
+          resources:
+            eisen: 185
+            holz: 311
+            lehm: 266
+          storage: 2983
+        - level: 9
+          resources:
+            eisen: 231
+            holz: 393
+            lehm: 338
+          storage: 3487
+        - level: 10
+          resources:
+            eisen: 287
+            holz: 498
+            lehm: 430
+          storage: 4075
+        - level: 11
+          resources:
+            eisen: 358
+            holz: 630
+            lehm: 546
+          storage: 4762
+        - level: 12
+          resources:
+            eisen: 446
+            holz: 796
+            lehm: 693
+          storage: 5565
+        - level: 13
+          resources:
+            eisen: 555
+            holz: 1007
+            lehm: 880
+          storage: 6504
+        - level: 14
+          resources:
+            eisen: 691
+            holz: 1274
+            lehm: 1118
+          storage: 7599
+        - level: 15
+          resources:
+            eisen: 860
+            holz: 1612
+            lehm: 1420
+          storage: 8879
+        - level: 16
+          resources:
+            eisen: 1071
+            holz: 2039
+            lehm: 1803
+          storage: 10377
+        - level: 17
+          resources:
+            eisen: 1333
+            holz: 2580
+            lehm: 2290
+          storage: 12127
+        - level: 18
+          resources:
+            eisen: 1659
+            holz: 3264
+            lehm: 2908
+          storage: 14170
+        - level: 19
+          resources:
+            eisen: 2066
+            holz: 4128
+            lehm: 3693
+          storage: 16557
+        - level: 20
+          resources:
+            eisen: 2572
+            holz: 5222
+            lehm: 4691
+          storage: 19342
+        - level: 21
+          resources:
+            eisen: 3202
+            holz: 6606
+            lehm: 5957
+          storage: 22596
+        - level: 22
+          resources:
+            eisen: 3987
+            holz: 8357
+            lehm: 7566
+          storage: 26394
+        - level: 23
+          resources:
+            eisen: 4963
+            holz: 10572
+            lehm: 9608
+          storage: 30834
+        - level: 24
+          resources:
+            eisen: 6180
+            holz: 13373
+            lehm: 12203
+          storage: 36017
+        - level: 25
+          resources:
+            eisen: 7694
+            holz: 16917
+            lehm: 15497
+          storage: 42079
+        - level: 26
+          resources:
+            eisen: 9578
+            holz: 21400
+            lehm: 19682
+          storage: 49163
+        - level: 27
+          resources:
+            eisen: 11925
+            holz: 27071
+            lehm: 24996
+          storage: 57432
+        - level: 28
+          resources:
+            eisen: 14847
+            holz: 34245
+            lehm: 31745
+          storage: 67098
+        - level: 29
+          resources:
+            eisen: 18484
+            holz: 43320
+            lehm: 40316
+          storage: 78385
+        - level: 30
+          resources:
+            eisen: 23013
+            holz: 54799
+            lehm: 51201
+          storage: 91575
+stall:
+    max_level: 20
+    prerequisites:
+        hauptgebaude: 10
+        kaserne: 5
+        schmiede: 5
+    upgrades:
+        - level: 1
+          resources:
+            eisen: 260
+            holz: 270
+            lehm: 240
+          population: 8
+        - level: 2
+          resources:
+            eisen: 328
+            holz: 340
+            lehm: 307
+          population: 1
+        - level: 3
+          resources:
+            eisen: 413
+            holz: 429
+            lehm: 393
+          population: 2
+        - level: 4
+          resources:
+            eisen: 520
+            holz: 540
+            lehm: 503
+          population: 2
+        - level: 5
+          resources:
+            eisen: 655
+            holz: 681
+            lehm: 644
+          population: 2
+        - level: 6
+          resources:
+            eisen: 826
+            holz: 857
+            lehm: 825
+          population: 3
+        - level: 7
+          resources:
+            eisen: 1040
+            holz: 1080
+            lehm: 1056
+          population: 3
+        - level: 8
+          resources:
+            eisen: 1311
+            holz: 1361
+            lehm: 1351
+          population: 3
+        - level: 9
+          resources:
+            eisen: 1652
+            holz: 1715
+            lehm: 1729
+          population: 4
+        - level: 10
+          resources:
+            eisen: 2081
+            holz: 2161
+            lehm: 2214
+          population: 5
+        - level: 11
+          resources:
+            eisen: 2622
+            holz: 2723
+            lehm: 2833
+          population: 5
+        - level: 12
+          resources:
+            eisen: 3304
+            holz: 3431
+            lehm: 3627
+          population: 7
+        - level: 13
+          resources:
+            eisen: 4163
+            holz: 4323
+            lehm: 4642
+          population: 8
+        - level: 14
+          resources:
+            eisen: 5246
+            holz: 5447
+            lehm: 5942
+          population: 9
+        - level: 15
+          resources:
+            eisen: 6609
+            holz: 6864
+            lehm: 7606
+          population: 10
+        - level: 16
+          resources:
+            eisen: 8328
+            holz: 8648
+            lehm: 9736
+          population: 12
+        - level: 17
+          resources:
+            eisen: 10493
+            holz: 10897
+            lehm: 12462
+          population: 15
+        - level: 18
+          resources:
+            eisen: 13221
+            holz: 13730
+            lehm: 15951
+          population: 16
+        - level: 19
+          resources:
+            eisen: 16659
+            holz: 17300
+            lehm: 20417
+          population: 20
+        - level: 20
+          resources:
+            eisen: 20990
+            holz: 21797
+            lehm: 26134
+          population: 23
+statue:
+    max_level: 1
+    prerequisites: {}
+    upgrades:
+        - level: 1
+          resources:
+            eisen: 220
+            holz: 220
+            lehm: 220
+          population: 10
+versammlungsplatz:
+    max_level: 1
+    prerequisites: {}
+    upgrades:
+        - level: 1
+          resources:
+            eisen: 30
+            holz: 10
+            lehm: 40
+versteck:
+    max_level: 10
+    prerequisites: {}
+    upgrades:
+        - level: 1
+          resources:
+            eisen: 50
+            holz: 50
+            lehm: 60
+          population: 2
+        - level: 2
+          resources:
+            eisen: 63
+            holz: 63
+            lehm: 75
+        - level: 3
+          resources:
+            eisen: 78
+            holz: 78
+            lehm: 94
+          population: 1
+        - level: 4
+          resources:
+            eisen: 98
+            holz: 98
+            lehm: 117
+        - level: 5
+          resources:
+            eisen: 122
+            holz: 122
+            lehm: 146
+          population: 1
+        - level: 6
+          resources:
+            eisen: 153
+            holz: 153
+            lehm: 183
+        - level: 7
+          resources:
+            eisen: 191
+            holz: 191
+            lehm: 229
+          population: 1
+        - level: 8
+          resources:
+            eisen: 238
+            holz: 238
+            lehm: 286
+          population: 1
+        - level: 9
+          resources:
+            eisen: 298
+            holz: 298
+            lehm: 358
+          population: 1
+        - level: 10
+          resources:
+            eisen: 373
+            holz: 373
+            lehm: 447
+          population: 1
+wachturm:
+    max_level: 20
+    prerequisites:
+        bauernhof: 5
+        hauptgebaude: 5
+    upgrades:
+        - level: 1
+          resources:
+            eisen: 10000
+            holz: 12000
+            lehm: 14000
+          population: 500
+        - level: 2
+          resources:
+            eisen: 11800
+            holz: 14040
+            lehm: 16380
+          population: 90
+        - level: 3
+          resources:
+            eisen: 13924
+            holz: 16427
+            lehm: 19165
+          population: 106
+        - level: 4
+          resources:
+            eisen: 16430
+            holz: 19219
+            lehm: 22423
+          population: 126
+        - level: 5
+          resources:
+            eisen: 19388
+            holz: 22487
+            lehm: 26234
+          population: 147
+        - level: 6
+          resources:
+            eisen: 22878
+            holz: 26309
+            lehm: 30694
+          population: 175
+        - level: 7
+          resources:
+            eisen: 26996
+            holz: 30782
+            lehm: 35912
+          population: 206
+        - level: 8
+          resources:
+            eisen: 31855
+            holz: 36015
+            lehm: 42017
+          population: 243
+        - level: 9
+          resources:
+            eisen: 37589
+            holz: 42137
+            lehm: 49160
+          population: 286
+        - level: 10
+          resources:
+            eisen: 44355
+            holz: 49301
+            lehm: 57518
+          population: 339
+        - level: 11
+          resources:
+            eisen: 52338
+            holz: 57682
+            lehm: 67296
+          population: 399
+        - level: 12
+          resources:
+            eisen: 61759
+            holz: 67488
+            lehm: 78736
+          population: 471
+        - level: 13
+          resources:
+            eisen: 72876
+            holz: 78961
+            lehm: 92121
+          population: 556
+        - level: 14
+          resources:
+            eisen: 85994
+            holz: 92384
+            lehm: 107782
+          population: 656
+        - level: 15
+          resources:
+            eisen: 101472
+            holz: 108089
+            lehm: 126104
+          population: 774
+        - level: 16
+          resources:
+            eisen: 119737
+            holz: 126465
+            lehm: 147542
+          population: 913
+        - level: 17
+          resources:
+            eisen: 141290
+            holz: 147964
+            lehm: 172624
+          population: 1078
+        - level: 18
+          resources:
+            eisen: 166722
+            holz: 173117
+            lehm: 201970
+          population: 1271
+        - level: 19
+          resources:
+            eisen: 196733
+            holz: 202547
+            lehm: 236305
+          population: 1501
+        - level: 20
+          resources:
+            eisen: 232144
+            holz: 236981
+            lehm: 276477
+          population: 1770
+wall:
+    max_level: 20
+    prerequisites:
+        kaserne: 1
+    upgrades:
+        - level: 1
+          resources:
+            eisen: 20
+            holz: 50
+            lehm: 100
+          population: 5
+        - level: 2
+          resources:
+            eisen: 25
+            holz: 63
+            lehm: 127
+          population: 1
+        - level: 3
+          resources:
+            eisen: 32
+            holz: 79
+            lehm: 163
+          population: 1
+        - level: 4
+          resources:
+            eisen: 40
+            holz: 100
+            lehm: 207
+          population: 1
+        - level: 5
+          resources:
+            eisen: 50
+            holz: 126
+            lehm: 264
+          population: 1
+        - level: 6
+          resources:
+            eisen: 64
+            holz: 159
+            lehm: 337
+          population: 2
+        - level: 7
+          resources:
+            eisen: 80
+            holz: 200
+            lehm: 430
+          population: 2
+        - level: 8
+          resources:
+            eisen: 101
+            holz: 252
+            lehm: 548
+          population: 2
+        - level: 9
+          resources:
+            eisen: 127
+            holz: 318
+            lehm: 698
+          population: 3
+        - level: 10
+          resources:
+            eisen: 160
+            holz: 400
+            lehm: 890
+          population: 3
+        - level: 11
+          resources:
+            eisen: 202
+            holz: 504
+            lehm: 1135
+          population: 3
+        - level: 12
+          resources:
+            eisen: 254
+            holz: 635
+            lehm: 1447
+          population: 4
+        - level: 13
+          resources:
+            eisen: 320
+            holz: 801
+            lehm: 1846
+          population: 5
+        - level: 14
+          resources:
+            eisen: 404
+            holz: 1009
+            lehm: 2353
+          population: 5
+        - level: 15
+          resources:
+            eisen: 508
+            holz: 1271
+            lehm: 3000
+          population: 7
+        - level: 16
+          resources:
+            eisen: 641
+            holz: 1602
+            lehm: 3825
+          population: 8
+        - level: 17
+          resources:
+            eisen: 807
+            holz: 2018
+            lehm: 4877
+          population: 9
+        - level: 18
+          resources:
+            eisen: 1017
+            holz: 2543
+            lehm: 6218
+          population: 10
+        - level: 19
+          resources:
+            eisen: 1281
+            holz: 3204
+            lehm: 7928
+          population: 12
+        - level: 20
+          resources:
+            eisen: 1615
+            holz: 4037
+            lehm: 10109
+          population: 15
+werkstatt:
+    max_level: 15
+    prerequisites:
+        hauptgebaude: 10
+        schmiede: 10
+    upgrades:
+        - level: 1
+          resources:
+            eisen: 260
+            holz: 300
+            lehm: 240
+          population: 8
+        - level: 2
+          resources:
+            eisen: 328
+            holz: 378
+            lehm: 307
+          population: 1
+        - level: 3
+          resources:
+            eisen: 413
+            holz: 476
+            lehm: 393
+          population: 2
+        - level: 4
+          resources:
+            eisen: 520
+            holz: 600
+            lehm: 503
+          population: 2
+        - level: 5
+          resources:
+            eisen: 655
+            holz: 756
+            lehm: 644
+          population: 2
+        - level: 6
+          resources:
+            eisen: 826
+            holz: 953
+            lehm: 825
+          population: 3
+        - level: 7
+          resources:
+            eisen: 1040
+            holz: 1200
+            lehm: 1056
+          population: 3
+        - level: 8
+          resources:
+            eisen: 1311
+            holz: 1513
+            lehm: 1351
+          population: 3
+        - level: 9
+          resources:
+            eisen: 1652
+            holz: 1906
+            lehm: 1729
+          population: 4
+        - level: 10
+          resources:
+            eisen: 2081
+            holz: 2401
+            lehm: 2214
+          population: 5
+        - level: 11
+          resources:
+            eisen: 2622
+            holz: 3026
+            lehm: 2833
+          population: 5
+        - level: 12
+          resources:
+            eisen: 3304
+            holz: 3812
+            lehm: 3627
+          population: 7
+        - level: 13
+          resources:
+            eisen: 4163
+            holz: 4804
+            lehm: 4642
+          population: 8
+        - level: 14
+          resources:
+            eisen: 5246
+            holz: 6053
+            lehm: 5942
+          population: 9
+        - level: 15
+          resources:
+            eisen: 6609
+            holz: 7626
+            lehm: 7606
+          population: 10

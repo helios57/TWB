@@ -20,6 +20,35 @@ type BuildingCost struct {
 	BuildLink string
 }
 
+// BuildingUpgrade represents the data for a single level of a building.
+type BuildingUpgrade struct {
+	Level      int            `yaml:"level"`
+	Resources  map[string]int `yaml:"resources"`
+	Population int            `yaml:"population"`
+	Storage    int            `yaml:"storage"`
+	Production map[string]int `yaml:"production"`
+}
+
+// BuildingData represents the static data for a building type.
+type BuildingData struct {
+	MaxLevel int               `yaml:"max_level"`
+	Upgrades []BuildingUpgrade `yaml:"upgrades"`
+}
+
+// UnitData represents the static data for a unit type.
+type UnitData struct {
+	Prerequisites  map[string]int `yaml:"prerequisites"`
+	Resources      map[string]int `yaml:"resources"`
+	BuildTime      int            `yaml:"build_time"`
+	Population     int            `yaml:"population"`
+	Speed          int            `yaml:"speed"`
+	Loot           int            `yaml:"loot"`
+	Attack         int            `yaml:"attack"`
+	Defense        int            `yaml:"defense"`
+	DefenseCavalry int            `yaml:"defense_cavalry"`
+	DefenseArcher  int            `yaml:"defense_archer"`
+}
+
 // GameState represents the game data.
 type GameState struct {
 	Village struct {

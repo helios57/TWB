@@ -1,0 +1,148 @@
+adelsgeschlecht:
+  prerequisites:
+    adelshof: 1
+    hauptgebaude: 20
+    schmiede: 20
+    marktplatz: 10
+  resources: {holz: 40000, lehm: 50000, eisen: 50000}
+  build_time: 7200
+  population: 100
+  speed: 35
+  loot: 0
+  attack: 30
+  defense: 100
+  defense_cavalry: 50
+  defense_archer: 100
+axtkämpfer:
+  prerequisites:
+    schmiede: 2
+  resources: {holz: 60, lehm: 30, eisen: 40}
+  population: 1
+  speed: 18
+  loot: 10
+  attack: 40
+  defense: 10
+  defense_cavalry: 5
+  defense_archer: 10
+berittener_bogenschutze:
+  prerequisites:
+    stall: 5
+  resources: {holz: 250, lehm: 100, eisen: 150}
+  population: 5
+  speed: 10
+  loot: 50
+  attack: 120
+  defense: 40
+  defense_cavalry: 30
+  defense_archer: 50
+bogenschutze:
+  prerequisites:
+    kaserne: 5
+    schmiede: 5
+  resources: {holz: 100, lehm: 30, eisen: 60}
+  population: 1
+  speed: 18
+  loot: 10
+  attack: 15
+  defense: 50
+  defense_cavalry: 40
+  defense_archer: 5
+katapult:
+  prerequisites:
+    werkstatt: 2
+    schmiede: 12
+  resources: {holz: 320, lehm: 400, eisen: 100}
+  population: 8
+  speed: 30
+  loot: 0
+  attack: 100
+  defense: 100
+  defense_cavalry: 50
+  defense_archer: 100
+leichte_kavallerie:
+  prerequisites:
+    stall: 3
+  resources: {holz: 125, lehm: 100, eisen: 250}
+  population: 4
+  speed: 10
+  loot: 80
+  attack: 130
+  defense: 30
+  defense_cavalry: 40
+  defense_archer: 30
+miliz:
+  prerequisites: {}
+  resources: {holz: 0, lehm: 0, eisen: 0}
+  population: 0
+  speed: 0
+  loot: 0
+  attack: 0
+  defense: 15
+  defense_cavalry: 45
+  defense_archer: 25
+paladin:
+  prerequisites: {}
+  resources: {holz: 20, lehm: 20, eisen: 40}
+  population: 10
+  speed: 10
+  loot: 100
+  attack: 150
+  defense: 250
+  defense_cavalry: 400
+  defense_archer: 150
+rammbock:
+  prerequisites:
+    werkstatt: 1
+  resources: {holz: 300, lehm: 200, eisen: 200}
+  population: 5
+  speed: 30
+  loot: 0
+  attack: 2
+  defense: 20
+  defense_cavalry: 50
+  defense_archer: 20
+schwere_kavallerie:
+  prerequisites:
+    stall: 10
+    schmiede: 15
+  resources: {holz: 200, lehm: 150, eisen: 600}
+  population: 6
+  speed: 11
+  loot: 50
+  attack: 150
+  defense: 200
+  defense_cavalry: 80
+  defense_archer: 180
+schwertkämpfer:
+  prerequisites:
+    schmiede: 1
+  resources: {holz: 30, lehm: 30, eisen: 70}
+  population: 1
+  speed: 22
+  loot: 15
+  attack: 25
+  defense: 50
+  defense_cavalry: 15
+  defense_archer: 40
+späher:
+  prerequisites:
+    stall: 1
+  resources: {holz: 50, lehm: 50, eisen: 20}
+  population: 2
+  speed: 9
+  loot: 0
+  attack: 0
+  defense: 2
+  defense_cavalry: 1
+  defense_archer: 2
+speerträger:
+  prerequisites:
+    kaserne: 1
+  resources: {holz: 50, lehm: 30, eisen: 10}
+  population: 1
+  speed: 18
+  loot: 25
+  attack: 10
+  defense: 15
+  defense_cavalry: 45
+  defense_archer: 20

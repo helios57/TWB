@@ -5,54 +5,69 @@ import (
 	"twb-go/core"
 )
 
-func newTestVillageWithConfigs(plannerConfig *core.PlannerConfig, solverConfig *core.SolverConfig, buildingPrerequisites map[string]map[string]int) *Village {
-	wrapper, _ := core.NewWebWrapper("http://example.com", 1, 2, "test-agent", "test-cookie")
-	rm := NewResourceManager()
-	bm := NewBuildingManager(wrapper, "123", rm)
-	tm := NewTroopManager(wrapper, "123", rm)
-	gameMap := &Map{
-		Villages: map[string]VillageInfo{
-			"target1": {ID: "target1", Location: [2]int{51, 51}},
-		},
-		myLocation: [2]int{50, 50},
-	}
-	am := NewAttackManager(wrapper, "123", tm, gameMap)
-	am.Targets = []VillageInfo{gameMap.Villages["target1"]}
-	cm := &core.ConfigManager{}
-	cm.SetConfig(&core.Config{
-		BuildingPrerequisites: buildingPrerequisites,
-		Solver:                *solverConfig,
-		Planner:               *plannerConfig,
-	})
+type mockActionGenerator struct {
+	actions []Action
+}
 
-	bm.Costs = map[string]core.BuildingCost{
-		"main": {Wood: 10000, Stone: 10000, Iron: 10000, Pop: 10}, // High cost to make it unattractive
+func (m *mockActionGenerator) GenerateActions(village *Village) []Action {
+	return m.actions
+}
+
+func TestSolver_FindsFastestPlan(t *testing.T) {
+	bData := map[string]core.BuildingData{
+		"holzfallerlager": {
+			Upgrades: []core.BuildingUpgrade{
+				{Level: 1, Production: map[string]int{"holz": 30}},
+				{Level: 2, Production: map[string]int{"holz": 35}, Resources: map[string]int{"holz": 50, "lehm": 60, "eisen": 40}},
+			},
+		},
+		"adelshof": {
+			Upgrades: []core.BuildingUpgrade{
+				{Level: 1, Resources: map[string]int{"holz": 1000, "lehm": 1000, "eisen": 1000}},
+			},
+		},
 	}
-	tm.RecruitData = map[string]core.UnitCost{
-		"spear": {Wood: 5000, Stone: 3000, Iron: 1000, Pop: 1, RequirementsMet: true}, // High cost
+	uData := map[string]core.UnitData{
+		"adelsgeschlecht": {
+			Prerequisites: map[string]int{"adelshof": 1},
+			BuildTime:     100,
+			Resources:     map[string]int{"holz": 100, "lehm": 100, "eisen": 100},
+		},
 	}
 
 	village := &Village{
-		ResourceManager: rm,
-		BuildingManager: bm,
-		TroopManager:    tm,
-		AttackManager:   am,
-		ConfigManager:   cm,
-		GameMap:         gameMap,
+		ResourceManager: &ResourceManager{
+			Actual: Resources{Wood: 0, Stone: 0, Iron: 0},
+			Income: Income{Total: Resources{Wood: 30, Stone: 30, Iron: 30}},
+		},
+		BuildingManager: &BuildingManager{
+			Levels: map[string]int{"holzfallerlager": 1, "lehmgrube": 1, "eisenmine": 1, "adelshof": 0},
+			Data:   bData,
+		},
+		TroopManager: &TroopManager{
+			TotalTroops: make(map[string]int),
+			Data:        uData,
+		},
+		logger: func(msg string) { t.Log(msg) },
 	}
-	village.Solver = NewSolver(village, solverConfig, plannerConfig)
-	return village
-}
-
-func TestSolver_ChoosesFarmAction(t *testing.T) {
-	plannerConfig := &core.PlannerConfig{}
-	solverConfig := &core.SolverConfig{EconomicWeight: 1, StrategicWeight: 0, MilitaryWeight: 0} // Isolate economic score
-	village := newTestVillageWithConfigs(plannerConfig, solverConfig, nil)
-	village.ResourceManager.Update(100, 100, 100, 100, 1000) // Not enough for anything else
+	village.Solver = &Solver{
+		village: village,
+		actionGenerator: &mockActionGenerator{
+			actions: []Action{
+				&BuildAction{Building: "adelshof", Level: 1},
+				&BuildAction{Building: "holzfallerlager", Level: 2},
+			},
+		},
+		planGenerator: NewPlanGenerator(uData, bData),
+	}
 
 	action := village.Solver.GetNextAction()
 
-	if _, ok := action.(*FarmAction); !ok {
-		t.Errorf("Expected a FarmAction, but got %T", action)
+	if action == nil {
+		t.Fatal("Expected an action, but got nil")
+	}
+
+	if buildAction, ok := action.(*BuildAction); !ok || buildAction.Building != "holzfallerlager" {
+		t.Errorf("Expected solver to choose 'holzfallerlager' as the first step, but got %v", action)
 	}
 }

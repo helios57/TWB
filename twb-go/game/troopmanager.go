@@ -2,6 +2,7 @@ package game
 
 import (
 	"fmt"
+	"io/ioutil"
 	"net/url"
 	"strconv"
 	"strings"
@@ -9,6 +10,7 @@ import (
 	"twb-go/core"
 
 	"github.com/PuerkitoBio/goquery"
+	"gopkg.in/yaml.v3"
 )
 
 // TroopManager manages the troops in a village.
@@ -19,6 +21,7 @@ type TroopManager struct {
 	troops      map[string]int
 	TotalTroops map[string]int
 	RecruitData map[string]core.UnitCost
+	Data        map[string]core.UnitData
 	smithData   map[string]map[string]string
 	lock        sync.Mutex
 }
@@ -32,8 +35,25 @@ func NewTroopManager(wrapper core.WebWrapperInterface, villageID string, resman 
 		troops:      make(map[string]int),
 		TotalTroops: make(map[string]int),
 		RecruitData: make(map[string]core.UnitCost),
+		Data:        make(map[string]core.UnitData),
 		smithData:   make(map[string]map[string]string),
 	}
+}
+
+// LoadUnitData loads the unit data from the YAML file.
+func (tm *TroopManager) LoadUnitData() error {
+	tm.lock.Lock()
+	defer tm.lock.Unlock()
+
+	file, err := ioutil.ReadFile("game/data/units.yaml")
+	if err != nil {
+		return fmt.Errorf("failed to read units.yaml: %w", err)
+	}
+
+	if err := yaml.Unmarshal(file, &tm.Data); err != nil {
+		return fmt.Errorf("failed to unmarshal units.yaml: %w", err)
+	}
+	return nil
 }
 
 // GetTroops returns a copy of the current troops in the village.

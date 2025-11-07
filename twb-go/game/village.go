@@ -23,6 +23,7 @@ type Village struct {
 	ForcedPeace            bool
 	ForcedPeaceToday       bool
 	ForcedPeaceTodayStart time.Time
+	logger                 func(string)
 }
 
 // NewVillage creates a new Village.
@@ -41,6 +42,7 @@ func NewVillage(id string, wrapper core.WebWrapperInterface, cm *core.ConfigMana
 		AttackManager:   am,
 		DefenceManager:  dm,
 		GameMap:         gameMap,
+		logger:          func(msg string) { fmt.Println(msg) },
 	}
 	village.Solver = NewSolver(village, &cm.GetConfig().Solver, &cm.GetConfig().Planner)
 	return village, nil
