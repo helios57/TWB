@@ -1,0 +1,17 @@
+building_levels:
+    hauptgebaude: 20
+    kaserne: 25
+    stall: 20
+    werkstatt: 15
+    adelshof: 1
+    schmiede: 20
+    versammlungsplatz: 1
+    statue: 1
+    marktplatz: 10
+    holzfallerlager: 30
+    lehmgrube: 30
+    eisenmine: 30
+    bauernhof: 30
+    speicher: 30
+    versteck: 10
+    wall: 20

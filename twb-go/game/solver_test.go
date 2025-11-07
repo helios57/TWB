@@ -1,73 +1,75 @@
 package game
 
 import (
+	"os"
+	"path/filepath"
 	"testing"
 	"twb-go/core"
 )
 
-type mockActionGenerator struct {
-	actions []Action
-}
-
-func (m *mockActionGenerator) GenerateActions(village *Village) []Action {
-	return m.actions
-}
-
-func TestSolver_FindsFastestPlan(t *testing.T) {
+func TestSolver_FindsOptimalPlan(t *testing.T) {
 	bData := map[string]core.BuildingData{
-		"holzfallerlager": {
+		"main": {
+			MaxLevel: 30,
 			Upgrades: []core.BuildingUpgrade{
-				{Level: 1, Production: map[string]int{"holz": 30}},
-				{Level: 2, Production: map[string]int{"holz": 35}, Resources: map[string]int{"holz": 50, "lehm": 60, "eisen": 40}},
+				{Level: 1, Resources: map[string]int{"holz": 10, "lehm": 10, "eisen": 10}, BuildTime: 100},
 			},
 		},
-		"adelshof": {
+		"farm": {
+			MaxLevel: 30,
 			Upgrades: []core.BuildingUpgrade{
-				{Level: 1, Resources: map[string]int{"holz": 1000, "lehm": 1000, "eisen": 1000}},
+				{Level: 1, Resources: map[string]int{"holz": 10, "lehm": 10, "eisen": 10}, BuildTime: 100},
 			},
 		},
 	}
-	uData := map[string]core.UnitData{
-		"adelsgeschlecht": {
-			Prerequisites: map[string]int{"adelshof": 1},
-			BuildTime:     100,
-			Resources:     map[string]int{"holz": 100, "lehm": 100, "eisen": 100},
-		},
+	uData := map[string]core.UnitData{}
+
+	// Create a temporary directory for templates
+	tmpDir, err := os.MkdirTemp("", "templates")
+	if err != nil {
+		t.Fatalf("Failed to create temporary directory: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+
+	// Create builder and troop template files
+	builderDir := filepath.Join(tmpDir, "builder")
+	os.Mkdir(builderDir, 0755)
+	builderFile := filepath.Join(builderDir, "test.yaml")
+	os.WriteFile(builderFile, []byte("building_levels:\n  main: 1\n"), 0644)
+
+	troopDir := filepath.Join(tmpDir, "troops")
+	os.Mkdir(troopDir, 0755)
+	troopFile := filepath.Join(troopDir, "test.yaml")
+	os.WriteFile(troopFile, []byte("troop_levels:\n"), 0644)
+
+	tm := NewTemplateManager(tmpDir)
+	goalState, err := tm.GetGoalFromTemplates("test", "test")
+	if err != nil {
+		t.Fatalf("Error getting goal from templates: %v", err)
 	}
 
-	village := &Village{
-		ResourceManager: &ResourceManager{
-			Actual: Resources{Wood: 0, Stone: 0, Iron: 0},
-			Income: Income{Total: Resources{Wood: 30, Stone: 30, Iron: 30}},
-		},
-		BuildingManager: &BuildingManager{
-			Levels: map[string]int{"holzfallerlager": 1, "lehmgrube": 1, "eisenmine": 1, "adelshof": 0},
-			Data:   bData,
-		},
-		TroopManager: &TroopManager{
-			TotalTroops: make(map[string]int),
-			Data:        uData,
-		},
-		logger: func(msg string) { t.Log(msg) },
-	}
-	village.Solver = &Solver{
-		village: village,
-		actionGenerator: &mockActionGenerator{
-			actions: []Action{
-				&BuildAction{Building: "adelshof", Level: 1},
-				&BuildAction{Building: "holzfallerlager", Level: 2},
-			},
-		},
-		planGenerator: NewPlanGenerator(uData, bData),
+	config := &core.PlannerConfig{}
+	actionGenerator := NewActionGenerator(config, nil, bData, uData)
+	villageSimulator := NewVillageSimulator(bData, uData, func(msg string) { t.Log(msg) })
+	aStarSolver := NewAStarSolver(actionGenerator, villageSimulator)
+
+	startState := GameState{
+		Resources:      Resources{Wood: 100, Stone: 100, Iron: 100},
+		ResourceIncome: Resources{Wood: 10, Stone: 10, Iron: 10},
+		BuildingLevels: map[string]int{"main": 0, "farm": 0},
+		TroopLevels:    map[string]int{},
 	}
 
-	action := village.Solver.GetNextAction()
-
-	if action == nil {
-		t.Fatal("Expected an action, but got nil")
+	plan, err := aStarSolver.FindOptimalPlan(startState, goalState)
+	if err != nil {
+		t.Fatalf("Expected a plan, but got an error: %v", err)
 	}
 
-	if buildAction, ok := action.(*BuildAction); !ok || buildAction.Building != "holzfallerlager" {
-		t.Errorf("Expected solver to choose 'holzfallerlager' as the first step, but got %v", action)
+	if len(plan) == 0 {
+		t.Fatal("Expected a plan, but got an empty one")
+	}
+
+	if buildAction, ok := plan[0].(*BuildAction); !ok || buildAction.Building != "main" {
+		t.Errorf("Expected the first action to be 'main', but got %v", plan[0])
 	}
 }

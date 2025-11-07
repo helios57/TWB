@@ -18,6 +18,7 @@ type Village struct {
 	TroopManager           *TroopManager
 	AttackManager          *AttackManager
 	DefenceManager         *DefenceManager
+	TemplateManager        *TemplateManager
 	GameMap                *Map
 	Solver                 *Solver
 	ForcedPeace            bool
@@ -41,6 +42,7 @@ func NewVillage(id string, wrapper core.WebWrapperInterface, cm *core.ConfigMana
 		TroopManager:    tm,
 		AttackManager:   am,
 		DefenceManager:  dm,
+		TemplateManager: NewTemplateManager("templates"),
 		GameMap:         gameMap,
 		logger:          func(msg string) { fmt.Println(msg) },
 	}
@@ -122,7 +124,17 @@ func (v *Village) Run() {
 	}
 
 	// 3. Get next action from solver and execute it
-	action := v.Solver.GetNextAction()
+	villageConfig, ok := v.ConfigManager.GetConfig().Villages[v.ID]
+	if !ok {
+		fmt.Printf("No configuration found for village %s\n", v.ID)
+		return
+	}
+	goal, err := v.TemplateManager.GetGoalFromTemplates(villageConfig.Building, villageConfig.Units)
+	if err != nil {
+		fmt.Printf("Error getting goal from templates: %v\n", err)
+		return
+	}
+	action := v.Solver.GetNextAction(goal)
 	if action != nil {
 		fmt.Printf("Executing action: %s\n", action)
 		err := action.Execute(v)

@@ -3,7 +3,6 @@ package game
 import (
 	"fmt"
 	"twb-go/core"
-	"time"
 )
 
 // Action represents a task that can be executed by the bot.
@@ -69,8 +68,6 @@ func (a *FarmAction) String() string {
 }
 
 func (a *FarmAction) GetCost(village *Village) *Resources {
-	// Farming doesn't have a direct resource cost, but it does require troops.
-	// We'll represent this as a zero-cost action for now.
 	return &Resources{}
 }
 
@@ -83,77 +80,44 @@ type GameState struct {
 	FarmingIncome    Resources
 }
 
-type ActionGeneratorInterface interface {
-	GenerateActions(village *Village) []Action
-}
-
 // Solver is the core decision-making engine.
 type Solver struct {
-	village         *Village
-	config          *core.SolverConfig
-	actionGenerator ActionGeneratorInterface
-	planGenerator   *PlanGenerator
+	village    *Village
+	aStarSolver *AStarSolver
 }
 
 // NewSolver creates a new Solver.
 func NewSolver(village *Village, config *core.SolverConfig, plannerConfig *core.PlannerConfig) *Solver {
+	actionGenerator := NewActionGenerator(plannerConfig, village.ConfigManager.GetConfig().BuildingPrerequisites, village.BuildingManager.Data, village.TroopManager.Data)
+	villageSimulator := NewVillageSimulator(village.BuildingManager.Data, village.TroopManager.Data, village.logger)
 	return &Solver{
-		village:         village,
-		config:          config,
-		actionGenerator: NewActionGenerator(plannerConfig, village.ConfigManager.GetConfig().BuildingPrerequisites),
-		planGenerator:   NewPlanGenerator(village.TroopManager.Data, village.BuildingManager.Data),
+		village:    village,
+		aStarSolver: NewAStarSolver(actionGenerator, villageSimulator),
 	}
 }
 
-// GetNextAction determines the next best action by finding the fastest plan to recruit a nobleman.
-func (s *Solver) GetNextAction() Action {
-	possibleNextActions := s.actionGenerator.GenerateActions(s.village)
-	var bestPlan []Action
-	var shortestTime time.Duration
+// GetNextAction determines the next best action by finding the optimal plan to reach the given goal.
+func (s *Solver) GetNextAction(goal GameState) Action {
+	startState := s.createInitialState()
 
-	for _, nextAction := range possibleNextActions {
-		if _, ok := nextAction.(*BuildAction); !ok {
-			continue // For now, only consider build actions as the next step
-		}
-
-		hypotheticalVillage := s.createHypotheticalVillage(nextAction)
-		plan := s.planGenerator.GeneratePlan("adelsgeschlecht", hypotheticalVillage.BuildingManager.Levels)
-		fullPlan := append([]Action{nextAction}, plan...)
-
-		simulator := NewVillageSimulator(s.village.BuildingManager.Data, s.village.TroopManager.Data, s.village.logger)
-		totalTime, err := simulator.Simulate(s.village, fullPlan)
-		if err != nil {
-			s.village.logger(fmt.Sprintf("Simulation error for plan starting with '%s': %v", nextAction, err))
-			continue
-		}
-
-		s.village.logger(fmt.Sprintf("Plan starting with '%s' takes %v", nextAction, totalTime))
-		if shortestTime == 0 || totalTime < shortestTime {
-			shortestTime = totalTime
-			bestPlan = fullPlan
-		}
+	plan, err := s.aStarSolver.FindOptimalPlan(startState, goal)
+	if err != nil {
+		s.village.logger(fmt.Sprintf("Error finding optimal plan: %v", err))
+		return nil
 	}
 
-	if len(bestPlan) > 0 {
-		return bestPlan[0]
+	if len(plan) > 0 {
+		return plan[0]
 	}
 
 	return nil
 }
 
-// createHypotheticalVillage creates a copy of the village with a build action applied.
-func (s *Solver) createHypotheticalVillage(action Action) *Village {
-	hypotheticalVillage := &Village{
-		BuildingManager: &BuildingManager{
-			Levels: make(map[string]int),
-		},
+func (s *Solver) createInitialState() GameState {
+	return GameState{
+		Resources:      s.village.ResourceManager.Actual,
+		ResourceIncome: s.village.ResourceManager.Income.Total,
+		BuildingLevels: s.village.BuildingManager.Levels,
+		TroopLevels:    s.village.TroopManager.TotalTroops,
 	}
-	for b, l := range s.village.BuildingManager.Levels {
-		hypotheticalVillage.BuildingManager.Levels[b] = l
-	}
-	if buildAction, ok := action.(*BuildAction); ok {
-		hypotheticalVillage.BuildingManager.Levels[buildAction.Building] = buildAction.Level
-	}
-	return hypotheticalVillage
 }
-

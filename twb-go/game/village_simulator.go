@@ -23,53 +23,70 @@ func NewVillageSimulator(bData map[string]core.BuildingData, uData map[string]co
 	}
 }
 
-// Simulate runs a simulation for a given village and build order,
+// CalculateNextState calculates the next game state after performing an action.
+func (vs *VillageSimulator) CalculateNextState(currentState GameState, action Action) (GameState, float64, error) {
+	nextState := vs.copyState(currentState)
+	var timeToAction time.Duration
+	var err error
+
+	switch a := action.(type) {
+	case *BuildAction:
+		timeToAction, err = vs.calculateTimeForBuildAction(nextState, *a)
+		if err != nil {
+			return GameState{}, 0, err
+		}
+		vs.accumulateResources(&nextState, timeToAction)
+		vs.applyBuildAction(&nextState, *a)
+		vs.updateIncome(&nextState)
+
+	case *RecruitAction:
+		timeToAction, err = vs.calculateTimeForRecruitAction(nextState, *a)
+		if err != nil {
+			return GameState{}, 0, err
+		}
+		vs.accumulateResources(&nextState, timeToAction)
+		vs.applyRecruitAction(&nextState, *a)
+	}
+
+	return nextState, timeToAction.Seconds(), nil
+}
+
+// CalculatePlanTime runs a simulation for a given village and build order,
 // returning the total time taken to complete the order.
-func (vs *VillageSimulator) Simulate(village *Village, buildOrder []Action) (time.Duration, error) {
+func (vs *VillageSimulator) CalculatePlanTime(village *Village, buildOrder []Action) (time.Duration, error) {
 	state := vs.copyInitialState(village)
 	queue := make([]Action, len(buildOrder))
 	copy(queue, buildOrder)
 	totalTime := time.Duration(0)
 
-	vs.logger(fmt.Sprintf("Starting simulation with initial state: %+v", state))
-
 	for len(queue) > 0 {
 		nextAction := queue[0]
 		var timeToAction time.Duration
-
-		vs.logger(fmt.Sprintf("Simulating action: %s", nextAction))
+		var err error
 
 		switch action := nextAction.(type) {
 		case *BuildAction:
-			timeToAfford, err := vs.calculateTimeToAfford(state, *action)
+			timeToAction, err = vs.calculateTimeForBuildAction(state, *action)
 			if err != nil {
 				return 0, err
 			}
-			buildTime := time.Minute * 5 // Simplified build time
-			timeToAction = timeToAfford + buildTime
-			vs.logger(fmt.Sprintf("Time to afford %s: %v, build time: %v, total: %v", action, timeToAfford, buildTime, timeToAction))
 			vs.accumulateResources(&state, timeToAction)
 			vs.applyBuildAction(&state, *action)
 			vs.updateIncome(&state)
 
 		case *RecruitAction:
-			timeToAfford, err := vs.calculateTimeToRecruit(state, *action)
+			timeToAction, err = vs.calculateTimeForRecruitAction(state, *action)
 			if err != nil {
 				return 0, err
 			}
-			recruitTime := time.Duration(vs.unitData[action.Unit].BuildTime*action.Amount) * time.Second
-			timeToAction = timeToAfford + recruitTime
-			vs.logger(fmt.Sprintf("Time to afford %s: %v, recruit time: %v, total: %v", action, timeToAfford, recruitTime, timeToAction))
 			vs.accumulateResources(&state, timeToAction)
 			vs.applyRecruitAction(&state, *action)
 		}
 
 		totalTime += timeToAction
 		queue = queue[1:]
-		vs.logger(fmt.Sprintf("State after action: %+v", state))
 	}
 
-	vs.logger(fmt.Sprintf("Simulation finished. Total time: %v", totalTime))
 	return totalTime, nil
 }
 
@@ -87,6 +104,48 @@ func (vs *VillageSimulator) copyInitialState(village *Village) GameState {
 		gs.TroopLevels[u] = c
 	}
 	return gs
+}
+
+func (vs *VillageSimulator) copyState(state GameState) GameState {
+	newState := GameState{
+		Resources:      state.Resources,
+		ResourceIncome: state.ResourceIncome,
+		BuildingLevels: make(map[string]int),
+		TroopLevels:    make(map[string]int),
+	}
+	for b, l := range state.BuildingLevels {
+		newState.BuildingLevels[b] = l
+	}
+	for u, c := range state.TroopLevels {
+		newState.TroopLevels[u] = c
+	}
+	return newState
+}
+
+func (vs *VillageSimulator) calculateTimeForBuildAction(state GameState, action BuildAction) (time.Duration, error) {
+	timeToAfford, err := vs.calculateTimeToAfford(state, action)
+	if err != nil {
+		return 0, err
+	}
+
+	buildingData := vs.buildingData[action.Building]
+	mainBuildingLevel := state.BuildingLevels["hauptgebaude"]
+	if mainBuildingLevel == 0 {
+		mainBuildingLevel = 1
+	}
+
+	var baseBuildTime float64
+	for _, upgrade := range buildingData.Upgrades {
+		if upgrade.Level == action.Level {
+			baseBuildTime = float64(upgrade.BuildTime)
+			break
+		}
+	}
+
+	buildTimeFactor := 1.05
+	buildTime := baseBuildTime * math.Pow(buildTimeFactor, float64(mainBuildingLevel-1))
+
+	return timeToAfford + time.Duration(buildTime)*time.Second, nil
 }
 
 func (vs *VillageSimulator) calculateTimeToAfford(state GameState, action BuildAction) (time.Duration, error) {
@@ -118,7 +177,7 @@ func (vs *VillageSimulator) calculateTimeToAfford(state GameState, action BuildA
 		needed := float64(amount) - float64(currentAmount)
 		if needed > 0 {
 			if income <= 0 {
-				return 0, fmt.Errorf("no income for %s", resource)
+				return time.Duration(math.Inf(1)), nil
 			}
 			maxWaitSeconds = math.Max(maxWaitSeconds, needed/float64(income)*3600)
 		}
@@ -170,7 +229,16 @@ func (vs *VillageSimulator) updateIncome(state *GameState) {
 			}
 		}
 	}
-	vs.logger(fmt.Sprintf("Updated income: %+v", state.ResourceIncome))
+}
+
+func (vs *VillageSimulator) calculateTimeForRecruitAction(state GameState, action RecruitAction) (time.Duration, error) {
+	timeToAfford, err := vs.calculateTimeToRecruit(state, action)
+	if err != nil {
+		return 0, err
+	}
+
+	recruitTime := time.Duration(vs.unitData[action.Unit].BuildTime*action.Amount) * time.Second
+	return timeToAfford + recruitTime, nil
 }
 
 func (vs *VillageSimulator) calculateTimeToRecruit(state GameState, action RecruitAction) (time.Duration, error) {
@@ -192,7 +260,7 @@ func (vs *VillageSimulator) calculateTimeToRecruit(state GameState, action Recru
 		needed := float64(amount*action.Amount) - float64(currentAmount)
 		if needed > 0 {
 			if income <= 0 {
-				return 0, fmt.Errorf("no income for %s", resource)
+				return time.Duration(math.Inf(1)), nil
 			}
 			maxWaitSeconds = math.Max(maxWaitSeconds, needed/float64(income)*3600)
 		}

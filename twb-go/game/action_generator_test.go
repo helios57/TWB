@@ -5,39 +5,29 @@ import (
 	"twb-go/core"
 )
 
-func TestActionGenerator_GenerateActions(t *testing.T) {
-	wrapper, _ := core.NewWebWrapper("http://example.com", 1, 2, "test-agent", "test-cookie")
-	rm := NewResourceManager()
-	bm := NewBuildingManager(wrapper, "123", rm)
-	tm := NewTroopManager(wrapper, "123", rm)
-	gameMap := &Map{}
-	am := NewAttackManager(wrapper, "123", tm, gameMap)
-	cm := &core.ConfigManager{}
-	cm.SetConfig(&core.Config{
-		Planner: core.PlannerConfig{
-			RecruitmentBatchSize: 5,
-		},
-	})
-
-	bm.Costs = map[string]core.BuildingCost{
-		"main": {},
-	}
-	tm.RecruitData = map[string]core.UnitCost{
-		"spear": {},
-	}
-	village := &Village{
-		BuildingManager: bm,
-		TroopManager:    tm,
-		AttackManager:   am,
-		GameMap:         gameMap,
-		ConfigManager:   cm,
-	}
+func TestActionGenerator_GenerateActionsFromState(t *testing.T) {
 	config := &core.PlannerConfig{
 		RecruitmentBatchSize: 5,
 	}
-	ag := NewActionGenerator(config, nil)
+	buildingData := map[string]core.BuildingData{
+		"main": {MaxLevel: 30},
+	}
+	unitData := map[string]core.UnitData{
+		"spear": {},
+	}
 
-	actions := ag.GenerateActions(village)
+	ag := NewActionGenerator(config, nil, buildingData, unitData)
+
+	state := GameState{
+		BuildingLevels: map[string]int{
+			"main": 1,
+		},
+		TroopLevels: map[string]int{
+			"spear": 10,
+		},
+	}
+
+	actions := ag.GenerateActionsFromState(state)
 
 	if len(actions) != 2 {
 		t.Fatalf("Expected 2 actions, got %d", len(actions))

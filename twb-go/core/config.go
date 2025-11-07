@@ -31,6 +31,7 @@ type Config struct {
 	WebManager            WebManagerConfig                `yaml:"webmanager"`
 	Solver                SolverConfig                    `yaml:"solver"`
 	Planner               PlannerConfig                   `yaml:"planner"`
+	Villages              map[string]VillageConfig        `yaml:"villages"`
 	BuildingPrerequisites map[string]map[string]int       `yaml:"building_prerequisites"`
 	Credentials           map[string]string               `yaml:"credentials"`
 }
@@ -190,6 +191,12 @@ func createConfig(reader *bufio.Reader) (*Config, error) {
 				"main":   20,
 				"smith":  20,
 				"market": 10,
+			},
+		},
+		Villages: map[string]VillageConfig{
+			"12345": {
+				Building: "noble_rush",
+				Units:    "noble_rush",
 			},
 		},
 		Credentials: map[string]string{

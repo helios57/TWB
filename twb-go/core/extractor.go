@@ -27,6 +27,7 @@ type BuildingUpgrade struct {
 	Population int            `yaml:"population"`
 	Storage    int            `yaml:"storage"`
 	Production map[string]int `yaml:"production"`
+	BuildTime  int            `yaml:"build_time"`
 }
 
 // BuildingData represents the static data for a building type.

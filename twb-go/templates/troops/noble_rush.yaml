@@ -1,0 +1,13 @@
+troop_levels:
+    speertrager: 5000
+    schwertkampfer: 5000
+    axtkampfer: 0
+    bogenschutze: 0
+    späher: 500
+    leichte_kavallerie: 2000
+    berittener_bogenschutze: 0
+    schwere_kavallerie: 500
+    rammbock: 300
+    katapult: 100
+    paladin: 1
+    adelsgeschlecht: 1

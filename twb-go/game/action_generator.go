@@ -6,26 +6,35 @@ import "twb-go/core"
 type ActionGenerator struct {
 	config                *core.PlannerConfig
 	buildingPrerequisites map[string]map[string]int
+	buildingData          map[string]core.BuildingData
+	unitData              map[string]core.UnitData
 }
 
 // NewActionGenerator creates a new ActionGenerator.
-func NewActionGenerator(config *core.PlannerConfig, buildingPrerequisites map[string]map[string]int) *ActionGenerator {
+func NewActionGenerator(config *core.PlannerConfig, buildingPrerequisites map[string]map[string]int, bData map[string]core.BuildingData, uData map[string]core.UnitData) *ActionGenerator {
 	return &ActionGenerator{
 		config:                config,
 		buildingPrerequisites: buildingPrerequisites,
+		buildingData:          bData,
+		unitData:              uData,
 	}
 }
 
-// GenerateActions returns a list of all possible actions.
-func (ag *ActionGenerator) GenerateActions(village *Village) []Action {
+// GenerateActionsFromState returns a list of all possible actions from a given state.
+func (ag *ActionGenerator) GenerateActionsFromState(state GameState) []Action {
 	var actions []Action
 
 	// Generate BuildActions
-	for building := range village.BuildingManager.Costs {
+	for building, data := range ag.buildingData {
+		currentLevel := state.BuildingLevels[building]
+		if currentLevel >= data.MaxLevel {
+			continue
+		}
+
 		if prereqs, ok := ag.buildingPrerequisites[building]; ok {
 			allPrereqsMet := true
 			for prereqBuilding, prereqLevel := range prereqs {
-				if village.BuildingManager.Levels[prereqBuilding] < prereqLevel {
+				if state.BuildingLevels[prereqBuilding] < prereqLevel {
 					allPrereqsMet = false
 					break
 				}
@@ -34,19 +43,13 @@ func (ag *ActionGenerator) GenerateActions(village *Village) []Action {
 				continue
 			}
 		}
-		currentLevel := village.BuildingManager.Levels[building]
-		// A simple heuristic: only consider upgrading buildings by one level
+
 		actions = append(actions, &BuildAction{Building: building, Level: currentLevel + 1})
 	}
 
 	// Generate RecruitActions
-	for unit := range village.TroopManager.RecruitData {
+	for unit := range ag.unitData {
 		actions = append(actions, &RecruitAction{Unit: unit, Amount: ag.config.RecruitmentBatchSize})
-	}
-
-	// Generate FarmActions
-	for _, target := range village.AttackManager.Targets {
-		actions = append(actions, &FarmAction{Target: target})
 	}
 
 	return actions
