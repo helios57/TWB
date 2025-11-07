@@ -211,8 +211,8 @@ func (e *extractor) RecruitData(html string) (map[string]UnitCost, error) {
 	}
 
 	data := make(map[string]UnitCost)
-	doc.Find("form#train_form tr").Each(func(i int, s *goquery.Selection) {
-		unitName, exists := s.Find("input[name]").Attr("name")
+	doc.Find("form#train_form tr.row_a, form#train_form tr.row_b").Each(func(i int, s *goquery.Selection) {
+		unitName, exists := s.Find("input.unitsInput").Attr("name")
 		if !exists {
 			return
 		}

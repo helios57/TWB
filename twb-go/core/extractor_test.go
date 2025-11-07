@@ -62,13 +62,15 @@ const mockBuildingCostsHTML = `
 
 const mockRecruitDataHTML = `
 <form id="train_form">
-    <tbody>
-        <tr class="row_a">
-            <td><input name="spear" /></td>
-            <td><span class="cost_wood">5</span> <span class="cost_stone">10</span> <span class="cost_iron">15</span> <span class="cost_pop">1</span></td>
-            <td><a class="btn-recruit">Recruit</a></td>
-        </tr>
-    </tbody>
+    <table>
+        <tbody>
+            <tr class="row_a">
+                <td><input name="spear" class="unitsInput" /></td>
+                <td><span class="cost_wood">5</span> <span class="cost_stone">10</span> <span class="cost_iron">15</span> <span class="cost_pop">1</span></td>
+                <td><a class="btn-recruit">Recruit</a></td>
+            </tr>
+        </tbody>
+    </table>
 </form>
 `
 
