@@ -14,8 +14,8 @@ type Action interface {
 
 // BuildAction represents a building construction or upgrade task.
 type BuildAction struct {
-	Building string
-	Level    int
+	Building string `json:"Building"`
+	Level    int    `json:"Level"`
 }
 
 // Execute performs the build action.
@@ -34,8 +34,8 @@ func (a *BuildAction) GetCost(village *Village) *Resources {
 
 // RecruitAction represents a troop recruitment task.
 type RecruitAction struct {
-	Unit   string
-	Amount int
+	Unit   string `json:"Unit"`
+	Amount int    `json:"Amount"`
 }
 
 // Execute performs the recruit action.
@@ -54,7 +54,7 @@ func (a *RecruitAction) GetCost(village *Village) *Resources {
 
 // FarmAction represents a farming raid task.
 type FarmAction struct {
-	Target VillageInfo
+	Target VillageInfo `json:"Target"`
 }
 
 // Execute performs the farm action.
@@ -73,8 +73,8 @@ func (a *FarmAction) GetCost(village *Village) *Resources {
 
 // ResearchAction represents a unit research task.
 type ResearchAction struct {
-	Unit  string
-	Level int
+	Unit  string `json:"Unit"`
+	Level int    `json:"Level"`
 }
 
 func (a *ResearchAction) Execute(village *Village) error {

@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -12,6 +13,7 @@ import (
 	"time"
 	"twb-go/core"
 	"twb-go/game"
+	"twb-go/web"
 )
 
 // Bot represents the main bot application.
@@ -21,45 +23,72 @@ type Bot struct {
 	Villages      []*game.Village
 	paused        bool
 	lock          sync.Mutex
+	Hub           *web.Hub
+}
+
+// SerializableVillage is a representation of a village that is safe to serialize to JSON.
+type SerializableVillage struct {
+	ID            string
+	Resources     *game.ResourceManager
+	BuildingQueue []core.QueueItem
+	TroopQueue    map[string][]core.QueueItem
+	LastAction    game.Action
 }
 
 // newBotWithDeps creates a new Bot with dependencies.
 func newBotWithDeps(cm *core.ConfigManager, wrapper core.WebWrapperInterface) (*Bot, error) {
-	resp, err := wrapper.GetURL("game.php?screen=overview_villages")
-	if err != nil {
-		return nil, fmt.Errorf("failed to get villages: %w", err)
-	}
-	body, err := core.ReadBody(resp)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read villages response body: %w", err)
-	}
-	if strings.Contains(body, "Deine Session ist abgelaufen") {
-		return nil, core.ErrSessionExpired
-	}
-	villageIDs, err := core.Extractor.VillageIDs(body)
-	if err != nil {
-		return nil, fmt.Errorf("failed to extract village IDs: %w", err)
-	}
-
 	var villages []*game.Village
-	for _, id := range villageIDs {
+
+	// If we are in dry-run mode (using a mock wrapper), create a mock village
+	// for UI testing purposes. Otherwise, fetch villages from the server.
+	if _, ok := wrapper.(*game.MockWebWrapper); ok {
 		rm := game.NewResourceManager()
-		bm := game.NewBuildingManager(wrapper, id, rm)
-		if err := bm.LoadBuildingData(); err != nil {
-			return nil, fmt.Errorf("failed to load building data: %w", err)
-		}
-		tm := game.NewTroopManager(wrapper, id, rm)
-		if err := tm.LoadUnitData(); err != nil {
-			return nil, fmt.Errorf("failed to load unit data: %w", err)
-		}
-		gameMap := game.NewMap(wrapper, id)
-		am := game.NewAttackManager(wrapper, id, tm, gameMap)
-		dm := game.NewDefenceManager(wrapper, id, rm)
-		village, err := game.NewVillage(id, wrapper, cm, rm, bm, tm, am, dm, gameMap)
+		bm := game.NewBuildingManager(wrapper, "123", rm)
+		tm := game.NewTroopManager(wrapper, "123", rm)
+		gameMap := game.NewMap(wrapper, "123")
+		am := game.NewAttackManager(wrapper, "123", tm, gameMap)
+		dm := game.NewDefenceManager(wrapper, "123", rm)
+		village, err := game.NewVillage("123", wrapper, cm, rm, bm, tm, am, dm, gameMap)
 		if err != nil {
-			return nil, fmt.Errorf("failed to create village: %w", err)
+			return nil, fmt.Errorf("failed to create mock village: %w", err)
 		}
 		villages = append(villages, village)
+	} else {
+		resp, err := wrapper.GetURL("game.php?screen=overview_villages")
+		if err != nil {
+			return nil, fmt.Errorf("failed to get villages: %w", err)
+		}
+		body, err := core.ReadBody(resp)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read villages response body: %w", err)
+		}
+		if strings.Contains(body, "Deine Session ist abgelaufen") {
+			return nil, core.ErrSessionExpired
+		}
+		villageIDs, err := core.Extractor.VillageIDs(body)
+		if err != nil {
+			return nil, fmt.Errorf("failed to extract village IDs: %w", err)
+		}
+
+		for _, id := range villageIDs {
+			rm := game.NewResourceManager()
+			bm := game.NewBuildingManager(wrapper, id, rm)
+			if err := bm.LoadBuildingData(); err != nil {
+				return nil, fmt.Errorf("failed to load building data: %w", err)
+			}
+			tm := game.NewTroopManager(wrapper, id, rm)
+			if err := tm.LoadUnitData(); err != nil {
+				return nil, fmt.Errorf("failed to load unit data: %w", err)
+			}
+			gameMap := game.NewMap(wrapper, id)
+			am := game.NewAttackManager(wrapper, id, tm, gameMap)
+			dm := game.NewDefenceManager(wrapper, id, rm)
+			village, err := game.NewVillage(id, wrapper, cm, rm, bm, tm, am, dm, gameMap)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create village: %w", err)
+			}
+			villages = append(villages, village)
+		}
 	}
 
 	bot := &Bot{
@@ -108,6 +137,8 @@ func NewBot(configPath string, reader io.Reader, wrapper core.WebWrapperInterfac
 			}
 			return nil, err
 		}
+		hub := web.NewHub(bot)
+		bot.Hub = hub
 		return bot, nil
 	}
 }
@@ -134,6 +165,10 @@ func (b *Bot) Run() {
 			v.Run()
 		}
 		log.Println("Bot tick finished.")
+
+		if b.Hub != nil {
+			b.Hub.BroadcastFullState()
+		}
 
 		minTick := b.ConfigManager.GetConfig().Bot.MinTickInterval
 		maxTick := b.ConfigManager.GetConfig().Bot.MaxTickInterval
@@ -162,4 +197,24 @@ func (b *Bot) IsPaused() bool {
 	b.lock.Lock()
 	defer b.lock.Unlock()
 	return b.paused
+}
+
+// State returns a JSON-encoded representation of the current bot state.
+func (b *Bot) State() ([]byte, error) {
+	b.lock.Lock()
+	defer b.lock.Unlock()
+
+	state := make(map[string]interface{})
+	villages := make(map[string]SerializableVillage)
+	for _, v := range b.Villages {
+		villages[v.ID] = SerializableVillage{
+			ID:            v.ID,
+			Resources:     v.ResourceManager,
+			BuildingQueue: v.BuildingManager.Queue,
+			TroopQueue:    v.TroopManager.Queue,
+			LastAction:    v.LastAction,
+		}
+	}
+	state["Villages"] = villages
+	return json.Marshal(state)
 }

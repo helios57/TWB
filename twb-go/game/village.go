@@ -26,6 +26,7 @@ type Village struct {
 	ForcedPeaceToday       bool
 	ForcedPeaceTodayStart time.Time
 	logger                 func(string)
+	LastAction             Action
 }
 
 // NewVillage creates a new Village.
@@ -71,6 +72,7 @@ func (v *Village) Run() {
 		if err != nil {
 			fmt.Printf("Error executing action: %v\n", err)
 		}
+		v.LastAction = action
 	} else {
 		fmt.Println("No action to execute.")
 	}

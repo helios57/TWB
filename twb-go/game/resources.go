@@ -13,25 +13,25 @@ type ReportCache struct {
 
 // Resources represents the amount of each resource available.
 type Resources struct {
-	Wood  int `json:"wood"`
-	Stone int `json:"stone"`
-	Iron  int `json:"iron"`
-	Pop   int `json:"pop"`
+	Wood  int `json:"Wood"`
+	Stone int `json:"Stone"`
+	Iron  int `json:"Iron"`
+	Pop   int `json:"Pop"`
 }
 
 // Income represents the resource income per hour.
 type Income struct {
-	Mines   Resources `json:"mines"`
-	Farming Resources `json:"farming"`
-	Total   Resources `json:"total"`
+	Mines   Resources `json:"Mines"`
+	Farming Resources `json:"Farming"`
+	Total   Resources `json:"Total"`
 }
 
 // ResourceManager manages the resources for a village.
 type ResourceManager struct {
-	Actual          Resources
+	Actual          Resources `json:"Actual"`
 	requested       map[string]Resources
 	storage         int
-	Income          Income
+	Income          Income `json:"Income"`
 	doPremiumTrade  bool
 	tradeBias       float64
 	lastTrade       int64

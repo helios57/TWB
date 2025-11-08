@@ -1,7 +1,7 @@
 package game
 
 import (
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -13,13 +13,30 @@ type MockWebWrapper struct {
 	PostURLFunc func(url string, data url.Values) (*http.Response, error)
 }
 
+func NewMockWebWrapper() *MockWebWrapper {
+	return &MockWebWrapper{
+		GetURLFunc: func(url string) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: 200,
+				Body:       io.NopCloser(strings.NewReader("")),
+			}, nil
+		},
+		PostURLFunc: func(url string, data url.Values) (*http.Response, error) {
+			return &http.Response{
+				StatusCode: 200,
+				Body:       io.NopCloser(strings.NewReader("")),
+			}, nil
+		},
+	}
+}
+
 func (m *MockWebWrapper) GetURL(url string) (*http.Response, error) {
 	if m.GetURLFunc != nil {
 		return m.GetURLFunc(url)
 	}
 	return &http.Response{
 		StatusCode: 200,
-		Body:       ioutil.NopCloser(strings.NewReader("")),
+		Body:       io.NopCloser(strings.NewReader("")),
 	}, nil
 }
 
@@ -29,7 +46,7 @@ func (m *MockWebWrapper) PostURL(url string, data url.Values) (*http.Response, e
 	}
 	return &http.Response{
 		StatusCode: 200,
-		Body:       ioutil.NopCloser(strings.NewReader("")),
+		Body:       io.NopCloser(strings.NewReader("")),
 	}, nil
 }
 
