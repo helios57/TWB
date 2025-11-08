@@ -71,11 +71,40 @@ func (a *FarmAction) GetCost(village *Village) *Resources {
 	return &Resources{}
 }
 
+// ResearchAction represents a unit research task.
+type ResearchAction struct {
+	Unit  string
+	Level int
+}
+
+func (a *ResearchAction) Execute(village *Village) error {
+	return village.TroopManager.ExecuteResearchAction(a)
+}
+
+func (a *ResearchAction) String() string {
+	return fmt.Sprintf("Research %s to level %d", a.Unit, a.Level)
+}
+
+func (a *ResearchAction) GetCost(village *Village) *Resources {
+	researchData := village.TroopManager.ResearchData[a.Unit]
+	for _, upgrade := range researchData.Upgrades {
+		if upgrade.Level == a.Level {
+			return &Resources{
+				Wood:  upgrade.Resources["holz"],
+				Stone: upgrade.Resources["lehm"],
+				Iron:  upgrade.Resources["eisen"],
+			}
+		}
+	}
+	return &Resources{}
+}
+
 // GameState represents a snapshot of the village's state for heuristic evaluation.
 type GameState struct {
 	Resources        Resources
 	BuildingLevels   map[string]int
 	TroopLevels      map[string]int
+	ResearchLevels   map[string]int
 	ResourceIncome   Resources
 	FarmingIncome    Resources
 	BuildingQueue    []core.QueueItem
@@ -90,8 +119,8 @@ type Solver struct {
 
 // NewSolver creates a new Solver.
 func NewSolver(village *Village, config *core.SolverConfig, plannerConfig *core.PlannerConfig) *Solver {
-	actionGenerator := NewActionGenerator(plannerConfig, village.ConfigManager.GetConfig().BuildingPrerequisites, village.BuildingManager.Data, village.TroopManager.Data)
-	villageSimulator := NewVillageSimulator(village.BuildingManager.Data, village.TroopManager.Data, village.logger)
+	actionGenerator := NewActionGenerator(plannerConfig, village.ConfigManager.GetConfig().BuildingPrerequisites, village.ConfigManager.GetConfig().ResearchPrerequisites, village.BuildingManager.Data, village.TroopManager.Data, village.TroopManager.ResearchData)
+	villageSimulator := NewVillageSimulator(village.BuildingManager.Data, village.TroopManager.Data, village.TroopManager.ResearchData, village.logger)
 	return &Solver{
 		village:    village,
 		aStarSolver: NewAStarSolver(actionGenerator, villageSimulator),

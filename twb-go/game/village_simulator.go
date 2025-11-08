@@ -11,14 +11,16 @@ import (
 type VillageSimulator struct {
 	buildingData map[string]core.BuildingData
 	unitData     map[string]core.UnitData
+	researchData map[string]core.ResearchData
 	logger       func(string)
 }
 
 // NewVillageSimulator creates a new simulator with the necessary game data.
-func NewVillageSimulator(bData map[string]core.BuildingData, uData map[string]core.UnitData, logger func(string)) *VillageSimulator {
+func NewVillageSimulator(bData map[string]core.BuildingData, uData map[string]core.UnitData, rData map[string]core.ResearchData, logger func(string)) *VillageSimulator {
 	return &VillageSimulator{
 		buildingData: bData,
 		unitData:     uData,
+		researchData: rData,
 		logger:       logger,
 	}
 }
@@ -46,9 +48,94 @@ func (vs *VillageSimulator) CalculateNextState(currentState GameState, action Ac
 		}
 		vs.accumulateResources(&nextState, timeToAction)
 		vs.applyRecruitAction(&nextState, *a)
+
+	case *ResearchAction:
+		timeToAction, err = vs.calculateTimeForResearchAction(nextState, *a)
+		if err != nil {
+			return GameState{}, 0, err
+		}
+		vs.accumulateResources(&nextState, timeToAction)
+		vs.applyResearchAction(&nextState, *a)
 	}
 
 	return nextState, timeToAction.Seconds(), nil
+}
+
+func (vs *VillageSimulator) calculateTimeForResearchAction(state GameState, action ResearchAction) (time.Duration, error) {
+	timeToAfford, err := vs.calculateTimeToAffordResearch(state, action)
+	if err != nil {
+		return 0, err
+	}
+
+	researchData := vs.researchData[action.Unit]
+	smithyLevel := state.BuildingLevels["smith"]
+	if smithyLevel == 0 {
+		smithyLevel = 1
+	}
+
+	var baseResearchTime float64
+	for _, upgrade := range researchData.Upgrades {
+		if upgrade.Level == action.Level {
+			baseResearchTime = float64(upgrade.ResearchTime)
+			break
+		}
+	}
+
+	researchTimeFactor := 1.05
+	researchTime := baseResearchTime * math.Pow(researchTimeFactor, float64(smithyLevel-1))
+
+	return timeToAfford + time.Duration(researchTime)*time.Second, nil
+}
+
+func (vs *VillageSimulator) calculateTimeToAffordResearch(state GameState, action ResearchAction) (time.Duration, error) {
+	var cost *core.ResearchUpgrade
+	for _, upgrade := range vs.researchData[action.Unit].Upgrades {
+		if upgrade.Level == action.Level {
+			cost = &upgrade
+			break
+		}
+	}
+	if cost == nil {
+		return 0, fmt.Errorf("could not find upgrade data for %s level %d", action.Unit, action.Level)
+	}
+
+	maxWaitSeconds := 0.0
+	for resource, amount := range cost.Resources {
+		var currentAmount, income int
+		switch resource {
+		case "holz":
+			currentAmount = state.Resources.Wood
+			income = state.ResourceIncome.Wood
+		case "lehm":
+			currentAmount = state.Resources.Stone
+			income = state.ResourceIncome.Stone
+		case "eisen":
+			currentAmount = state.Resources.Iron
+			income = state.ResourceIncome.Iron
+		}
+		needed := float64(amount) - float64(currentAmount)
+		if needed > 0 {
+			if income <= 0 {
+				return time.Duration(math.Inf(1)), nil
+			}
+			maxWaitSeconds = math.Max(maxWaitSeconds, needed/float64(income)*3600)
+		}
+	}
+	return time.Duration(maxWaitSeconds) * time.Second, nil
+}
+
+func (vs *VillageSimulator) applyResearchAction(state *GameState, action ResearchAction) {
+	var cost *core.ResearchUpgrade
+	for _, upgrade := range vs.researchData[action.Unit].Upgrades {
+		if upgrade.Level == action.Level {
+			cost = &upgrade
+			break
+		}
+	}
+	state.Resources.Wood -= cost.Resources["holz"]
+	state.Resources.Stone -= cost.Resources["lehm"]
+	state.Resources.Iron -= cost.Resources["eisen"]
+	state.ResearchLevels[action.Unit] = action.Level
 }
 
 // CalculatePlanTime runs a simulation for a given village and build order,
@@ -112,6 +199,7 @@ func (vs *VillageSimulator) copyState(state GameState) GameState {
 		ResourceIncome: state.ResourceIncome,
 		BuildingLevels: make(map[string]int),
 		TroopLevels:    make(map[string]int),
+		ResearchLevels: make(map[string]int),
 		BuildingQueue:  make([]core.QueueItem, len(state.BuildingQueue)),
 		RecruitQueues:  make(map[string][]core.QueueItem),
 	}
@@ -120,6 +208,9 @@ func (vs *VillageSimulator) copyState(state GameState) GameState {
 	}
 	for u, c := range state.TroopLevels {
 		newState.TroopLevels[u] = c
+	}
+	for u, l := range state.ResearchLevels {
+		newState.ResearchLevels[u] = l
 	}
 	copy(newState.BuildingQueue, state.BuildingQueue)
 	for k, v := range state.RecruitQueues {
@@ -130,8 +221,8 @@ func (vs *VillageSimulator) copyState(state GameState) GameState {
 }
 
 func (vs *VillageSimulator) calculateTimeForBuildAction(state GameState, action BuildAction) (time.Duration, error) {
-	if len(state.BuildingQueue) > 0 {
-		return time.Duration(math.Inf(1)), nil
+	if len(state.BuildingQueue) >= 2 {
+		return time.Duration(math.MaxInt64), nil
 	}
 	timeToAfford, err := vs.calculateTimeToAfford(state, action)
 	if err != nil {
@@ -252,8 +343,8 @@ func (vs *VillageSimulator) calculateTimeForRecruitAction(state GameState, actio
 		buildingName = k
 		break
 	}
-	if queue, ok := state.RecruitQueues[buildingName]; ok && len(queue) > 0 {
-		return time.Duration(math.Inf(1)), nil
+	if queue, ok := state.RecruitQueues[buildingName]; ok && len(queue) >= 2 {
+		return time.Duration(math.MaxInt64), nil
 	}
 	timeToAfford, err := vs.calculateTimeToRecruit(state, action)
 	if err != nil {

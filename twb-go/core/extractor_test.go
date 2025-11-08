@@ -218,3 +218,21 @@ func TestExtractor_RecruitQueues(t *testing.T) {
 	assert.Equal(t, 3, stableQueue[1].Count)
 	assert.Equal(t, 15*time.Second, stableQueue[1].Duration)
 }
+
+func TestExtractor_ResearchLevels(t *testing.T) {
+	html := `
+	<table class="vis">
+		<tr class="row_a">
+			<td><a href="game.php?village=123&amp;screen=smith&amp;tech=spear"><img src=".../unit_spear.png" alt="" />Speerfighter</a></td>
+			<td>1</td>
+		</tr>
+		<tr class="row_b">
+			<td><a href="game.php?village=123&amp;screen=smith&amp;tech=sword"><img src=".../unit_sword.png" alt="" />Schwertkämpfer</a></td>
+			<td>0</td>
+		</tr>
+	</table>
+	`
+	levels, err := Extractor.ResearchLevels(html)
+	assert.NoError(t, err)
+	assert.Equal(t, map[string]int{"spear": 1, "sword": 0}, levels)
+}

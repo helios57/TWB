@@ -3,55 +3,107 @@ package game
 import (
 	"testing"
 	"twb-go/core"
+
+	"github.com/stretchr/testify/assert"
 )
 
-func TestActionGenerator_GenerateActionsFromState(t *testing.T) {
-	config := &core.PlannerConfig{
-		RecruitmentBatchSize: 5,
-	}
-	buildingData := map[string]core.BuildingData{
-		"main": {MaxLevel: 30},
-	}
-	unitData := map[string]core.UnitData{
-		"spear": {},
-	}
-
-	ag := NewActionGenerator(config, nil, buildingData, unitData)
-
-	state := GameState{
-		BuildingLevels: map[string]int{
-			"main": 1,
+func TestGenerateActionsFromState(t *testing.T) {
+	testCases := []struct {
+		name                  string
+		plannerConfig         *core.PlannerConfig
+		buildingPrerequisites map[string]map[string]int
+		researchPrerequisites map[string]map[string]int
+		buildingData          map[string]core.BuildingData
+		unitData              map[string]core.UnitData
+		researchData          map[string]core.ResearchData
+		initialState          GameState
+		expectedAction        Action
+		actionShouldBePresent bool
+	}{
+		{
+			name: "Generate BuildAction",
+			plannerConfig: &core.PlannerConfig{},
+			buildingData: map[string]core.BuildingData{
+				"main": {MaxLevel: 30},
+			},
+			initialState: GameState{
+				BuildingLevels: map[string]int{"main": 1},
+			},
+			expectedAction:        &BuildAction{Building: "main", Level: 2},
+			actionShouldBePresent: true,
 		},
-		TroopLevels: map[string]int{
-			"spear": 10,
+		{
+			name: "Generate RecruitAction",
+			plannerConfig: &core.PlannerConfig{RecruitmentBatchSize: 10},
+			unitData: map[string]core.UnitData{
+				"spear": {},
+			},
+			initialState: GameState{
+				ResearchLevels: map[string]int{"spear": 1},
+			},
+			expectedAction:        &RecruitAction{Unit: "spear", Amount: 10},
+			actionShouldBePresent: true,
+		},
+		{
+			name: "Generate ResearchAction with met prerequisites",
+			plannerConfig: &core.PlannerConfig{},
+			researchPrerequisites: map[string]map[string]int{
+				"spear": {"smith": 1},
+			},
+			unitData: map[string]core.UnitData{
+				"spear": {},
+			},
+			researchData: map[string]core.ResearchData{
+				"spear": {MaxLevel: 3},
+			},
+			initialState: GameState{
+				BuildingLevels: map[string]int{"smith": 1},
+				ResearchLevels: map[string]int{"spear": 0},
+			},
+			expectedAction:        &ResearchAction{Unit: "spear", Level: 1},
+			actionShouldBePresent: true,
+		},
+		{
+			name: "Do not generate ResearchAction with unmet prerequisites",
+			plannerConfig: &core.PlannerConfig{},
+			researchPrerequisites: map[string]map[string]int{
+				"spear": {"smith": 1},
+			},
+			unitData: map[string]core.UnitData{
+				"spear": {},
+			},
+			researchData: map[string]core.ResearchData{
+				"spear": {MaxLevel: 3},
+			},
+			initialState: GameState{
+				BuildingLevels: map[string]int{"smith": 0},
+				ResearchLevels: map[string]int{"spear": 0},
+			},
+			expectedAction:        &ResearchAction{Unit: "spear", Level: 1},
+			actionShouldBePresent: false,
 		},
 	}
 
-	actions := ag.GenerateActionsFromState(state)
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ag := NewActionGenerator(
+				tc.plannerConfig,
+				tc.buildingPrerequisites,
+				tc.researchPrerequisites,
+				tc.buildingData,
+				tc.unitData,
+				tc.researchData,
+			)
+			actions := ag.GenerateActionsFromState(tc.initialState)
 
-	if len(actions) != 2 {
-		t.Fatalf("Expected 2 actions, got %d", len(actions))
-	}
-
-	foundBuildAction := false
-	foundRecruitAction := false
-	for _, action := range actions {
-		switch a := action.(type) {
-		case *BuildAction:
-			if a.Building == "main" {
-				foundBuildAction = true
+			foundAction := false
+			for _, action := range actions {
+				if assert.ObjectsAreEqual(tc.expectedAction, action) {
+					foundAction = true
+					break
+				}
 			}
-		case *RecruitAction:
-			if a.Unit == "spear" && a.Amount == 5 {
-				foundRecruitAction = true
-			}
-		}
-	}
-
-	if !foundBuildAction {
-		t.Error("Expected to find a BuildAction for 'main'")
-	}
-	if !foundRecruitAction {
-		t.Error("Expected to find a RecruitAction for 'spear' with amount 5")
+			assert.Equal(t, tc.actionShouldBePresent, foundAction)
+		})
 	}
 }

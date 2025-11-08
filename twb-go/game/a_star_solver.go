@@ -105,6 +105,16 @@ func (s *AStarSolver) Heuristic(state GameState, goal GameState) float64 {
 		}
 	}
 
+	for unit, goalLevel := range goal.ResearchLevels {
+		currentLevel := state.ResearchLevels[unit]
+		if currentLevel < goalLevel {
+			timeToAfford, err := s.VillageSimulator.calculateTimeToAffordResearch(state, ResearchAction{Unit: unit, Level: goalLevel})
+			if err == nil && timeToAfford.Seconds() > maxTime {
+				maxTime = timeToAfford.Seconds()
+			}
+		}
+	}
+
 	return maxTime
 }
 
@@ -117,6 +127,11 @@ func (s *AStarSolver) isGoalState(current GameState, goal GameState) bool {
 	}
 	for unit, count := range goal.TroopLevels {
 		if current.TroopLevels[unit] < count {
+			return false
+		}
+	}
+	for unit, level := range goal.ResearchLevels {
+		if current.ResearchLevels[unit] < level {
 			return false
 		}
 	}
@@ -157,6 +172,18 @@ func (s *AStarSolver) hashState(state GameState) string {
 	sort.Strings(troopKeys)
 	for _, k := range troopKeys {
 		fmt.Fprintf(&b, "%s:%d;", k, state.TroopLevels[k])
+	}
+
+	b.WriteString("|")
+
+	// Sort and write research levels
+	researchKeys := make([]string, 0, len(state.ResearchLevels))
+	for k := range state.ResearchLevels {
+		researchKeys = append(researchKeys, k)
+	}
+	sort.Strings(researchKeys)
+	for _, k := range researchKeys {
+		fmt.Fprintf(&b, "%s:%d;", k, state.ResearchLevels[k])
 	}
 
 	b.WriteString("|")

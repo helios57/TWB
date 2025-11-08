@@ -6,18 +6,22 @@ import "twb-go/core"
 type ActionGenerator struct {
 	config                *core.PlannerConfig
 	buildingPrerequisites map[string]map[string]int
+	researchPrerequisites map[string]map[string]int
 	buildingData          map[string]core.BuildingData
 	unitData              map[string]core.UnitData
+	researchData          map[string]core.ResearchData
 	mockActions           []Action
 }
 
 // NewActionGenerator creates a new ActionGenerator.
-func NewActionGenerator(config *core.PlannerConfig, buildingPrerequisites map[string]map[string]int, bData map[string]core.BuildingData, uData map[string]core.UnitData) *ActionGenerator {
+func NewActionGenerator(config *core.PlannerConfig, buildingPrerequisites, researchPrerequisites map[string]map[string]int, bData map[string]core.BuildingData, uData map[string]core.UnitData, rData map[string]core.ResearchData) *ActionGenerator {
 	return &ActionGenerator{
 		config:                config,
 		buildingPrerequisites: buildingPrerequisites,
+		researchPrerequisites: researchPrerequisites,
 		buildingData:          bData,
 		unitData:              uData,
+		researchData:          rData,
 	}
 }
 
@@ -53,7 +57,29 @@ func (ag *ActionGenerator) GenerateActionsFromState(state GameState) []Action {
 
 	// Generate RecruitActions
 	for unit := range ag.unitData {
-		actions = append(actions, &RecruitAction{Unit: unit, Amount: ag.config.RecruitmentBatchSize})
+		if state.ResearchLevels[unit] > 0 {
+			actions = append(actions, &RecruitAction{Unit: unit, Amount: ag.config.RecruitmentBatchSize})
+		}
+	}
+
+	// Generate ResearchActions
+	for unit := range ag.unitData {
+		currentLevel := state.ResearchLevels[unit]
+		if researchData, ok := ag.researchData[unit]; ok && currentLevel < researchData.MaxLevel {
+			if prereqs, ok := ag.researchPrerequisites[unit]; ok {
+				allPrereqsMet := true
+				for prereqBuilding, prereqLevel := range prereqs {
+					if state.BuildingLevels[prereqBuilding] < prereqLevel {
+						allPrereqsMet = false
+						break
+					}
+				}
+				if !allPrereqsMet {
+					continue
+				}
+			}
+			actions = append(actions, &ResearchAction{Unit: unit, Level: currentLevel + 1})
+		}
 	}
 
 	return actions

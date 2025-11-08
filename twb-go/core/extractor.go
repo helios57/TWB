@@ -51,6 +51,19 @@ type UnitData struct {
 	DefenseArcher  int            `yaml:"defense_archer"`
 }
 
+// ResearchUpgrade represents the data for a single level of research.
+type ResearchUpgrade struct {
+	Level        int            `yaml:"level"`
+	Resources    map[string]int `yaml:"resources"`
+	ResearchTime int            `yaml:"research_time"`
+}
+
+// ResearchData represents the static research data for a unit type.
+type ResearchData struct {
+	MaxLevel int               `yaml:"max_level"`
+	Upgrades []ResearchUpgrade `yaml:"upgrades"`
+}
+
 // QueueItem represents an item in a building or recruitment queue.
 type QueueItem struct {
 	ID        string
@@ -348,4 +361,37 @@ func (e *extractor) HToken(html string) (string, error) {
 	}
 
 	return h, nil
+}
+
+// ResearchLevels extracts the research levels from the HTML of the smithy.
+func (e *extractor) ResearchLevels(html string) (map[string]int, error) {
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(html))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create goquery document: %w", err)
+	}
+
+	levels := make(map[string]int)
+	doc.Find("table.vis tr[class*='row_']").Each(func(i int, s *goquery.Selection) {
+		unitNode := s.Find("td:first-child a")
+		if unitNode.Length() == 0 {
+			return
+		}
+
+		href, _ := unitNode.Attr("href")
+		re := regexp.MustCompile(`tech=([a-z_]+)`)
+		matches := re.FindStringSubmatch(href)
+		if len(matches) < 2 {
+			return
+		}
+		unit := matches[1]
+
+		levelStr := strings.TrimSpace(s.Find("td:nth-child(2)").Text())
+		level, err := strconv.Atoi(levelStr)
+		if err != nil {
+			level = 0
+		}
+		levels[unit] = level
+	})
+
+	return levels, nil
 }

@@ -150,6 +150,17 @@ func (v *Village) fetchAndupdateState() (*core.GameState, error) {
 	if err == nil {
 		v.TroopManager.UpdateTroops(units, false)
 	}
+	resp, err = v.Wrapper.GetURL(fmt.Sprintf("game.php?village=%s&screen=smith", v.ID))
+	if err != nil {
+		return nil, fmt.Errorf("error fetching smith screen: %w", err)
+	}
+	smithBody, err := core.ReadBody(resp)
+	if err != nil {
+		return nil, fmt.Errorf("error reading smith screen body: %w", err)
+	}
+	if err := v.TroopManager.UpdateResearchLevels(smithBody); err != nil {
+		return nil, fmt.Errorf("error updating research levels: %w", err)
+	}
 	return gameState, nil
 }
 

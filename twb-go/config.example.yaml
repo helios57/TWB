@@ -21,6 +21,11 @@ building_prerequisites:
     main: 20
     smith: 20
     market: 10
+research_prerequisites:
+  axe:
+    smith: 1
+  light:
+    smith: 5
 credentials:
   user: your_username
   password: your_password

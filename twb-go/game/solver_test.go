@@ -49,8 +49,8 @@ func TestSolver_FindsOptimalPlan(t *testing.T) {
 	}
 
 	config := &core.PlannerConfig{}
-	actionGenerator := NewActionGenerator(config, nil, bData, uData)
-	villageSimulator := NewVillageSimulator(bData, uData, func(msg string) { t.Log(msg) })
+	actionGenerator := NewActionGenerator(config, nil, nil, bData, uData, nil)
+	villageSimulator := NewVillageSimulator(bData, uData, nil, func(msg string) { t.Log(msg) })
 	aStarSolver := NewAStarSolver(actionGenerator, villageSimulator)
 
 	startState := GameState{

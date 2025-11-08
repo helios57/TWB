@@ -34,6 +34,7 @@ type Config struct {
 	Planner               PlannerConfig                   `yaml:"planner"`
 	Villages              map[string]VillageConfig        `yaml:"villages"`
 	BuildingPrerequisites map[string]map[string]int       `yaml:"building_prerequisites"`
+	ResearchPrerequisites map[string]map[string]int       `yaml:"research_prerequisites"`
 	Credentials           map[string]string               `yaml:"credentials"`
 }
 

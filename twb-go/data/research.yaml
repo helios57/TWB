@@ -1,0 +1,21 @@
+spear:
+  max_level: 3
+  upgrades:
+    - level: 1
+      resources:
+        holz: 50
+        lehm: 50
+        eisen: 50
+      research_time: 1800
+    - level: 2
+      resources:
+        holz: 100
+        lehm: 100
+        eisen: 100
+      research_time: 3600
+    - level: 3
+      resources:
+        holz: 200
+        lehm: 200
+        eisen: 200
+      research_time: 7200

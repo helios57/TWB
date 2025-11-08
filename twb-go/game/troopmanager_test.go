@@ -36,3 +36,21 @@ func TestTroopManager_ExecuteRecruitAction(t *testing.T) {
 		t.Errorf("Expected resources to be %v, got %v", expectedResources, rm.Actual)
 	}
 }
+
+func TestTroopManager_ExecuteResearchAction(t *testing.T) {
+	wrapper := &MockWebWrapper{}
+	wrapper.GetURLFunc = func(url string) (*http.Response, error) {
+		return &http.Response{
+			Body: io.NopCloser(strings.NewReader(`<html><body><input type="hidden" name="h" value="12345" /></body></html>`)),
+		}, nil
+	}
+	rm := NewResourceManager()
+	tm := NewTroopManager(wrapper, "123", rm)
+
+	action := &ResearchAction{Unit: "spear", Level: 1}
+
+	err := tm.ExecuteResearchAction(action)
+	if err != nil {
+		t.Fatalf("ExecuteResearchAction failed: %v", err)
+	}
+}

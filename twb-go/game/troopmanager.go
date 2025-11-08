@@ -15,29 +15,33 @@ import (
 
 // TroopManager manages the troops in a village.
 type TroopManager struct {
-	wrapper     core.WebWrapperInterface
-	villageID   string
-	resman      *ResourceManager
-	troops      map[string]int
-	TotalTroops map[string]int
-	RecruitData map[string]core.UnitCost
-	Data        map[string]core.UnitData
-	Queue       map[string][]core.QueueItem
-	smithData   map[string]map[string]string
-	lock        sync.Mutex
+	wrapper        core.WebWrapperInterface
+	villageID      string
+	resman         *ResourceManager
+	troops         map[string]int
+	TotalTroops    map[string]int
+	RecruitData    map[string]core.UnitCost
+	Data           map[string]core.UnitData
+	ResearchData   map[string]core.ResearchData
+	ResearchLevels map[string]int
+	Queue          map[string][]core.QueueItem
+	smithData      map[string]map[string]string
+	lock           sync.Mutex
 }
 
 // NewTroopManager creates a new TroopManager.
 func NewTroopManager(wrapper core.WebWrapperInterface, villageID string, resman *ResourceManager) *TroopManager {
 	return &TroopManager{
-		wrapper:     wrapper,
-		villageID:   villageID,
-		resman:      resman,
-		troops:      make(map[string]int),
-		TotalTroops: make(map[string]int),
-		RecruitData: make(map[string]core.UnitCost),
-		Data:        make(map[string]core.UnitData),
-		smithData:   make(map[string]map[string]string),
+		wrapper:        wrapper,
+		villageID:      villageID,
+		resman:         resman,
+		troops:         make(map[string]int),
+		TotalTroops:    make(map[string]int),
+		RecruitData:    make(map[string]core.UnitCost),
+		Data:           make(map[string]core.UnitData),
+		ResearchData:   make(map[string]core.ResearchData),
+		ResearchLevels: make(map[string]int),
+		smithData:      make(map[string]map[string]string),
 	}
 }
 
@@ -53,6 +57,22 @@ func (tm *TroopManager) LoadUnitData() error {
 
 	if err := yaml.Unmarshal(file, &tm.Data); err != nil {
 		return fmt.Errorf("failed to unmarshal units.yaml: %w", err)
+	}
+	return nil
+}
+
+// LoadResearchData loads the research data from the YAML file.
+func (tm *TroopManager) LoadResearchData() error {
+	tm.lock.Lock()
+	defer tm.lock.Unlock()
+
+	file, err := ioutil.ReadFile("data/research.yaml")
+	if err != nil {
+		return fmt.Errorf("failed to read research.yaml: %w", err)
+	}
+
+	if err := yaml.Unmarshal(file, &tm.ResearchData); err != nil {
+		return fmt.Errorf("failed to unmarshal research.yaml: %w", err)
 	}
 	return nil
 }
@@ -106,6 +126,52 @@ func (tm *TroopManager) UpdateTotals(html string) error {
 	tm.troops = units
 	tm.TotalTroops = units
 
+	return nil
+}
+
+// UpdateResearchLevels updates the research levels from the HTML of the smithy.
+func (tm *TroopManager) UpdateResearchLevels(html string) error {
+	tm.lock.Lock()
+	defer tm.lock.Unlock()
+
+	levels, err := core.Extractor.ResearchLevels(html)
+	if err != nil {
+		return err
+	}
+	tm.ResearchLevels = levels
+	return nil
+}
+
+// ExecuteResearchAction researches the unit specified in the action.
+func (tm *TroopManager) ExecuteResearchAction(action *ResearchAction) error {
+	tm.lock.Lock()
+	defer tm.lock.Unlock()
+
+	resp, err := tm.wrapper.GetURL(fmt.Sprintf("game.php?village=%s&screen=smith", tm.villageID))
+	if err != nil {
+		return fmt.Errorf("failed to get smith screen: %w", err)
+	}
+	body, err := core.ReadBody(resp)
+	if err != nil {
+		return fmt.Errorf("failed to read smith screen body: %w", err)
+	}
+	h, err := core.Extractor.HToken(body)
+	if err != nil {
+		return fmt.Errorf("failed to extract h token from smith screen: %w", err)
+	}
+
+	data := url.Values{}
+	data.Set("h", h)
+	data.Set("research_unit", action.Unit)
+	_, err = tm.wrapper.PostURL(
+		fmt.Sprintf("game.php?village=%s&screen=smith&action=research", tm.villageID),
+		data,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to execute research action: %w", err)
+	}
+
+	fmt.Printf("Researching %s to level %d\n", action.Unit, action.Level)
 	return nil
 }
 
