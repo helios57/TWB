@@ -112,6 +112,8 @@ func (vs *VillageSimulator) copyState(state GameState) GameState {
 		ResourceIncome: state.ResourceIncome,
 		BuildingLevels: make(map[string]int),
 		TroopLevels:    make(map[string]int),
+		BuildingQueue:  make([]core.QueueItem, len(state.BuildingQueue)),
+		RecruitQueues:  make(map[string][]core.QueueItem),
 	}
 	for b, l := range state.BuildingLevels {
 		newState.BuildingLevels[b] = l
@@ -119,10 +121,18 @@ func (vs *VillageSimulator) copyState(state GameState) GameState {
 	for u, c := range state.TroopLevels {
 		newState.TroopLevels[u] = c
 	}
+	copy(newState.BuildingQueue, state.BuildingQueue)
+	for k, v := range state.RecruitQueues {
+		newState.RecruitQueues[k] = make([]core.QueueItem, len(v))
+		copy(newState.RecruitQueues[k], v)
+	}
 	return newState
 }
 
 func (vs *VillageSimulator) calculateTimeForBuildAction(state GameState, action BuildAction) (time.Duration, error) {
+	if len(state.BuildingQueue) > 0 {
+		return time.Duration(math.Inf(1)), nil
+	}
 	timeToAfford, err := vs.calculateTimeToAfford(state, action)
 	if err != nil {
 		return 0, err
@@ -205,6 +215,10 @@ func (vs *VillageSimulator) applyBuildAction(state *GameState, action BuildActio
 	state.Resources.Iron -= cost.Resources["eisen"]
 	state.Resources.Pop += cost.Population
 	state.BuildingLevels[action.Building] = action.Level
+	state.BuildingQueue = append(state.BuildingQueue, core.QueueItem{
+		Building: action.Building,
+		Level:    action.Level,
+	})
 }
 
 func (vs *VillageSimulator) updateIncome(state *GameState) {
@@ -232,6 +246,15 @@ func (vs *VillageSimulator) updateIncome(state *GameState) {
 }
 
 func (vs *VillageSimulator) calculateTimeForRecruitAction(state GameState, action RecruitAction) (time.Duration, error) {
+	building := vs.unitData[action.Unit].Prerequisites
+	var buildingName string
+	for k := range building {
+		buildingName = k
+		break
+	}
+	if queue, ok := state.RecruitQueues[buildingName]; ok && len(queue) > 0 {
+		return time.Duration(math.Inf(1)), nil
+	}
 	timeToAfford, err := vs.calculateTimeToRecruit(state, action)
 	if err != nil {
 		return 0, err
@@ -274,5 +297,18 @@ func (vs *VillageSimulator) applyRecruitAction(state *GameState, action RecruitA
 	state.Resources.Stone -= cost.Resources["lehm"] * action.Amount
 	state.Resources.Iron -= cost.Resources["eisen"] * action.Amount
 	state.Resources.Pop += cost.Population * action.Amount
+	building := vs.unitData[action.Unit].Prerequisites
+	var buildingName string
+	for k := range building {
+		buildingName = k
+		break
+	}
 	state.TroopLevels[action.Unit] += action.Amount
+	if state.RecruitQueues == nil {
+		state.RecruitQueues = make(map[string][]core.QueueItem)
+	}
+	state.RecruitQueues[buildingName] = append(state.RecruitQueues[buildingName], core.QueueItem{
+		Unit:  action.Unit,
+		Count: action.Amount,
+	})
 }

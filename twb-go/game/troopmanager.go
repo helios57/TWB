@@ -22,6 +22,7 @@ type TroopManager struct {
 	TotalTroops map[string]int
 	RecruitData map[string]core.UnitCost
 	Data        map[string]core.UnitData
+	Queue       map[string][]core.QueueItem
 	smithData   map[string]map[string]string
 	lock        sync.Mutex
 }
@@ -45,7 +46,7 @@ func (tm *TroopManager) LoadUnitData() error {
 	tm.lock.Lock()
 	defer tm.lock.Unlock()
 
-	file, err := ioutil.ReadFile("game/data/units.yaml")
+	file, err := ioutil.ReadFile("data/units.yaml")
 	if err != nil {
 		return fmt.Errorf("failed to read units.yaml: %w", err)
 	}

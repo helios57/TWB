@@ -18,6 +18,7 @@ type BuildingManager struct {
 	Levels    map[string]int
 	Costs     map[string]core.BuildingCost
 	Data      map[string]core.BuildingData
+	Queue     []core.QueueItem
 	lock      sync.Mutex
 }
 
@@ -38,7 +39,7 @@ func (bm *BuildingManager) LoadBuildingData() error {
 	bm.lock.Lock()
 	defer bm.lock.Unlock()
 
-	file, err := ioutil.ReadFile("game/data/buildings.yaml")
+	file, err := ioutil.ReadFile("data/buildings.yaml")
 	if err != nil {
 		return fmt.Errorf("failed to read buildings.yaml: %w", err)
 	}

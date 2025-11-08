@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 	"sync"
+	"testing"
 	"time"
 
 	"gopkg.in/yaml.v3"
@@ -67,8 +68,8 @@ type WebManagerConfig struct {
 
 // VillageConfig holds settings specific to a village.
 type VillageConfig struct {
-	Building string `yaml:"building"`
-	Units    string `yaml:"units"`
+	Building map[string]int `yaml:"building"`
+	Units    map[string]int `yaml:"units"`
 }
 
 // ConfigManager handles loading and saving of the bot's configuration.
@@ -195,8 +196,12 @@ func createConfig(reader *bufio.Reader) (*Config, error) {
 		},
 		Villages: map[string]VillageConfig{
 			"12345": {
-				Building: "noble_rush",
-				Units:    "noble_rush",
+				Building: map[string]int{
+					"main": 20,
+				},
+				Units: map[string]int{
+					"spear": 100,
+				},
 			},
 		},
 		Credentials: map[string]string{
@@ -263,3 +268,15 @@ func (cm *ConfigManager) SetConfig(config *Config) {
 	cm.config = config
 }
 
+// NewConfigManagerForTest creates a new ConfigManager for testing purposes.
+func NewConfigManagerForTest(t *testing.T, path string) *ConfigManager {
+	t.Helper()
+	cm := &ConfigManager{
+		configPath: path,
+	}
+	_, err := cm.LoadConfig()
+	if err != nil {
+		t.Fatalf("failed to load config: %v", err)
+	}
+	return cm
+}

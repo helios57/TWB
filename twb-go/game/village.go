@@ -19,6 +19,7 @@ type Village struct {
 	AttackManager          *AttackManager
 	DefenceManager         *DefenceManager
 	TemplateManager        *TemplateManager
+	StrategyManager        *StrategyManager
 	GameMap                *Map
 	Solver                 *Solver
 	ForcedPeace            bool
@@ -43,6 +44,7 @@ func NewVillage(id string, wrapper core.WebWrapperInterface, cm *core.ConfigMana
 		AttackManager:   am,
 		DefenceManager:  dm,
 		TemplateManager: NewTemplateManager("templates"),
+		StrategyManager: NewStrategyManager(cm),
 		GameMap:         gameMap,
 		logger:          func(msg string) { fmt.Println(msg) },
 	}
@@ -53,38 +55,64 @@ func NewVillage(id string, wrapper core.WebWrapperInterface, cm *core.ConfigMana
 // Run starts the main loop for the village.
 func (v *Village) Run() {
 	fmt.Printf("Running village %s\n", v.ID)
+	_, err := v.fetchAndupdateState()
+	if err != nil {
+		fmt.Printf("Error fetching and updating state: %v\n", err)
+		return
+	}
+
+	// 3. Get next action from solver and execute it
+	initialState := v.Solver.createInitialState()
+	goal := v.StrategyManager.GenerateGoal(initialState, v.ID)
+	action := v.Solver.GetNextAction(goal)
+	if action != nil {
+		fmt.Printf("Executing action: %s\n", action)
+		err := action.Execute(v)
+		if err != nil {
+			fmt.Printf("Error executing action: %v\n", err)
+		}
+	} else {
+		fmt.Println("No action to execute.")
+	}
+}
+
+func (v *Village) fetchAndupdateState() (*core.GameState, error) {
 	// 1. Fetch game state
 	resp, err := v.Wrapper.GetURL(fmt.Sprintf("game.php?village=%s&screen=overview", v.ID))
 	if err != nil {
-		fmt.Printf("Error fetching game state: %v\n", err)
-		return
+		return nil, fmt.Errorf("error fetching game state: %w", err)
 	}
 	overviewBody, err := core.ReadBody(resp)
 	if err != nil {
-		fmt.Printf("Error reading response body: %v\n", err)
-		return
+		return nil, fmt.Errorf("error reading response body: %w", err)
 	}
 
 	// 2. Update managers with new data
 	gameState, err := core.Extractor.GameState(overviewBody)
 	if err != nil {
-		fmt.Printf("Error parsing game state: %v\n", err)
-		return
+		return nil, fmt.Errorf("error parsing game state: %w", err)
 	}
+	buildingQueue, err := core.Extractor.BuildingQueue(overviewBody)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing building queue: %w", err)
+	}
+	v.BuildingManager.Queue = buildingQueue
+	recruitQueues, err := core.Extractor.RecruitQueues(overviewBody)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing recruit queues: %w", err)
+	}
+	v.TroopManager.Queue = recruitQueues
 	resp, err = v.Wrapper.GetURL(fmt.Sprintf("game.php?village=%s&screen=main", v.ID))
 	if err != nil {
-		fmt.Printf("Error fetching game state: %v\n", err)
-		return
+		return nil, fmt.Errorf("error fetching game state: %w", err)
 	}
 	mainBody, err := core.ReadBody(resp)
 	if err != nil {
-		fmt.Printf("Error reading response body: %v\n", err)
-		return
+		return nil, fmt.Errorf("error reading response body: %w", err)
 	}
 	buildingCosts, err := core.Extractor.BuildingCosts(mainBody)
 	if err != nil {
-		fmt.Printf("Error parsing building costs: %v\n", err)
-		return
+		return nil, fmt.Errorf("error parsing building costs: %w", err)
 	}
 	v.BuildingManager.UpdateBuildingCosts(buildingCosts)
 	recruitData := make(map[string]core.UnitCost)
@@ -122,28 +150,7 @@ func (v *Village) Run() {
 	if err == nil {
 		v.TroopManager.UpdateTroops(units, false)
 	}
-
-	// 3. Get next action from solver and execute it
-	villageConfig, ok := v.ConfigManager.GetConfig().Villages[v.ID]
-	if !ok {
-		fmt.Printf("No configuration found for village %s\n", v.ID)
-		return
-	}
-	goal, err := v.TemplateManager.GetGoalFromTemplates(villageConfig.Building, villageConfig.Units)
-	if err != nil {
-		fmt.Printf("Error getting goal from templates: %v\n", err)
-		return
-	}
-	action := v.Solver.GetNextAction(goal)
-	if action != nil {
-		fmt.Printf("Executing action: %s\n", action)
-		err := action.Execute(v)
-		if err != nil {
-			fmt.Printf("Error executing action: %v\n", err)
-		}
-	} else {
-		fmt.Println("No action to execute.")
-	}
+	return gameState, nil
 }
 
 // CheckForcedPeace checks if farming is disabled for the current time.

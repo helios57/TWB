@@ -8,6 +8,7 @@ type ActionGenerator struct {
 	buildingPrerequisites map[string]map[string]int
 	buildingData          map[string]core.BuildingData
 	unitData              map[string]core.UnitData
+	mockActions           []Action
 }
 
 // NewActionGenerator creates a new ActionGenerator.
@@ -22,6 +23,9 @@ func NewActionGenerator(config *core.PlannerConfig, buildingPrerequisites map[st
 
 // GenerateActionsFromState returns a list of all possible actions from a given state.
 func (ag *ActionGenerator) GenerateActionsFromState(state GameState) []Action {
+	if ag.mockActions != nil {
+		return ag.mockActions
+	}
 	var actions []Action
 
 	// Generate BuildActions

@@ -159,5 +159,26 @@ func (s *AStarSolver) hashState(state GameState) string {
 		fmt.Fprintf(&b, "%s:%d;", k, state.TroopLevels[k])
 	}
 
+	b.WriteString("|")
+
+	// Write building queue
+	for _, item := range state.BuildingQueue {
+		fmt.Fprintf(&b, "bq:%s:%d;", item.Building, item.Level)
+	}
+
+	b.WriteString("|")
+
+	// Sort and write recruit queues
+	recruitKeys := make([]string, 0, len(state.RecruitQueues))
+	for k := range state.RecruitQueues {
+		recruitKeys = append(recruitKeys, k)
+	}
+	sort.Strings(recruitKeys)
+	for _, k := range recruitKeys {
+		for _, item := range state.RecruitQueues[k] {
+			fmt.Fprintf(&b, "rq:%s:%s:%d;", k, item.Unit, item.Count)
+		}
+	}
+
 	return b.String()
 }

@@ -78,6 +78,8 @@ type GameState struct {
 	TroopLevels      map[string]int
 	ResourceIncome   Resources
 	FarmingIncome    Resources
+	BuildingQueue    []core.QueueItem
+	RecruitQueues    map[string][]core.QueueItem
 }
 
 // Solver is the core decision-making engine.
@@ -119,5 +121,7 @@ func (s *Solver) createInitialState() GameState {
 		ResourceIncome: s.village.ResourceManager.Income.Total,
 		BuildingLevels: s.village.BuildingManager.Levels,
 		TroopLevels:    s.village.TroopManager.TotalTroops,
+		BuildingQueue:  s.village.BuildingManager.Queue,
+		RecruitQueues:  s.village.TroopManager.Queue,
 	}
 }
