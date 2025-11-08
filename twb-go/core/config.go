@@ -71,6 +71,7 @@ type WebManagerConfig struct {
 type VillageConfig struct {
 	Building map[string]int `yaml:"building"`
 	Units    map[string]int `yaml:"units"`
+	Research map[string]int `yaml:"research"`
 }
 
 // ConfigManager handles loading and saving of the bot's configuration.

@@ -20,26 +20,9 @@ func (sm *StrategyManager) GenerateGoal(currentState GameState, villageID string
 		return GameState{}
 	}
 
-	goal := GameState{
-		BuildingLevels: make(map[string]int),
-		TroopLevels:    make(map[string]int),
+	return GameState{
+		BuildingLevels: villageConfig.Building,
+		TroopLevels:    villageConfig.Units,
+		ResearchLevels: villageConfig.Research,
 	}
-
-	// Building goals
-	for building, level := range villageConfig.Building {
-		if currentState.BuildingLevels[building] < level {
-			goal.BuildingLevels[building] = currentState.BuildingLevels[building] + 1
-			return goal
-		}
-	}
-
-	// Troop goals
-	for unit, count := range villageConfig.Units {
-		if currentState.TroopLevels[unit] < count {
-			goal.TroopLevels[unit] = currentState.TroopLevels[unit] + 1
-			return goal
-		}
-	}
-
-	return goal
 }
