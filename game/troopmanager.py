@@ -483,6 +483,12 @@ class TroopManager:
             return self.recruit(unit_type, amount, wait_for, building)
 
         self.recruit_data = Extractor.recruit_data(data)
+        if self.recruit_data:
+            for unit, costs in self.recruit_data.items():
+                if isinstance(costs, dict):
+                    for cost_key in ["wood", "stone", "iron", "pop"]:
+                        if cost_key in costs and isinstance(costs[cost_key], str):
+                            costs[cost_key] = int(costs[cost_key])
         self.game_data = Extractor.game_state(data)
         self.logger.info("Attempting recruitment of %d %s" % (amount, unit_type))
 

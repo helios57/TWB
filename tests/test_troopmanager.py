@@ -182,6 +182,42 @@ class TestTroopManager(unittest.TestCase):
         self.assertEqual(result['build'], expected_build)
         self.assertEqual(self.troop_manager.wanted_levels, expected_upgrades)
 
+    @patch('core.extractors.Extractor.game_state')
+    @patch('core.extractors.Extractor.recruit_data')
+    @patch('core.extractors.Extractor.active_recruit_queue', return_value=[])
+    def test_recruit_data_costs_are_integers(self, mock_active_queue, mock_recruit_data, mock_game_state):
+        """
+        Test that resource costs in recruit_data are converted to integers.
+        """
+        # Arrange
+        mock_recruit_data.return_value = {
+            'spear': {
+                'wood': '50', 'stone': '30', 'iron': '10', 'pop': '1',
+                'requirements_met': True
+            }
+        }
+        mock_game_data = {
+            'village': {
+                'wood': 500, 'stone': 300, 'iron': 100,
+                'pop_max': 24000, 'pop': 200
+            }
+        }
+        # Mock game_state to prevent it from being overwritten
+        mock_game_state.return_value = mock_game_data
+        self.troop_manager.game_data = mock_game_data
+
+        self.wrapper.get_action.return_value = "mock html"
+
+        # Act
+        self.troop_manager.recruit(unit_type="spear", amount=1)
+
+        # Assert
+        unit_costs = self.troop_manager.recruit_data.get('spear', {})
+        self.assertIsInstance(unit_costs.get('wood'), int)
+        self.assertIsInstance(unit_costs.get('stone'), int)
+        self.assertIsInstance(unit_costs.get('iron'), int)
+        self.assertIsInstance(unit_costs.get('pop'), int)
+
 
 class TestAutomatedHoarding(unittest.TestCase):
     def setUp(self):
