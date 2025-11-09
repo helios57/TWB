@@ -271,7 +271,6 @@ class TWB:
         if config["bot"].get("add_new_villages", False):
             # --- MULTI-VILLAGE EXPANSION ---
             # Determine which villages are the 'capital' and which are new.
-            capital_id = next(iter(config["villages"]))  # Assume first village is capital
             existing_villages = set(config["villages"].keys())
             newly_conquered_villages = [v for v in self.found_villages if v not in existing_villages]
 
