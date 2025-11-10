@@ -74,7 +74,8 @@ class ActionGenerator:
             current_level = state.building_levels.get(building, 0)
             if current_level < target_level:
                 if building in self.building_costs:
-                    cost = self.building_costs[building]
+                    cost_str = self.building_costs[building]
+                    cost = {k: int(v) for k, v in cost_str.items() if str(v).isdigit()}
                     if self._can_afford(state, cost):
                         build_actions.append(BuildAction(building, current_level + 1, cost))
         return build_actions
