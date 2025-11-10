@@ -705,16 +705,44 @@ class Village:
             self.logger.info("No optimal actions could be determined in this cycle.")
 
         # --- Resource Gathering ---
+        prioritize_gathering = self.get_village_config(
+            self.village_id, parameter="prioritize_gathering", default=False
+        )
+
         if not self.forced_peace and self.units.can_attack:
-            strategy, plan = self.resource_solver.determine_best_strategy(self.units.troops, farm_targets, scavenge_options)
-            if strategy == 'farming':
-                self.logger.info(f"Executing optimal farming plan with {len(plan)} attacks.")
-                for attack_cmd in plan:
-                    self.attack.attack(attack_cmd['target_id'], troops=attack_cmd['troops'])
-            elif strategy == 'scavenging':
-                self.logger.info(f"Executing optimal scavenging plan with {len(plan)} squads.")
-                for scavenge_cmd in plan:
-                    self._execute_scavenge_squad(scavenge_cmd['option_id'], scavenge_cmd['troops'])
+            if prioritize_gathering:
+                self.logger.info("Prioritizing gathering: executing scavenging-only plan.")
+                plan = self.scavenge_optimizer.create_optimal_plan(
+                    self.units.troops, scavenge_options
+                )
+                if plan:
+                    self.logger.info(
+                        f"Executing optimal scavenging plan with {len(plan)} squads."
+                    )
+                    for scavenge_cmd in plan:
+                        self._execute_scavenge_squad(
+                            scavenge_cmd["option_id"], scavenge_cmd["troops"]
+                        )
+            else:
+                strategy, plan = self.resource_solver.determine_best_strategy(
+                    self.units.troops, farm_targets, scavenge_options
+                )
+                if strategy == "farming":
+                    self.logger.info(
+                        f"Executing optimal farming plan with {len(plan)} attacks."
+                    )
+                    for attack_cmd in plan:
+                        self.attack.attack(
+                            attack_cmd["target_id"], troops=attack_cmd["troops"]
+                        )
+                elif strategy == "scavenging":
+                    self.logger.info(
+                        f"Executing optimal scavenging plan with {len(plan)} squads."
+                    )
+                    for scavenge_cmd in plan:
+                        self._execute_scavenge_squad(
+                            scavenge_cmd["option_id"], scavenge_cmd["troops"]
+                        )
 
         self.status = "Managing market..."
         self.go_manage_market()
