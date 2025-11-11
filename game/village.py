@@ -710,10 +710,15 @@ class Village:
         )
 
         if not self.forced_peace and self.units.can_attack:
+            # Defensively ensure scavenge_options is not None before it's used.
+            safe_scavenge_options = scavenge_options or {}
+
             if prioritize_gathering:
                 self.logger.info("Prioritizing gathering: executing scavenging-only plan.")
+                self.logger.debug(f"Available troops for scavenging: {self.units.troops}")
+                self.logger.debug(f"Available scavenge options: {safe_scavenge_options}")
                 plan = self.scavenge_optimizer.create_optimal_plan(
-                    self.units.troops, scavenge_options
+                    self.units.troops, safe_scavenge_options
                 )
                 if plan:
                     self.logger.info(
@@ -725,7 +730,7 @@ class Village:
                         )
             else:
                 strategy, plan = self.resource_solver.determine_best_strategy(
-                    self.units.troops, farm_targets, scavenge_options
+                    self.units.troops, farm_targets, safe_scavenge_options
                 )
                 if strategy == "farming":
                     self.logger.info(
